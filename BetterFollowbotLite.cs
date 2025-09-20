@@ -1331,13 +1331,24 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                         var mapOpen = GameController.IngameState.IngameUi.Map.IsVisible;
                                         var menuWindowOpen = MenuWindow.IsOpened;
 
-                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: UI Status - Stash: {stashOpen}, NPC: {npcDialogOpen}, Sell: {sellWindowOpen}, Purchase: {purchaseWindowOpen}, Map: {mapOpen}, Menu: {menuWindowOpen}");
+                                        // Additional potential blocking elements
+                                        var inventoryOpen = GameController.IngameState.IngameUi.InventoryPanel.IsVisible;
+                                        var characterOpen = GameController.IngameState.IngameUi.CharacterPanel.IsVisible;
+                                        var skillTreeOpen = GameController.IngameState.IngameUi.TreePanel.IsVisible;
 
-                                        // Ensure we're not in a menu or other UI state before placing totem
-                                        if (stashOpen || npcDialogOpen || sellWindowOpen || purchaseWindowOpen || mapOpen || menuWindowOpen)
+                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: UI Status - Stash: {stashOpen}, NPC: {npcDialogOpen}, Sell: {sellWindowOpen}, Purchase: {purchaseWindowOpen}, Map: {mapOpen}, Menu: {menuWindowOpen}, Inv: {inventoryOpen}, Char: {characterOpen}, Tree: {skillTreeOpen}");
+
+                                        // Check for blocking UI elements (map is non-obstructing in PoE)
+                                        if (stashOpen || npcDialogOpen || sellWindowOpen || purchaseWindowOpen || menuWindowOpen || inventoryOpen || characterOpen || skillTreeOpen)
                                         {
-                                            BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ❌ Skipping totem placement - UI menu is open");
+                                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ❌ Skipping totem placement - blocking UI menu is open");
                                             return;
+                                        }
+
+                                        // Log if map is detected as open (for debugging) but don't block on it
+                                        if (mapOpen)
+                                        {
+                                            BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ℹ️ Map detected as open but proceeding (non-obstructing in PoE)");
                                         }
 
                                         BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ✅ No UI menus detected, proceeding with placement");

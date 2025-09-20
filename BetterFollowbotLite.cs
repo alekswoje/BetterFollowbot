@@ -1332,21 +1332,53 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                         var screenRect = GameController.Window.GetWindowRectangle();
                                         var screenCenter = new Vector2(screenRect.Width / 2, screenRect.Height / 2);
                                         Mouse.SetCursorPos(screenCenter);
+                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Moved cursor to screen center: {screenCenter}");
 
                                         // Small delay to ensure mouse movement is registered
                                         System.Threading.Thread.Sleep(50);
 
+                                        // Check if the skill is available and can be used
+                                        if (skill.SkillSlotIndex < 0 || skill.SkillSlotIndex >= 12)
+                                        {
+                                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Invalid skill slot index: {skill.SkillSlotIndex}");
+                                            return;
+                                        }
+
+                                        // Get the skill slot for the totem
+                                        var skillSlot = GetSkillInputKey(skill.SkillSlotIndex);
+                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Using skill slot: {skillSlot}, SkillSlotIndex: {skill.SkillSlotIndex}");
+
+                                        // Check if skill has charges available (if it's a vaal skill)
+                                        if (skill.RemainingUses <= 0 && skill.IsOnCooldown)
+                                        {
+                                            BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: Skill is on cooldown or has no charges");
+                                            return;
+                                        }
+
                                         // Place the totem
-                                        Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                        Keyboard.KeyPress(skillSlot);
+                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: Key press sent to place totem");
 
                                         // Set cooldown to prevent spamming (2.5 seconds to account for buff application time)
                                         SkillInfo.rejuvenationTotem.Cooldown = 250;
+                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: Cooldown set to 250ms");
 
                                         BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Placed totem at screen center - Rare/Unique nearby: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
                                     }
                                     else
                                     {
-                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Conditions not met - Rare/Unique: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
+                                        if (!(hasRareOrUniqueNearby || partyMembersLowHp))
+                                        {
+                                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Conditions not met - No rare/unique enemies AND no party members need healing");
+                                        }
+                                        else if (!withinFollowingDistance)
+                                        {
+                                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Conditions not met - Too far from leader");
+                                        }
+                                        else
+                                        {
+                                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Conditions not met - Rare/Unique: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
+                                        }
                                     }
                                 }
                             }

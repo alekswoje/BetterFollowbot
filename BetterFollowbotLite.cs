@@ -1244,10 +1244,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                                     BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Party member {partyMember.PlayerName} - Life: {currentLife:F0}/{maxLife:F0}, ES: {currentES:F0}/{maxES:F0} ({(hasMeaningfulES ? "meaningful" : "negligible")}), Total Pool: {totalPoolPercentage:F1}%");
 
-                                                    if (totalPoolPercentage < Settings.rejuvenationTotemHpThreshold)
+                                                    if (totalPoolPercentage < Settings.rejuvenationTotemHpThreshold.Value)
                                                     {
                                                         partyMembersLowHp = true;
-                                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Party member {partyMember.PlayerName} total pool below threshold ({totalPoolPercentage:F1}% < {Settings.rejuvenationTotemHpThreshold}%) - placing totem");
+                                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Party member {partyMember.PlayerName} total pool below threshold ({totalPoolPercentage:F1}% < {Settings.rejuvenationTotemHpThreshold.Value}%) - placing totem");
                                                         break;
                                                     }
                                                 }
@@ -1262,19 +1262,24 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                     // Check if we're within following distance of the leader
                                     var withinFollowingDistance = true;
-                                    if (!string.IsNullOrWhiteSpace(Settings.autoPilotLeader.Value))
+                                    var leaderName = Settings.autoPilotLeader.Value;
+                                    BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Checking leader distance - Leader: '{leaderName}'");
+
+                                    if (!string.IsNullOrWhiteSpace(leaderName))
                                     {
                                         var leaderPartyElement = partyElements
                                             .FirstOrDefault(x => string.Equals(x?.PlayerName?.ToLower(),
-                                                Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
+                                                leaderName.ToLower(), StringComparison.CurrentCultureIgnoreCase));
 
                                         if (leaderPartyElement != null)
                                         {
+                                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Found leader in party: {leaderPartyElement.PlayerName}");
+
                                             // Get distance to leader
                                             var leaderEntity = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
                                                 .FirstOrDefault(x => x != null && x.IsValid && !x.IsHostile &&
                                                                    string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
-                                                                   Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
+                                                                   leaderName.ToLower(), StringComparison.CurrentCultureIgnoreCase));
 
                                             if (leaderEntity != null)
                                             {
@@ -1283,14 +1288,32 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                                     new Vector2(leaderEntity.PosNum.X, leaderEntity.PosNum.Y));
 
                                                 // Use the following distance setting
-                                                withinFollowingDistance = distanceToLeader <= Settings.autoPilotPathfindingNodeDistance;
+                                                withinFollowingDistance = distanceToLeader <= Settings.autoPilotPathfindingNodeDistance.Value;
+                                                BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Distance to leader: {distanceToLeader:F1}, Max allowed: {Settings.autoPilotPathfindingNodeDistance.Value}, Within range: {withinFollowingDistance}");
+                                            }
+                                            else
+                                            {
+                                                BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: Could not find leader entity");
                                             }
                                         }
+                                        else
+                                        {
+                                            BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: Leader not found in party list");
+                                        }
                                     }
+                                    else
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: No leader set, allowing totem placement");
+                                    }
+
+                                    // Debug logging for placement conditions
+                                    BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Placement check - Rare/Unique: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
 
                                     // Place totem if conditions are met
                                     if ((hasRareOrUniqueNearby || partyMembersLowHp) && withinFollowingDistance)
                                     {
+                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: Conditions met, attempting to place totem");
+
                                         // Ensure we're not in a menu or other UI state before placing totem
                                         if (GameController.IngameState.IngameUi.StashElement.IsVisibleLocal ||
                                             GameController.IngameState.IngameUi.NpcDialog.IsVisible ||
@@ -1302,6 +1325,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                             BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: Skipping totem placement - UI menu is open");
                                             return;
                                         }
+
+                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: No UI menus detected, proceeding with placement");
 
                                         // Move cursor to screen center before placing totem
                                         var screenRect = GameController.Window.GetWindowRectangle();
@@ -1318,6 +1343,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                         SkillInfo.rejuvenationTotem.Cooldown = 250;
 
                                         BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Placed totem at screen center - Rare/Unique nearby: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
+                                    }
+                                    else
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Conditions not met - Rare/Unique: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
                                     }
                                 }
                             }

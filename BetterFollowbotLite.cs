@@ -1284,9 +1284,33 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                     // Place totem if conditions are met
                                     if ((hasRareOrUniqueNearby || partyMembersLowHp) && withinFollowingDistance)
                                     {
+                                        // Ensure we're not in a menu or other UI state before placing totem
+                                        if (GameController.IngameState.IngameUi.StashElement.IsVisibleLocal ||
+                                            GameController.IngameState.IngameUi.NpcDialog.IsVisible ||
+                                            GameController.IngameState.IngameUi.SellWindow.IsVisible ||
+                                            GameController.IngameState.IngameUi.PurchaseWindow.IsVisible ||
+                                            GameController.IngameState.IngameUi.Map.IsVisible ||
+                                            MenuWindow.IsOpened)
+                                        {
+                                            BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: Skipping totem placement - UI menu is open");
+                                            return;
+                                        }
+
+                                        // Move cursor to screen center before placing totem
+                                        var screenRect = GameController.Window.GetWindowRectangle();
+                                        var screenCenter = new Vector2(screenRect.Width / 2, screenRect.Height / 2);
+                                        Mouse.SetCursorPos(screenCenter);
+
+                                        // Small delay to ensure mouse movement is registered
+                                        System.Threading.Thread.Sleep(50);
+
+                                        // Place the totem
                                         Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                        SkillInfo.rejuvenationTotem.Cooldown = 200; // 2 second cooldown
-                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Placed totem - Rare/Unique nearby: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
+
+                                        // Set cooldown to prevent spamming (2.5 seconds to account for buff application time)
+                                        SkillInfo.rejuvenationTotem.Cooldown = 250;
+
+                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Placed totem at screen center - Rare/Unique nearby: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
                                     }
                                 }
                             }

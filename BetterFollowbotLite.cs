@@ -1187,6 +1187,124 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                 #endregion
 
+                #region Rejuvenation Totem
+
+                if (Settings.rejuvenationTotemEnabled)
+                {
+                    try
+                    {
+                        if (skill.Id == SkillInfo.rejuvenationTotem.Id)
+                        {
+                            if (SkillInfo.ManageCooldown(SkillInfo.rejuvenationTotem, skill))
+                            {
+                                // Check if we already have the totem buff
+                                var hasTotemBuff = buffs.Exists(x => x.Name == "totem_aura_life_regen");
+                                if (!hasTotemBuff)
+                                {
+                                    // Check for unique/rare monsters within range
+                                    var monsterCount = GetMonsterWithin(Settings.rejuvenationTotemRange, MonsterRarity.Rare);
+                                    var uniqueMonsterCount = GetMonsterWithin(Settings.rejuvenationTotemRange, MonsterRarity.Unique);
+                                    var hasRareOrUniqueNearby = monsterCount > 0 || uniqueMonsterCount > 0;
+
+                                    // Check if any party member total pool (Life + ES) is below threshold
+                                    var partyMembersLowHp = false;
+                                    var partyElements = PartyElements.GetPlayerInfoElementList();
+
+                                    foreach (var partyMember in partyElements)
+                                    {
+                                        if (partyMember != null)
+                                        {
+                                            // Get the actual player entity for detailed Life/ES info
+                                            var playerEntity = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
+                                                .FirstOrDefault(x => x != null && x.IsValid && !x.IsHostile &&
+                                                                   string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
+                                                                   partyMember.PlayerName?.ToLower(), StringComparison.CurrentCultureIgnoreCase));
+
+                                            if (playerEntity != null)
+                                            {
+                                                // Get Life component for detailed health info
+                                                var lifeComponent = playerEntity.GetComponent<Life>();
+                                                if (lifeComponent != null)
+                                                {
+                                                    // Get percentages directly from Life component
+                                                    var hpPercentage = lifeComponent.HPPercentage * 100; // Convert to 0-100 range
+                                                    var esPercentage = lifeComponent.ESPercentage * 100; // Convert to 0-100 range
+
+                                                    // For total pool calculation, we want to check if EITHER HP or ES is low
+                                                    // This handles different playstyles: Life-focused, ES-focused, or balanced
+                                                    var hpLow = hpPercentage < Settings.rejuvenationTotemHpThreshold;
+                                                    var esLow = esPercentage < Settings.rejuvenationTotemHpThreshold;
+
+                                                    BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Party member {partyMember.PlayerName} - HP: {hpPercentage:F1}%, ES: {esPercentage:F1}%");
+
+                                                    if (hpLow || esLow)
+                                                    {
+                                                        partyMembersLowHp = true;
+                                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Party member {partyMember.PlayerName} needs healing - HP: {hpPercentage:F1}% {(hpLow ? "(LOW)" : "")}, ES: {esPercentage:F1}% {(esLow ? "(LOW)" : "")}");
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            else
+                                            {
+                                                // Fallback to simple HP percentage if we can't get detailed entity info
+                                                if (partyMember.HPPercent < Settings.rejuvenationTotemHpThreshold)
+                                                {
+                                                    partyMembersLowHp = true;
+                                                    BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Party member {partyMember.PlayerName} HP below threshold (fallback: {partyMember.HPPercent:F1}% < {Settings.rejuvenationTotemHpThreshold}%)");
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Check if we're within following distance of the leader
+                                    var withinFollowingDistance = true;
+                                    if (!string.IsNullOrWhiteSpace(Settings.autoPilotLeader.Value))
+                                    {
+                                        var leaderPartyElement = partyElements
+                                            .FirstOrDefault(x => string.Equals(x?.PlayerName?.ToLower(),
+                                                Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
+
+                                        if (leaderPartyElement != null)
+                                        {
+                                            // Get distance to leader
+                                            var leaderEntity = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
+                                                .FirstOrDefault(x => x != null && x.IsValid && !x.IsHostile &&
+                                                                   string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
+                                                                   Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
+
+                                            if (leaderEntity != null)
+                                            {
+                                                var distanceToLeader = Vector2.Distance(
+                                                    new Vector2(playerPosition.X, playerPosition.Y),
+                                                    new Vector2(leaderEntity.PosNum.X, leaderEntity.PosNum.Y));
+
+                                                // Use the following distance setting
+                                                withinFollowingDistance = distanceToLeader <= Settings.autoPilotPathfindingNodeDistance;
+                                            }
+                                        }
+                                    }
+
+                                    // Place totem if conditions are met
+                                    if ((hasRareOrUniqueNearby || partyMembersLowHp) && withinFollowingDistance)
+                                    {
+                                        Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                        SkillInfo.rejuvenationTotem.Cooldown = 200; // 2 second cooldown
+                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Placed totem - Rare/Unique nearby: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        // Error handling without logging
+                    }
+                }
+
+                #endregion
+
                 #region Vaal Skills
 
                 if (Settings.vaalHasteEnabled)
@@ -1238,13 +1356,36 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                             // Vaal skills use charges, not traditional cooldowns
                             if (!(skill.RemainingUses <= 0 && skill.IsOnCooldown))
                             {
-                                // Check if ES is below threshold
-                                var esPercentage = player.ESPercentage;
+                                // Check if ES is below threshold for player or any party member
+                                var playerEsPercentage = player.ESPercentage;
                                 var threshold = (float)Settings.vaalDisciplineEsp / 100;
+                                var esBelowThreshold = playerEsPercentage < threshold;
 
-                                BetterFollowbotLite.Instance.LogMessage($"VAAL DISCIPLINE: ES%: {esPercentage:F1}, Threshold: {threshold:F2}");
+                                BetterFollowbotLite.Instance.LogMessage($"VAAL DISCIPLINE: Player ES%: {playerEsPercentage:F1}, Threshold: {threshold:F2}");
 
-                                if (esPercentage < threshold)
+                                // Check party members' ES if player's ES is not below threshold
+                                if (!esBelowThreshold)
+                                {
+                                    var partyElements = PartyElements.GetPlayerInfoElementList();
+
+                                    foreach (var partyMember in partyElements)
+                                    {
+                                        if (partyMember != null)
+                                        {
+                                            var partyEsPercentage = partyMember.ESPercent / 100f; // Convert from 0-100 to 0-1
+                                            BetterFollowbotLite.Instance.LogMessage($"VAAL DISCIPLINE: Party member {partyMember.PlayerName} ES%: {partyEsPercentage:F1}");
+
+                                            if (partyEsPercentage < threshold)
+                                            {
+                                                esBelowThreshold = true;
+                                                BetterFollowbotLite.Instance.LogMessage($"VAAL DISCIPLINE: Party member {partyMember.PlayerName} ES below threshold");
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (esBelowThreshold)
                                 {
                                     // Check if we don't already have the vaal discipline buff
                                     var hasVaalDisciplineBuff = buffs.Exists(x => x.Name == "vaal_discipline");

@@ -94,6 +94,14 @@ public class BetterFollowbotLiteSettings : ISettings
 
     #endregion
 
+    #region Rejuvenation Totem
+
+    public ToggleNode rejuvenationTotemEnabled = new ToggleNode(false);
+    public RangeNode<int> rejuvenationTotemRange = new RangeNode<int>(1000, 100, 2000);
+    public RangeNode<int> rejuvenationTotemHpThreshold = new RangeNode<int>(90, 1, 100);
+
+    #endregion
+
     #region Auto Respawn
 
     public ToggleNode autoRespawnEnabled = new ToggleNode(false);

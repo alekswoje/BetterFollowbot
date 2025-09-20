@@ -183,6 +183,26 @@ internal class ImGuiDrawSettings
 
         try
         {
+            // Rejuvenation Totem
+            ImGui.PushStyleColor(ImGuiCol.Header, BetterFollowbotLite.Instance.Settings.rejuvenationTotemEnabled ? green : red);
+            ImGui.PushID(36);
+            if (ImGui.TreeNodeEx("Rejuvenation Totem", collapsingHeaderFlags))
+            {
+                BetterFollowbotLite.Instance.Settings.rejuvenationTotemEnabled.Value = ImGuiExtension.Checkbox("Enabled",
+                    BetterFollowbotLite.Instance.Settings.rejuvenationTotemEnabled.Value);
+                BetterFollowbotLite.Instance.Settings.rejuvenationTotemRange.Value =
+                    ImGuiExtension.IntSlider("Monster Detection Range", BetterFollowbotLite.Instance.Settings.rejuvenationTotemRange);
+                BetterFollowbotLite.Instance.Settings.rejuvenationTotemHpThreshold.Value =
+                    ImGuiExtension.IntSlider("HP/ES Threshold %", BetterFollowbotLite.Instance.Settings.rejuvenationTotemHpThreshold);
+            }
+        }
+        catch (Exception e)
+        {
+            // Error handling without logging
+        }
+
+        try
+        {
             // Vaal Skills - independent of Flame Link
             bool vaalSkillsEnabled = BetterFollowbotLite.Instance.Settings.vaalHasteEnabled || BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled;
             ImGui.PushStyleColor(ImGuiCol.Header, vaalSkillsEnabled ? green : red);

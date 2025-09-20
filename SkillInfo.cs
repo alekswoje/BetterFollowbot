@@ -91,6 +91,9 @@ internal static class SkillInfo
     internal static Skill stormblastMine = new Skill();
     internal static Skill pyroclastMine = new Skill();
 
+    // Rejuvenation Totem
+    internal static Skill rejuvenationTotem = new Skill();
+
     internal static void ResetSkills()
     {
         enduringCry = new Skill();
@@ -156,6 +159,7 @@ internal static class SkillInfo
         vaalDiscipline = new Skill();
         stormblastMine = new Skill();
         pyroclastMine = new Skill();
+        rejuvenationTotem = new Skill();
     }
 
     public static void GetDeltaTime()
@@ -514,6 +518,11 @@ internal static class SkillInfo
                 case "PyroclastMine":
                     pyroclastMine.Id = skill.Id;
                     BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Pyroclast Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    break;
+                case "rejuvenation_totem":
+                    rejuvenationTotem.Id = skill.Id;
+                    rejuvenationTotem.BuffName = "totem_aura_life_regen";
+                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Rejuvenation Totem - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
                 default:
                     // Log Vaal skills that might have different names

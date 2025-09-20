@@ -1200,12 +1200,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                             if (SkillInfo.ManageCooldown(SkillInfo.rejuvenationTotem, skill))
                             {
                                 BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ✅ Cooldown check passed, processing totem logic");
-                            }
-                            else
-                            {
-                                BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ⏳ Cooldown check FAILED (remaining: {SkillInfo.rejuvenationTotem.Cooldown:F0}ms), skipping totem");
-                                return; // Exit early if on cooldown
-                            }
+
                                 // Check if we already have the totem buff
                                 var hasTotemBuff = buffs.Exists(x => x.Name == "totem_aura_life_regen");
                                 if (!hasTotemBuff)
@@ -1393,7 +1388,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                         // Set cooldown to prevent spamming (2 seconds as requested)
                                         SkillInfo.rejuvenationTotem.Cooldown = 2000;
-                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ⏰ Cooldown set to 2000ms (2 seconds)");
+                                        lastTimeAny = DateTime.Now; // Update global cooldown like other skills
+                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ⏰ Cooldown set to 2000ms (2 seconds) and global cooldown updated");
 
                                         BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ✨ TOTEM PLACED SUCCESSFULLY - Rare/Unique nearby: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
                                     }
@@ -1414,6 +1410,11 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                     }
                                 }
                             }
+                            else
+                            {
+                                BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ❌ Cooldown check FAILED (remaining: {SkillInfo.rejuvenationTotem.Cooldown:F0}ms), skipping totem");
+                                return; // Exit early if on cooldown
+                            }
                         }
                     }
                     catch (Exception e)
@@ -1427,6 +1428,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 #region Vaal Skills
 
                 if (Settings.vaalHasteEnabled)
+                {
                     try
                     {
                         if (skill.Id == SkillInfo.vaalHaste.Id)
@@ -1464,8 +1466,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     {
                         // Error handling without logging
                     }
+                }
 
                 if (Settings.vaalDisciplineEnabled)
+                {
                     try
                     {
                         if (skill.Id == SkillInfo.vaalDiscipline.Id)
@@ -1558,12 +1562,14 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     {
                         // Error handling without logging
                     }
+                }
 
                 #endregion
 
                 #region Mines
 
                 if (Settings.minesEnabled)
+                {
                     try
                     {
                         // Check if we have either stormblast or pyroclast mine skills enabled
@@ -1694,6 +1700,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     {
                         // Error handling without logging
                     }
+                }
 
                 #endregion
 

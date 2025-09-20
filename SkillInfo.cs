@@ -67,7 +67,6 @@ internal static class SkillInfo
     internal static Skill wardFlask = new Skill();
     internal static Skill summonSkeletons = new Skill();
     internal static Skill righteousFire = new Skill();
-    internal static Skill rejuvenationTotem = new Skill();
     internal static Skill auraPurityOfElements = new Skill();
     internal static Skill auraHatred = new Skill();
     internal static Skill auraZealotry = new Skill();
@@ -140,7 +139,6 @@ internal static class SkillInfo
         wardFlask = new Skill();
         summonSkeletons = new Skill();
         righteousFire = new Skill();
-        rejuvenationTotem = new Skill();
         auraPurityOfElements = new Skill();
         auraHatred = new Skill();
         auraZealotry = new Skill();
@@ -371,10 +369,6 @@ internal static class SkillInfo
                     break;
                 case "summon_skeletons":
                     summonSkeletons.Id = skill.Id;
-                    break;
-                case "rejuvenation_totem":
-                    rejuvenationTotem.Id = skill.Id;
-                    rejuvenationTotem.BuffName = "totem_aura_life_regen";
                     break;
                 case "righteous_fire":
                     righteousFire.Id = skill.Id;

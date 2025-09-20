@@ -1195,41 +1195,39 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     {
                         if (skill.Id == SkillInfo.rejuvenationTotem.Id)
                         {
-                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: 🔍 Skill detected - ID: {skill.Id}, SlotIndex: {skill.SkillSlotIndex}, RemainingUses: {skill.RemainingUses}, IsOnCooldown: {skill.IsOnCooldown}");
+                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: 🔍 Skill detected - ID: {skill.Id}, SlotIndex: {skill.SkillSlotIndex}, RemainingUses: {skill.RemainingUses}, IsOnCooldown: {skill.IsOnCooldown}, SkillCooldown: {SkillInfo.rejuvenationTotem.Cooldown:F0}ms");
 
                             if (SkillInfo.ManageCooldown(SkillInfo.rejuvenationTotem, skill))
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ✅ Cooldown check passed (current cooldown: {SkillInfo.rejuvenationTotem.Cooldown}ms), processing totem logic");
-                                // Check if we already have the totem buff
+                                BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ✅ Cooldown check passed, processing totem logic");
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ⏳ Cooldown check FAILED (remaining cooldown: {SkillInfo.rejuvenationTotem.Cooldown}ms), skipping totem");
+                                BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ⏳ Cooldown check FAILED (remaining: {SkillInfo.rejuvenationTotem.Cooldown:F0}ms), skipping totem");
                                 return; // Exit early if on cooldown
                             }
-
-                            // Check if we already have the totem buff
-                            var hasTotemBuff = buffs.Exists(x => x.Name == "totem_aura_life_regen");
-                            if (!hasTotemBuff)
-                            {
-                                // Check for unique/rare monsters within range
-                                var monsterCount = GetMonsterWithin(Settings.rejuvenationTotemRange, MonsterRarity.Rare);
-                                var uniqueMonsterCount = GetMonsterWithin(Settings.rejuvenationTotemRange, MonsterRarity.Unique);
-                                var hasRareOrUniqueNearby = monsterCount > 0 || uniqueMonsterCount > 0;
-
-                                // Check if any party member total pool (Life + ES) is below threshold
-                                var partyMembersLowHp = false;
-                                var partyElements = PartyElements.GetPlayerInfoElementList();
-
-                                foreach (var partyMember in partyElements)
+                                // Check if we already have the totem buff
+                                var hasTotemBuff = buffs.Exists(x => x.Name == "totem_aura_life_regen");
+                                if (!hasTotemBuff)
                                 {
-                                    if (partyMember != null)
+                                    // Check for unique/rare monsters within range
+                                    var monsterCount = GetMonsterWithin(Settings.rejuvenationTotemRange, MonsterRarity.Rare);
+                                    var uniqueMonsterCount = GetMonsterWithin(Settings.rejuvenationTotemRange, MonsterRarity.Unique);
+                                    var hasRareOrUniqueNearby = monsterCount > 0 || uniqueMonsterCount > 0;
+
+                                    // Check if any party member total pool (Life + ES) is below threshold
+                                    var partyMembersLowHp = false;
+                                    var partyElements = PartyElements.GetPlayerInfoElementList();
+
+                                    foreach (var partyMember in partyElements)
                                     {
-                                        // Get the actual player entity for detailed Life/ES info
-                                        var playerEntity = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
-                                            .FirstOrDefault(x => x != null && x.IsValid && !x.IsHostile &&
-                                                               string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
-                                                               partyMember.PlayerName?.ToLower(), StringComparison.CurrentCultureIgnoreCase));
+                                        if (partyMember != null)
+                                        {
+                                            // Get the actual player entity for detailed Life/ES info
+                                            var playerEntity = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
+                                                .FirstOrDefault(x => x != null && x.IsValid && !x.IsHostile &&
+                                                                   string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
+                                                                   partyMember.PlayerName?.ToLower(), StringComparison.CurrentCultureIgnoreCase));
 
                                             if (playerEntity != null)
                                             {

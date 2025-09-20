@@ -193,7 +193,7 @@ internal class ImGuiDrawSettings
                 BetterFollowbotLite.Instance.Settings.rejuvenationTotemRange.Value =
                     ImGuiExtension.IntSlider("Monster Detection Range", BetterFollowbotLite.Instance.Settings.rejuvenationTotemRange);
                 BetterFollowbotLite.Instance.Settings.rejuvenationTotemHpThreshold.Value =
-                    ImGuiExtension.IntSlider("HP/ES Threshold %", BetterFollowbotLite.Instance.Settings.rejuvenationTotemHpThreshold);
+                    ImGuiExtension.IntSlider("Total Pool Threshold %", BetterFollowbotLite.Instance.Settings.rejuvenationTotemHpThreshold);
             }
         }
         catch (Exception e)

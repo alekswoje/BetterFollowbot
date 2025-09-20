@@ -1226,21 +1226,28 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                                 var lifeComponent = playerEntity.GetComponent<Life>();
                                                 if (lifeComponent != null)
                                                 {
-                                                    // Get percentages directly from Life component
-                                                    var hpPercentage = lifeComponent.HPPercentage * 100; // Convert to 0-100 range
-                                                    var esPercentage = lifeComponent.ESPercentage * 100; // Convert to 0-100 range
+                                                    // Get actual values for total pool calculation
+                                                    var currentLife = lifeComponent.Health.Current;
+                                                    var maxLife = lifeComponent.Health.Unreserved; // Unreserved life only
+                                                    var currentES = lifeComponent.EnergyShield.Current;
+                                                    var maxES = lifeComponent.EnergyShield.Unreserved;
 
-                                                    // For total pool calculation, we want to check if EITHER HP or ES is low
-                                                    // This handles different playstyles: Life-focused, ES-focused, or balanced
-                                                    var hpLow = hpPercentage < Settings.rejuvenationTotemHpThreshold;
-                                                    var esLow = esPercentage < Settings.rejuvenationTotemHpThreshold;
+                                                    // Calculate meaningful thresholds - only consider ES if they have a meaningful amount
+                                                    var hasMeaningfulES = maxES >= 500; // Only consider ES if they have 500+ max ES
+                                                    var effectiveCurrentES = hasMeaningfulES ? currentES : 0;
+                                                    var effectiveMaxES = hasMeaningfulES ? maxES : 0;
 
-                                                    BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Party member {partyMember.PlayerName} - HP: {hpPercentage:F1}%, ES: {esPercentage:F1}%");
+                                                    // Calculate total pool percentage using unreserved life + meaningful ES
+                                                    var totalCurrent = currentLife + effectiveCurrentES;
+                                                    var totalMax = maxLife + effectiveMaxES;
+                                                    var totalPoolPercentage = totalMax > 0 ? (totalCurrent / totalMax) * 100 : 100;
 
-                                                    if (hpLow || esLow)
+                                                    BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Party member {partyMember.PlayerName} - Life: {currentLife:F0}/{maxLife:F0}, ES: {currentES:F0}/{maxES:F0} ({(hasMeaningfulES ? "meaningful" : "negligible")}), Total Pool: {totalPoolPercentage:F1}%");
+
+                                                    if (totalPoolPercentage < Settings.rejuvenationTotemHpThreshold)
                                                     {
                                                         partyMembersLowHp = true;
-                                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Party member {partyMember.PlayerName} needs healing - HP: {hpPercentage:F1}% {(hpLow ? "(LOW)" : "")}, ES: {esPercentage:F1}% {(esLow ? "(LOW)" : "")}");
+                                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Party member {partyMember.PlayerName} total pool below threshold ({totalPoolPercentage:F1}% < {Settings.rejuvenationTotemHpThreshold}%) - placing totem");
                                                         break;
                                                     }
                                                 }

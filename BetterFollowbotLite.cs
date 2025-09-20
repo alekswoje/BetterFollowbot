@@ -1247,13 +1247,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                             }
                                             else
                                             {
-                                                // Fallback to simple HP percentage if we can't get detailed entity info
-                                                if (partyMember.HPPercent < Settings.rejuvenationTotemHpThreshold)
-                                                {
-                                                    partyMembersLowHp = true;
-                                                    BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Party member {partyMember.PlayerName} HP below threshold (fallback: {partyMember.HPPercent:F1}% < {Settings.rejuvenationTotemHpThreshold}%)");
-                                                    break;
-                                                }
+                                                // Fallback: Skip this party member if we can't get entity info
+                                                BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Could not get entity info for party member {partyMember.PlayerName}, skipping");
                                             }
                                         }
                                     }
@@ -1372,14 +1367,33 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                     {
                                         if (partyMember != null)
                                         {
-                                            var partyEsPercentage = partyMember.ESPercent / 100f; // Convert from 0-100 to 0-1
-                                            BetterFollowbotLite.Instance.LogMessage($"VAAL DISCIPLINE: Party member {partyMember.PlayerName} ES%: {partyEsPercentage:F1}");
+                                            // Get the actual player entity for ES info
+                                            var playerEntity = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
+                                                .FirstOrDefault(x => x != null && x.IsValid && !x.IsHostile &&
+                                                                   string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
+                                                                   partyMember.PlayerName?.ToLower(), StringComparison.CurrentCultureIgnoreCase));
 
-                                            if (partyEsPercentage < threshold)
+                                            if (playerEntity != null)
                                             {
-                                                esBelowThreshold = true;
-                                                BetterFollowbotLite.Instance.LogMessage($"VAAL DISCIPLINE: Party member {partyMember.PlayerName} ES below threshold");
-                                                break;
+                                                // Get Life component for ES info
+                                                var lifeComponent = playerEntity.GetComponent<Life>();
+                                                if (lifeComponent != null)
+                                                {
+                                                    var partyEsPercentage = lifeComponent.ESPercentage; // Already in 0-1 range
+                                                    BetterFollowbotLite.Instance.LogMessage($"VAAL DISCIPLINE: Party member {partyMember.PlayerName} ES%: {partyEsPercentage:F1}");
+
+                                                    if (partyEsPercentage < threshold)
+                                                    {
+                                                        esBelowThreshold = true;
+                                                        BetterFollowbotLite.Instance.LogMessage($"VAAL DISCIPLINE: Party member {partyMember.PlayerName} ES below threshold");
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            else
+                                            {
+                                                // Skip this party member if we can't get entity info
+                                                BetterFollowbotLite.Instance.LogMessage($"VAAL DISCIPLINE: Could not get entity info for party member {partyMember.PlayerName}, skipping");
                                             }
                                         }
                                     }

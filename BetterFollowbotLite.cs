@@ -1195,8 +1195,11 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     {
                         if (skill.Id == SkillInfo.rejuvenationTotem.Id)
                         {
+                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: 🔍 Skill detected - ID: {skill.Id}, SlotIndex: {skill.SkillSlotIndex}, RemainingUses: {skill.RemainingUses}, IsOnCooldown: {skill.IsOnCooldown}");
+
                             if (SkillInfo.ManageCooldown(SkillInfo.rejuvenationTotem, skill))
                             {
+                                BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ✅ Cooldown check passed, processing totem logic");
                                 // Check if we already have the totem buff
                                 var hasTotemBuff = buffs.Exists(x => x.Name == "totem_aura_life_regen");
                                 if (!hasTotemBuff)
@@ -1232,6 +1235,9 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                                     var currentES = lifeComponent.EnergyShield.Current;
                                                     var maxES = lifeComponent.EnergyShield.Unreserved;
 
+                                                    // Debug raw values
+                                                    BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Raw values for {partyMember.PlayerName} - Life Current: {currentLife}, Life Max: {maxLife}, ES Current: {currentES}, ES Max: {maxES}");
+
                                                     // Calculate meaningful thresholds - only consider ES if they have a meaningful amount
                                                     var hasMeaningfulES = maxES >= 500; // Only consider ES if they have 500+ max ES
                                                     var effectiveCurrentES = hasMeaningfulES ? currentES : 0;
@@ -1240,7 +1246,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                                     // Calculate total pool percentage using unreserved life + meaningful ES
                                                     var totalCurrent = currentLife + effectiveCurrentES;
                                                     var totalMax = maxLife + effectiveMaxES;
-                                                    var totalPoolPercentage = totalMax > 0 ? (totalCurrent / totalMax) * 100 : 100;
+                                                    var totalPoolPercentage = totalMax > 0 ? ((double)totalCurrent / (double)totalMax) * 100 : 100;
+
+                                                    // Debug calculation
+                                                    BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Calculation for {partyMember.PlayerName} - Total Current: {totalCurrent}, Total Max: {totalMax}, Percentage: {totalPoolPercentage:F2}%");
 
                                                     BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Party member {partyMember.PlayerName} - Life: {currentLife:F0}/{maxLife:F0}, ES: {currentES:F0}/{maxES:F0} ({(hasMeaningfulES ? "meaningful" : "negligible")}), Total Pool: {totalPoolPercentage:F1}%");
 
@@ -1312,27 +1321,32 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                     // Place totem if conditions are met
                                     if ((hasRareOrUniqueNearby || partyMembersLowHp) && withinFollowingDistance)
                                     {
-                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: Conditions met, attempting to place totem");
+                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: 🔥 CONDITIONS MET - Rare/Unique: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
+
+                                        // Check UI menu status
+                                        var stashOpen = GameController.IngameState.IngameUi.StashElement.IsVisibleLocal;
+                                        var npcDialogOpen = GameController.IngameState.IngameUi.NpcDialog.IsVisible;
+                                        var sellWindowOpen = GameController.IngameState.IngameUi.SellWindow.IsVisible;
+                                        var purchaseWindowOpen = GameController.IngameState.IngameUi.PurchaseWindow.IsVisible;
+                                        var mapOpen = GameController.IngameState.IngameUi.Map.IsVisible;
+                                        var menuWindowOpen = MenuWindow.IsOpened;
+
+                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: UI Status - Stash: {stashOpen}, NPC: {npcDialogOpen}, Sell: {sellWindowOpen}, Purchase: {purchaseWindowOpen}, Map: {mapOpen}, Menu: {menuWindowOpen}");
 
                                         // Ensure we're not in a menu or other UI state before placing totem
-                                        if (GameController.IngameState.IngameUi.StashElement.IsVisibleLocal ||
-                                            GameController.IngameState.IngameUi.NpcDialog.IsVisible ||
-                                            GameController.IngameState.IngameUi.SellWindow.IsVisible ||
-                                            GameController.IngameState.IngameUi.PurchaseWindow.IsVisible ||
-                                            GameController.IngameState.IngameUi.Map.IsVisible ||
-                                            MenuWindow.IsOpened)
+                                        if (stashOpen || npcDialogOpen || sellWindowOpen || purchaseWindowOpen || mapOpen || menuWindowOpen)
                                         {
-                                            BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: Skipping totem placement - UI menu is open");
+                                            BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ❌ Skipping totem placement - UI menu is open");
                                             return;
                                         }
 
-                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: No UI menus detected, proceeding with placement");
+                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ✅ No UI menus detected, proceeding with placement");
 
                                         // Move cursor to screen center before placing totem
                                         var screenRect = GameController.Window.GetWindowRectangle();
                                         var screenCenter = new Vector2(screenRect.Width / 2, screenRect.Height / 2);
                                         Mouse.SetCursorPos(screenCenter);
-                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Moved cursor to screen center: {screenCenter}");
+                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: 🎯 Moved cursor to screen center: {screenCenter}");
 
                                         // Small delay to ensure mouse movement is registered
                                         System.Threading.Thread.Sleep(50);
@@ -1340,30 +1354,32 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                         // Check if the skill is available and can be used
                                         if (skill.SkillSlotIndex < 0 || skill.SkillSlotIndex >= 12)
                                         {
-                                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Invalid skill slot index: {skill.SkillSlotIndex}");
+                                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ❌ Invalid skill slot index: {skill.SkillSlotIndex}");
                                             return;
                                         }
 
                                         // Get the skill slot for the totem
                                         var skillSlot = GetSkillInputKey(skill.SkillSlotIndex);
-                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Using skill slot: {skillSlot}, SkillSlotIndex: {skill.SkillSlotIndex}");
+                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: 🎮 Using skill slot: {skillSlot}, SkillSlotIndex: {skill.SkillSlotIndex}");
 
-                                        // Check if skill has charges available (if it's a vaal skill)
+                                        // Check if skill has charges available
                                         if (skill.RemainingUses <= 0 && skill.IsOnCooldown)
                                         {
-                                            BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: Skill is on cooldown or has no charges");
+                                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ❌ Skill unavailable - RemainingUses: {skill.RemainingUses}, IsOnCooldown: {skill.IsOnCooldown}");
                                             return;
                                         }
 
+                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ✅ Skill is available, sending key press");
+
                                         // Place the totem
                                         Keyboard.KeyPress(skillSlot);
-                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: Key press sent to place totem");
+                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: 🎉 Key press sent to place totem using key: {skillSlot}");
 
                                         // Set cooldown to prevent spamming (2.5 seconds to account for buff application time)
                                         SkillInfo.rejuvenationTotem.Cooldown = 250;
-                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: Cooldown set to 250ms");
+                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ⏰ Cooldown set to 250ms");
 
-                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Placed totem at screen center - Rare/Unique nearby: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
+                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ✨ TOTEM PLACED SUCCESSFULLY - Rare/Unique nearby: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
                                     }
                                     else
                                     {

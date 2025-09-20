@@ -1199,29 +1199,37 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                             if (SkillInfo.ManageCooldown(SkillInfo.rejuvenationTotem, skill))
                             {
-                                BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ✅ Cooldown check passed, processing totem logic");
+                                BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ✅ Cooldown check passed (current cooldown: {SkillInfo.rejuvenationTotem.Cooldown}ms), processing totem logic");
                                 // Check if we already have the totem buff
-                                var hasTotemBuff = buffs.Exists(x => x.Name == "totem_aura_life_regen");
-                                if (!hasTotemBuff)
+                            }
+                            else
+                            {
+                                BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ⏳ Cooldown check FAILED (remaining cooldown: {SkillInfo.rejuvenationTotem.Cooldown}ms), skipping totem");
+                                return; // Exit early if on cooldown
+                            }
+
+                            // Check if we already have the totem buff
+                            var hasTotemBuff = buffs.Exists(x => x.Name == "totem_aura_life_regen");
+                            if (!hasTotemBuff)
+                            {
+                                // Check for unique/rare monsters within range
+                                var monsterCount = GetMonsterWithin(Settings.rejuvenationTotemRange, MonsterRarity.Rare);
+                                var uniqueMonsterCount = GetMonsterWithin(Settings.rejuvenationTotemRange, MonsterRarity.Unique);
+                                var hasRareOrUniqueNearby = monsterCount > 0 || uniqueMonsterCount > 0;
+
+                                // Check if any party member total pool (Life + ES) is below threshold
+                                var partyMembersLowHp = false;
+                                var partyElements = PartyElements.GetPlayerInfoElementList();
+
+                                foreach (var partyMember in partyElements)
                                 {
-                                    // Check for unique/rare monsters within range
-                                    var monsterCount = GetMonsterWithin(Settings.rejuvenationTotemRange, MonsterRarity.Rare);
-                                    var uniqueMonsterCount = GetMonsterWithin(Settings.rejuvenationTotemRange, MonsterRarity.Unique);
-                                    var hasRareOrUniqueNearby = monsterCount > 0 || uniqueMonsterCount > 0;
-
-                                    // Check if any party member total pool (Life + ES) is below threshold
-                                    var partyMembersLowHp = false;
-                                    var partyElements = PartyElements.GetPlayerInfoElementList();
-
-                                    foreach (var partyMember in partyElements)
+                                    if (partyMember != null)
                                     {
-                                        if (partyMember != null)
-                                        {
-                                            // Get the actual player entity for detailed Life/ES info
-                                            var playerEntity = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
-                                                .FirstOrDefault(x => x != null && x.IsValid && !x.IsHostile &&
-                                                                   string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
-                                                                   partyMember.PlayerName?.ToLower(), StringComparison.CurrentCultureIgnoreCase));
+                                        // Get the actual player entity for detailed Life/ES info
+                                        var playerEntity = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
+                                            .FirstOrDefault(x => x != null && x.IsValid && !x.IsHostile &&
+                                                               string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
+                                                               partyMember.PlayerName?.ToLower(), StringComparison.CurrentCultureIgnoreCase));
 
                                             if (playerEntity != null)
                                             {
@@ -1385,9 +1393,9 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                         Keyboard.KeyPress(skillSlot);
                                         BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: 🎉 Key press sent to place totem using key: {skillSlot}");
 
-                                        // Set cooldown to prevent spamming (2.5 seconds to account for buff application time)
-                                        SkillInfo.rejuvenationTotem.Cooldown = 250;
-                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ⏰ Cooldown set to 250ms");
+                                        // Set cooldown to prevent spamming (2 seconds as requested)
+                                        SkillInfo.rejuvenationTotem.Cooldown = 2000;
+                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ⏰ Cooldown set to 2000ms (2 seconds)");
 
                                         BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ✨ TOTEM PLACED SUCCESSFULLY - Rare/Unique nearby: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
                                     }

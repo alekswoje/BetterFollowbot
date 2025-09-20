@@ -1333,13 +1333,12 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                         // Additional potential blocking elements
                                         var inventoryOpen = GameController.IngameState.IngameUi.InventoryPanel.IsVisible;
-                                        var characterOpen = GameController.IngameState.IngameUi.CharacterPanel.IsVisible;
                                         var skillTreeOpen = GameController.IngameState.IngameUi.TreePanel.IsVisible;
 
-                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: UI Status - Stash: {stashOpen}, NPC: {npcDialogOpen}, Sell: {sellWindowOpen}, Purchase: {purchaseWindowOpen}, Map: {mapOpen}, Menu: {menuWindowOpen}, Inv: {inventoryOpen}, Char: {characterOpen}, Tree: {skillTreeOpen}");
+                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: UI Status - Stash: {stashOpen}, NPC: {npcDialogOpen}, Sell: {sellWindowOpen}, Purchase: {purchaseWindowOpen}, Map: {mapOpen}, Menu: {menuWindowOpen}, Inv: {inventoryOpen}, Tree: {skillTreeOpen}");
 
                                         // Check for blocking UI elements (map is non-obstructing in PoE)
-                                        if (stashOpen || npcDialogOpen || sellWindowOpen || purchaseWindowOpen || menuWindowOpen || inventoryOpen || characterOpen || skillTreeOpen)
+                                        if (stashOpen || npcDialogOpen || sellWindowOpen || purchaseWindowOpen || menuWindowOpen || inventoryOpen || skillTreeOpen)
                                         {
                                             BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ❌ Skipping totem placement - blocking UI menu is open");
                                             return;

@@ -79,7 +79,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         pathfinding = new Core.Movement.Pathfinding(this, terrainAnalyzer);
         autoPilot = new AutoPilot(leaderDetector, taskManager, pathfinding, null); // Create AutoPilot first with null movementExecutor
         movementExecutor = new MovementExecutor(this, taskManager, pathfinding, autoPilot); // Now create movementExecutor with autoPilot instance
-        autoPilot.SetMovementExecutor(movementExecutor); // Inject movementExecutor into autoPilot
+        // Set movementExecutor in autoPilot (assuming we add a setter method)
+        autoPilot.SetMovementExecutor(movementExecutor);
 
         // Initialize timestamps
         // lastAutoJoinPartyAttempt is now managed within PartyJoiner class

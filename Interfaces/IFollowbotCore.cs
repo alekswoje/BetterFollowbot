@@ -1,4 +1,5 @@
 using System;
+using ExileCore;
 using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
 
@@ -23,6 +24,11 @@ namespace BetterFollowbotLite.Interfaces
         /// Local player entity
         /// </summary>
         Entity LocalPlayer { get; }
+
+        /// <summary>
+        /// Game controller
+        /// </summary>
+        GameController GameController { get; }
         
         /// <summary>
         /// Check if global cooldown allows action

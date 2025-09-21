@@ -1,33 +1,46 @@
 using System;
+using System.Collections;
+using BetterFollowbotLite.Core.TaskManagement;
 using SharpDX;
 
 namespace BetterFollowbotLite.Interfaces
 {
     /// <summary>
-    /// Interface for executing movement-related tasks
+    /// Interface for movement task execution functionality
     /// </summary>
     public interface IMovementExecutor
     {
         /// <summary>
-        /// Execute a movement task with dashing logic and key presses
+        /// Executes a single task and returns an enumerator for coroutine execution
         /// </summary>
-        /// <param name="targetPosition">Target position for movement</param>
+        /// <param name="currentTask">The task to execute</param>
         /// <param name="taskDistance">Distance to the task target</param>
-        /// <param name="followTarget">Current follow target entity</param>
-        /// <param name="followTargetPosition">Position of the follow target</param>
-        /// <returns>True if movement should continue</returns>
-        bool ExecuteMovementTask(Vector3 targetPosition, float taskDistance, object followTarget, Vector3 followTargetPosition);
+        /// <param name="playerDistanceMoved">How much the player has moved since last tick</param>
+        /// <returns>Enumerator for coroutine execution</returns>
+        IEnumerable ExecuteTask(TaskNode currentTask, float taskDistance, float playerDistanceMoved);
 
         /// <summary>
-        /// Check if cursor is pointing towards target for dashing
+        /// Checks if the cursor is pointing towards the target position
         /// </summary>
         /// <param name="targetPosition">Target position to check</param>
         /// <returns>True if cursor is pointing towards target</returns>
         bool IsCursorPointingTowardsTarget(Vector3 targetPosition);
 
         /// <summary>
-        /// Reset movement state (dashing timers, etc.)
+        /// Checks if the path should be cleared for better responsiveness (180-degree turn detection)
         /// </summary>
-        void ResetMovementState();
+        /// <param name="aggressiveTiming">Use more aggressive timing for override checks</param>
+        /// <returns>True if path should be cleared</returns>
+        bool ShouldClearPathForResponsiveness(bool aggressiveTiming = false);
+
+        /// <summary>
+        /// Gets the last dash time for cooldown tracking
+        /// </summary>
+        DateTime LastDashTime { get; }
+
+        /// <summary>
+        /// Sets the last dash time for cooldown tracking
+        /// </summary>
+        void UpdateLastDashTime(DateTime time);
     }
 }

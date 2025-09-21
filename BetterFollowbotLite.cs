@@ -77,8 +77,9 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         taskManager = new TaskManager(this);
         terrainAnalyzer = new TerrainAnalyzer();
         pathfinding = new Core.Movement.Pathfinding(this, terrainAnalyzer);
-        movementExecutor = new MovementExecutor(this, pathfinding);
-        autoPilot = new AutoPilot(leaderDetector, taskManager, pathfinding, movementExecutor);
+        autoPilot = new AutoPilot(leaderDetector, taskManager, pathfinding, null); // Create AutoPilot first with null movementExecutor
+        movementExecutor = new MovementExecutor(this, taskManager, pathfinding, autoPilot); // Now create movementExecutor with autoPilot instance
+        autoPilot.SetMovementExecutor(movementExecutor); // Inject movementExecutor into autoPilot
 
         // Initialize timestamps
         // lastAutoJoinPartyAttempt is now managed within PartyJoiner class
@@ -1075,7 +1076,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                         BetterFollowbotLite.Instance.LogMessage("SMITE: No suitable targets found within range, dashing to leader");
 
                                         // Dash to leader to get near monsters
-                                        if (Settings.autoPilotDashEnabled && (DateTime.Now - autoPilot.lastDashTime).TotalMilliseconds >= 3000 && autoPilot.FollowTarget != null)
+                                        if (Settings.autoPilotDashEnabled && (DateTime.Now - movementExecutor.LastDashTime).TotalMilliseconds >= 3000 && autoPilot.FollowTarget != null)
                                         {
                                             var leaderPos = autoPilot.FollowTarget.Pos;
                                             var distanceToLeader = Vector3.Distance(playerPosition, leaderPos);
@@ -1110,7 +1111,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                                     // Execute dash
                                                     Keyboard.KeyPress(Settings.autoPilotDashKey);
-                                                    autoPilot.lastDashTime = DateTime.Now;
+                                                    movementExecutor.UpdateLastDashTime(DateTime.Now);
 
                                                     BetterFollowbotLite.Instance.LogMessage("SMITE: Dash to leader executed");
                                                 }

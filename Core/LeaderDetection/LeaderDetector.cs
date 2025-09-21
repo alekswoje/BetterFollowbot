@@ -13,10 +13,6 @@ namespace BetterFollowbotLite.Core.LeaderDetection
     public class LeaderDetector : ILeaderDetector
     {
         private readonly IFollowbotCore _core;
-        private Entity _cachedLeaderEntity;
-        private PartyElementWindow _cachedLeaderPartyElement;
-        private DateTime _lastCacheUpdate = DateTime.MinValue;
-        private const int CacheTimeoutSeconds = 2; // Cache leader for 2 seconds
 
         public LeaderDetector(IFollowbotCore core)
         {
@@ -46,21 +42,12 @@ namespace BetterFollowbotLite.Core.LeaderDetection
         public void SetLeaderName(string leaderName)
         {
             _core.Settings.autoPilotLeader.Value = leaderName;
-            ClearLeaderCache(); // Clear cache when leader changes
         }
 
         public Entity FindLeaderEntity()
         {
             try
             {
-                // Check cache first
-                if (_cachedLeaderEntity != null && 
-                    _cachedLeaderEntity.IsValid && 
-                    (DateTime.Now - _lastCacheUpdate).TotalSeconds < CacheTimeoutSeconds)
-                {
-                    return _cachedLeaderEntity;
-                }
-
                 // ZONE LOADING PROTECTION: If we're loading or don't have a valid game state, don't try to find leader
                 if (BetterFollowbotLite.Instance.GameController.IsLoading ||
                     BetterFollowbotLite.Instance.GameController.Area.CurrentArea == null ||
@@ -97,10 +84,6 @@ namespace BetterFollowbotLite.Core.LeaderDetection
                     return string.Equals(playerName.ToLower(), leaderName, StringComparison.OrdinalIgnoreCase);
                 });
 
-                // Update cache
-                _cachedLeaderEntity = leader;
-                _lastCacheUpdate = DateTime.Now;
-
                 return leader;
             }
             // Sometimes we can get "Collection was modified; enumeration operation may not execute" exception
@@ -115,13 +98,6 @@ namespace BetterFollowbotLite.Core.LeaderDetection
         {
             try
             {
-                // Check cache first
-                if (_cachedLeaderPartyElement != null && 
-                    (DateTime.Now - _lastCacheUpdate).TotalSeconds < CacheTimeoutSeconds)
-                {
-                    return _cachedLeaderPartyElement;
-                }
-
                 string leaderName = LeaderName;
                 if (string.IsNullOrEmpty(leaderName))
                 {
@@ -132,9 +108,6 @@ namespace BetterFollowbotLite.Core.LeaderDetection
                 {
                     if (string.Equals(partyElementWindow?.PlayerName?.ToLower(), leaderName.ToLower(), StringComparison.CurrentCultureIgnoreCase))
                     {
-                        // Update cache
-                        _cachedLeaderPartyElement = partyElementWindow;
-                        _lastCacheUpdate = DateTime.Now;
                         return partyElementWindow;
                     }
                 }
@@ -150,19 +123,13 @@ namespace BetterFollowbotLite.Core.LeaderDetection
 
         public void UpdateLeaderDetection()
         {
-            // Force refresh of cached data
-            ClearLeaderCache();
-            
-            // Update both cached values
-            FindLeaderEntity();
-            GetLeaderPartyElement();
+            // No caching - detection happens in real-time each call
+            // This method exists for interface compliance but doesn't need to do anything
         }
 
         public void ClearLeaderCache()
         {
-            _cachedLeaderEntity = null;
-            _cachedLeaderPartyElement = null;
-            _lastCacheUpdate = DateTime.MinValue;
+            // No caching - this method exists for interface compliance but doesn't need to do anything
         }
 
         public bool IsLeaderValid()

@@ -68,9 +68,9 @@ namespace BetterFollowbotLite.Core.Movement
                 try
                 {
                     // Convert world position to screen position for mouse movement
-                    var movementScreenPos = BetterFollowbotLite.Helper.WorldToValidScreenPosition(targetPosition);
+                    var movementScreenPos = Helper.WorldToValidScreenPosition(targetPosition);
                     // Position mouse cursor at target location
-                    BetterFollowbotLite.Mouse.SetCursorPosHuman(movementScreenPos);
+                    Mouse.SetCursorPosHuman(movementScreenPos);
                 }
                 catch (Exception e)
                 {
@@ -123,8 +123,8 @@ namespace BetterFollowbotLite.Core.Movement
                 var targetPos = targetPosition;
 
                 // Convert world positions to screen space for angle calculation
-                var playerScreen = BetterFollowbotLite.Helper.WorldToValidScreenPosition(playerPos);
-                var targetScreen = BetterFollowbotLite.Helper.WorldToValidScreenPosition(targetPos);
+                var playerScreen = Helper.WorldToValidScreenPosition(playerPos);
+                var targetScreen = Helper.WorldToValidScreenPosition(targetPos);
 
                 // Calculate vectors
                 var toTarget = targetScreen - playerScreen;

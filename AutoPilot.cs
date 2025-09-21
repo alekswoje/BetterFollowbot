@@ -11,6 +11,7 @@ using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
 using BetterFollowbotLite.Interfaces;
+using BetterFollowbotLite.Core.TaskManagement;
 
 namespace BetterFollowbotLite;
 
@@ -21,6 +22,9 @@ namespace BetterFollowbotLite;
         
         // Leader detection service
         private readonly ILeaderDetector _leaderDetector;
+        
+        // Task management service
+        private readonly ITaskManager _taskManager;
 
         // Most Logic taken from Alpha Plugin
         private Coroutine autoPilotCoroutine;
@@ -29,9 +33,10 @@ namespace BetterFollowbotLite;
         /// <summary>
         /// Constructor for AutoPilot
         /// </summary>
-        public AutoPilot(ILeaderDetector leaderDetector)
+        public AutoPilot(ILeaderDetector leaderDetector, ITaskManager taskManager)
         {
             _leaderDetector = leaderDetector ?? throw new ArgumentNullException(nameof(leaderDetector));
+            _taskManager = taskManager ?? throw new ArgumentNullException(nameof(taskManager));
             portalManager = new PortalManager();
         }
 
@@ -110,12 +115,11 @@ namespace BetterFollowbotLite;
     }
 
     private bool hasUsedWp;
-    private List<TaskNode> tasks = new List<TaskNode>();
 
     /// <summary>
     /// Public accessor for the tasks list (read-only)
     /// </summary>
-    public IReadOnlyList<TaskNode> Tasks => tasks;
+    public IReadOnlyList<TaskNode> Tasks => _taskManager.Tasks;
     internal DateTime lastDashTime = DateTime.MinValue; // Track last dash time for cooldown
     private bool instantPathOptimization = false; // Flag for instant response when path efficiency is detected
     private DateTime lastPathClearTime = DateTime.MinValue; // Track last path clear to prevent spam
@@ -244,7 +248,7 @@ namespace BetterFollowbotLite;
                 return false;
 
             // Need existing tasks to clear
-            if (tasks.Count == 0)
+            if (_taskManager.TaskCount == 0)
                 return false;
 
             // Calculate how much the player has moved since last update
@@ -260,11 +264,11 @@ namespace BetterFollowbotLite;
             }
 
             // Check for 180-degree turn detection - VERY AGGRESSIVE
-            if (tasks.Count > 0 && tasks[0].WorldPosition != null)
+            if (_taskManager.TaskCount > 0 && _taskManager.Tasks[0].WorldPosition != null)
             {
                 Vector3 botPos = BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition;
                 Vector3 playerPos = BetterFollowbotLite.Instance.playerPosition;
-                Vector3 currentTaskTarget = tasks[0].WorldPosition;
+                Vector3 currentTaskTarget = _taskManager.Tasks[0].WorldPosition;
 
                 // Calculate direction from bot to current task
                 Vector3 botToTask = currentTaskTarget - botPos;
@@ -315,11 +319,11 @@ namespace BetterFollowbotLite;
     {
         try
         {
-            if (tasks.Count == 0 || followTarget == null)
+            if (_taskManager.TaskCount == 0 || followTarget == null)
                 return 1.0f; // No path or no target, consider efficient
 
             // Check efficiency even for single tasks if they're movement tasks
-            bool hasMovementTask = tasks.Any(t => t.Type == TaskNodeType.Movement);
+            bool hasMovementTask = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Movement);
 
             // Calculate direct distance from bot to player
             float directDistance = Vector3.Distance(BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition, followTarget?.Pos ?? BetterFollowbotLite.Instance.playerPosition);
@@ -333,7 +337,7 @@ namespace BetterFollowbotLite;
             Vector3 currentPos = BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition;
 
             // Add distance to each path node
-            foreach (var task in tasks)
+            foreach (var task in _taskManager.Tasks)
             {
                 if (task.WorldPosition != null)
                 {
@@ -372,7 +376,7 @@ namespace BetterFollowbotLite;
         try
         {
             // Check even single tasks if they're movement tasks and we have a follow target
-            bool shouldCheckEfficiency = tasks.Count >= 1 && followTarget != null;
+            bool shouldCheckEfficiency = _taskManager.TaskCount >= 1 && followTarget != null;
 
             if (!shouldCheckEfficiency)
             {
@@ -393,11 +397,11 @@ namespace BetterFollowbotLite;
             }
 
             // Also check if player is now behind us relative to path direction (more aggressive check)
-            if (tasks.Count >= 1 && tasks[0].WorldPosition != null)
+            if (_taskManager.TaskCount >= 1 && _taskManager.Tasks[0].WorldPosition != null)
             {
                 Vector3 botPos = BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition;
                 Vector3 playerPos = BetterFollowbotLite.Instance.playerPosition;
-                Vector3 pathTarget = tasks[0].WorldPosition;
+                Vector3 pathTarget = _taskManager.Tasks[0].WorldPosition;
 
                 // Calculate vectors
                 Vector3 botToPath = pathTarget - botPos;
@@ -432,7 +436,7 @@ namespace BetterFollowbotLite;
     /// </summary>
     private void ResetPathing()
     {
-        tasks = new List<TaskNode>();
+        _taskManager.ClearTasks();
         followTarget = null;
         lastTargetPosition = Vector3.Zero;
         lastPlayerPosition = Vector3.Zero;
@@ -452,22 +456,7 @@ namespace BetterFollowbotLite;
     /// </summary>
     private void ClearPathForEfficiency()
     {
-        // CRITICAL: Preserve ALL transition-related tasks during efficiency clears
-        // This includes portal transitions, teleport confirmations, and teleport buttons
-        var transitionTasks = tasks.Where(t =>
-            t.Type == TaskNodeType.Transition ||
-            t.Type == TaskNodeType.TeleportConfirm ||
-            t.Type == TaskNodeType.TeleportButton).ToList();
-
-        tasks.Clear();
-
-        // Re-add transition tasks to preserve zone transition functionality
-        foreach (var transitionTask in transitionTasks)
-        {
-            tasks.Add(transitionTask);
-            BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Preserved {transitionTask.Type} task during efficiency clear");
-        }
-
+        _taskManager.ClearTasksPreservingTransitions();
         hasUsedWp = false; // Allow waypoint usage again
         // Note: Don't reset dash cooldown for efficiency clears
         // instantPathOptimization flag is managed separately
@@ -849,19 +838,19 @@ namespace BetterFollowbotLite;
             }
 
             // Only execute input tasks here - decision making moved to Render method
-            if (tasks?.Count > 0)
+            if (_taskManager.TaskCount > 0)
             {
                 TaskNode currentTask = null;
                 bool taskAccessError = false;
 
                 // PRIORITY: Check if there are any teleport tasks and process them first
-                var teleportTasks = tasks.Where(t => t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
+                var teleportTasks = _taskManager.Tasks.Where(t => t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
                 if (teleportTasks.Any())
                 {
                     try
                     {
                         currentTask = teleportTasks.First();
-                        BetterFollowbotLite.Instance.LogMessage($"PRIORITY: Processing teleport task {currentTask.Type} instead of {tasks.First().Type}");
+                        BetterFollowbotLite.Instance.LogMessage($"PRIORITY: Processing teleport task {currentTask.Type} instead of {_taskManager.Tasks.First().Type}");
                     }
                     catch (Exception e)
                     {
@@ -873,7 +862,7 @@ namespace BetterFollowbotLite;
                 {
                     try
                     {
-                        currentTask = tasks.First();
+                        currentTask = _taskManager.Tasks.First();
                     }
                     catch (Exception e)
                     {
@@ -890,7 +879,7 @@ namespace BetterFollowbotLite;
                 if (currentTask?.WorldPosition == null)
                 {
                     // Remove the task from its actual position, not just index 0
-                    tasks.Remove(currentTask);
+                    _taskManager.RemoveTask(currentTask);
                     yield return new WaitTime(50);
                     continue;
                 }
@@ -912,10 +901,10 @@ namespace BetterFollowbotLite;
                         if (instantDistanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotDashDistance && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Use configured dash distance
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
-                            var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
+                            var hasConflictingTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
                             if (!hasConflictingTasks)
                             {
-                                tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
+                                _taskManager.AddTask(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
                                 // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                             else
@@ -925,7 +914,7 @@ namespace BetterFollowbotLite;
                         }
                         else
                         {
-                            tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                         }
                     }
                     
@@ -947,10 +936,10 @@ namespace BetterFollowbotLite;
                         if (instantDistanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotDashDistance && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Use configured dash distance
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
-                            var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
+                            var hasConflictingTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
                             if (!hasConflictingTasks)
                             {
-                                tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
+                                _taskManager.AddTask(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
                                 // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                             else
@@ -960,7 +949,7 @@ namespace BetterFollowbotLite;
                         }
                         else
                         {
-                            tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                         }
                     }
                     
@@ -972,7 +961,7 @@ namespace BetterFollowbotLite;
                 if (currentTask.Type == TaskNodeType.Transition &&
                     playerDistanceMoved >= BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
                 {
-                    tasks.Remove(currentTask);
+                    _taskManager.RemoveTask(currentTask);
                     lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
                     yield return null;
                     continue;
@@ -1147,7 +1136,7 @@ namespace BetterFollowbotLite;
                                     if (taskDistance <= BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value * 1.5)
                                     {
                                         // Removed excessive movement completion logging
-                                        tasks.Remove(currentTask);
+                                        _taskManager.RemoveTask(currentTask);
                                         lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
                                     }
                                     else
@@ -1157,7 +1146,7 @@ namespace BetterFollowbotLite;
                                         if (currentTask.AttemptCount > 10) // 10 attempts = ~5 seconds
                                         {
                                             BetterFollowbotLite.Instance.LogMessage($"Movement task timeout - Distance: {taskDistance:F1}, Attempts: {currentTask.AttemptCount}");
-                                            tasks.Remove(currentTask);
+                                            _taskManager.RemoveTask(currentTask);
                                             lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
                                         }
                                     }
@@ -1174,7 +1163,7 @@ namespace BetterFollowbotLite;
                                 || Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, questLoot.Pos) >=
                                 BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
                             {
-                                tasks.Remove(currentTask);
+                                _taskManager.RemoveTask(currentTask);
                                 shouldLootAndContinue = true;
                             }
                             else
@@ -1211,7 +1200,7 @@ namespace BetterFollowbotLite;
                             if (!isPortalVisible || !isPortalValid)
                             {
                                 BetterFollowbotLite.Instance.LogMessage("TRANSITION: Portal no longer visible or valid, removing task");
-                                tasks.Remove(currentTask);
+                                _taskManager.RemoveTask(currentTask);
                                 shouldTransitionAndContinue = false; // Don't continue with transition
                                 break; // Exit the switch case
                             }
@@ -1230,7 +1219,7 @@ namespace BetterFollowbotLite;
                             if (currentTask.AttemptCount > 6)
                             {
                                 BetterFollowbotLite.Instance.LogMessage("TRANSITION: Max attempts reached (6), removing transition task");
-                                tasks.Remove(currentTask);
+                                _taskManager.RemoveTask(currentTask);
                             }
                             else
                             {
@@ -1249,7 +1238,7 @@ namespace BetterFollowbotLite;
                             }
                             currentTask.AttemptCount++;
                             if (currentTask.AttemptCount > 3)
-                                tasks.Remove(currentTask);
+                                _taskManager.RemoveTask(currentTask);
                             shouldClaimWaypointAndContinue = true;
                             break;
                         }
@@ -1263,7 +1252,7 @@ namespace BetterFollowbotLite;
                              if (currentTask.AttemptCount > 15) // Allow more attempts for dash tasks
                              {
                                  BetterFollowbotLite.Instance.LogMessage($"Dash task timeout - Too many attempts ({currentTask.AttemptCount}), removing task");
-                                 tasks.Remove(currentTask);
+                                 _taskManager.RemoveTask(currentTask);
                                  break;
                              }
 
@@ -1290,7 +1279,7 @@ namespace BetterFollowbotLite;
                                      lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
 
                                      // Remove the task since dash was executed
-                                     tasks.Remove(currentTask);
+                                     _taskManager.RemoveTask(currentTask);
                                      BetterFollowbotLite.Instance.LogMessage("Dash task completed successfully");
                                      shouldDashAndContinue = true;
                                  }
@@ -1337,7 +1326,7 @@ namespace BetterFollowbotLite;
                                          Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
                                          lastDashTime = DateTime.Now;
                                          lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
-                                         tasks.Remove(currentTask);
+                                         _taskManager.RemoveTask(currentTask);
                                          shouldDashAndContinue = true;
                                      }
                                      else
@@ -1359,14 +1348,14 @@ namespace BetterFollowbotLite;
 
                         case TaskNodeType.TeleportConfirm:
                         {
-                            tasks.Remove(currentTask);
+                            _taskManager.RemoveTask(currentTask);
                             shouldTeleportConfirmAndContinue = true;
                             break;
                         }
 
                         case TaskNodeType.TeleportButton:
                         {
-                            tasks.Remove(currentTask);
+                            _taskManager.RemoveTask(currentTask);
                             // CLEAR GLOBAL FLAG: Teleport task completed
                             IsTeleportInProgress = false;
                             shouldTeleportButtonAndContinue = true;
@@ -1379,7 +1368,7 @@ namespace BetterFollowbotLite;
                 {
                     // Remove task if it's been attempted too many times
                     BetterFollowbotLite.Instance.LogMessage($"Task timeout - Too many attempts ({currentTask.AttemptCount}), removing task");
-                    tasks.Remove(currentTask);
+                    _taskManager.RemoveTask(currentTask);
                 }
 
                 // Handle portal invalidation after try-catch
@@ -1632,7 +1621,7 @@ namespace BetterFollowbotLite;
             // GLOBAL TELEPORT PROTECTION: Block ALL task creation and responsiveness during teleport
             if (IsTeleportInProgress)
             {
-                BetterFollowbotLite.Instance.LogMessage($"TELEPORT: Blocking all task creation - teleport in progress ({tasks.Count} tasks)");
+                BetterFollowbotLite.Instance.LogMessage($"TELEPORT: Blocking all task creation - teleport in progress ({_taskManager.TaskCount} tasks)");
                 return; // Exit immediately to prevent any interference
             }
 
@@ -1652,7 +1641,7 @@ namespace BetterFollowbotLite;
                     if (portal != null)
                     {
                         BetterFollowbotLite.Instance.LogMessage($"PORTAL: Found portal '{portal.Label?.Text}' during transition - creating transition task");
-                        tasks.Add(new TaskNode(portal, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                        _taskManager.AddTask(new TaskNode(portal, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
                         BetterFollowbotLite.Instance.LogMessage($"PORTAL: Portal transition task created for portal at {portal.ItemOnGround.Pos}");
                     }
                     else
@@ -1692,10 +1681,10 @@ namespace BetterFollowbotLite;
             {
                 BetterFollowbotLite.Instance.LogMessage("ZONE LOADING: Blocking all task creation during zone loading to prevent random movement");
                 // Clear any existing tasks to prevent stale movement
-                if (tasks.Count > 0)
+                if (_taskManager.TaskCount > 0)
                 {
-                    var clearedTasks = tasks.Count;
-                    tasks.Clear();
+                    var clearedTasks = _taskManager.TaskCount;
+                    _taskManager.ClearTasks();
                     BetterFollowbotLite.Instance.LogMessage($"ZONE LOADING: Cleared {clearedTasks} tasks during zone loading");
                 }
                 return;
@@ -1705,7 +1694,7 @@ namespace BetterFollowbotLite;
             var leaderPartyElement = _leaderDetector.GetLeaderPartyElement();
             var followTarget = _leaderDetector.FindLeaderEntity();
 
-            if (followTarget == null && tasks.Count == 0)
+            if (followTarget == null && _taskManager.TaskCount == 0)
             {
                 // No leader found and no tasks - this is likely zone loading or leader not in range
                 if (leaderPartyElement == null)
@@ -1728,7 +1717,7 @@ namespace BetterFollowbotLite;
             }
 
             // PRIORITY: Check for any open teleport confirmation dialogs and handle them immediately
-            bool hasTransitionTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
+            bool hasTransitionTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
             if (!hasTransitionTasks)
             {
                 var tpConfirmation = GetTpConfirmation();
@@ -1736,7 +1725,7 @@ namespace BetterFollowbotLite;
                 {
                     BetterFollowbotLite.Instance.LogMessage("TELEPORT: Found open confirmation dialog, handling it immediately");
                     var center = tpConfirmation.GetClientRect().Center;
-                    tasks.Add(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
+                    _taskManager.AddTask(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
                     // Return early to handle this task immediately
                     return;
                 }
@@ -1746,7 +1735,7 @@ namespace BetterFollowbotLite;
             lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
 
             // Update hasTransitionTasks check for the rest of the logic
-            hasTransitionTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
+            hasTransitionTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
 
             if (followTarget == null && leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName))
             {
@@ -1764,7 +1753,7 @@ namespace BetterFollowbotLite;
                     {
                         // Hideout -> Map || Chamber of Sins A7 -> Map
                         BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Found portal '{portal.Label?.Text}' leading to leader zone '{leaderPartyElement.ZoneName}'");
-                        tasks.Add(new TaskNode(portal, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                        _taskManager.AddTask(new TaskNode(portal, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
                         BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Portal transition task added to queue");
                     }
                     else
@@ -1779,7 +1768,7 @@ namespace BetterFollowbotLite;
                             BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Teleport confirmation dialog already open, handling it");
                             // Add teleport confirmation task
                             var center = tpConfirmation.GetClientRect().Center;
-                            tasks.Add(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
+                            _taskManager.AddTask(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
                         }
                         else
                         {
@@ -1788,7 +1777,7 @@ namespace BetterFollowbotLite;
                             if(!tpButton.Equals(Vector2.Zero))
                             {
                                 BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Clicking teleport button to initiate party teleport");
-                                tasks.Add(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
+                                _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
                             }
                             else
                             {
@@ -1821,11 +1810,11 @@ namespace BetterFollowbotLite;
                         if (portal != null)
                         {
                             // Clear any existing movement tasks and add portal task
-                            var movementTaskCount = tasks.Count(t => t.Type == TaskNodeType.Movement);
-                            tasks.RemoveAll(t => t.Type == TaskNodeType.Movement);
+                            var movementTaskCount = _taskManager.TaskCount(t => t.Type == TaskNodeType.Movement);
+                            _taskManager.RemoveTaskAll(t => t.Type == TaskNodeType.Movement);
                             BetterFollowbotLite.Instance.LogMessage($"FOLLOW TARGET NULL: Cleared {movementTaskCount} movement tasks, adding portal transition");
                             BetterFollowbotLite.Instance.LogMessage($"FOLLOW TARGET NULL: Found portal '{portal.Label?.Text}' for leader in zone '{leaderPartyElement.ZoneName}'");
-                            tasks.Add(new TaskNode(portal, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                            _taskManager.AddTask(new TaskNode(portal, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
                             BetterFollowbotLite.Instance.LogMessage("FOLLOW TARGET NULL: Portal transition task added to queue");
                         }
                         else
@@ -1840,7 +1829,7 @@ namespace BetterFollowbotLite;
                                 BetterFollowbotLite.Instance.LogMessage("FOLLOW TARGET NULL: Teleport confirmation dialog already open, handling it");
                                 // Add teleport confirmation task
                                 var center = tpConfirmation.GetClientRect().Center;
-                                tasks.Add(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
+                                _taskManager.AddTask(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
                             }
                             else
                             {
@@ -1849,7 +1838,7 @@ namespace BetterFollowbotLite;
                                 if(!tpButton.Equals(Vector2.Zero))
                                 {
                                     BetterFollowbotLite.Instance.LogMessage("FOLLOW TARGET NULL: Clicking teleport button to initiate party teleport");
-                                    tasks.Add(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
+                                    _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
                                 }
                                 else
                                 {
@@ -1866,10 +1855,10 @@ namespace BetterFollowbotLite;
                 else
                 {
                     // Leader party element not available or in same zone, clear movement tasks
-                    var movementTaskCount = tasks.Count(t => t.Type == TaskNodeType.Movement);
+                    var movementTaskCount = _taskManager.TaskCount(t => t.Type == TaskNodeType.Movement);
                     if (movementTaskCount > 0)
                     {
-                        tasks.RemoveAll(t => t.Type == TaskNodeType.Movement);
+                        _taskManager.RemoveTaskAll(t => t.Type == TaskNodeType.Movement);
                         BetterFollowbotLite.Instance.LogMessage($"FOLLOW TARGET NULL: Cleared {movementTaskCount} movement tasks - leader in same zone or party element unavailable");
                     }
                 }
@@ -1893,10 +1882,10 @@ namespace BetterFollowbotLite;
                         if (instantDistanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1000 to 1500 to reduce dash spam
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
-                            var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
+                            var hasConflictingTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
                             if (!hasConflictingTasks)
                             {
-                                tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
+                                _taskManager.AddTask(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
                                 // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                             else
@@ -1906,7 +1895,7 @@ namespace BetterFollowbotLite;
                         }
                         else
                         {
-                            tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                         }
                     }
                     else
@@ -1935,10 +1924,10 @@ namespace BetterFollowbotLite;
                         if (instantDistanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1000 to 1500 to reduce dash spam
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
-                            var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
+                            var hasConflictingTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
                             if (!hasConflictingTasks)
                             {
-                                tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
+                                _taskManager.AddTask(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
                                 // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                             else
@@ -1948,7 +1937,7 @@ namespace BetterFollowbotLite;
                         }
                         else
                         {
-                            tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                         }
                     }
                     else
@@ -1965,7 +1954,7 @@ namespace BetterFollowbotLite;
                 {
                     // IMPORTANT: Don't process large movements if we already have any transition-related task active
                     // This prevents zone transition detection from interfering with active transitions/teleports
-                    if (tasks.Any(t =>
+                    if (_taskManager.Tasks.Any(t =>
                         t.Type == TaskNodeType.Transition ||
                         t.Type == TaskNodeType.TeleportConfirm ||
                         t.Type == TaskNodeType.TeleportButton))
@@ -2056,10 +2045,10 @@ namespace BetterFollowbotLite;
 
                                         // CRITICAL: Clear all existing tasks when adding a transition task to ensure it executes immediately
                                         BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Clearing all existing tasks to prioritize transition");
-                                        tasks.Clear();
+                                        _taskManager.ClearTasks();
 
                                         // Add the transition task immediately since we found a suitable portal
-                                        tasks.Add(new TaskNode(selectedPortal, 200, TaskNodeType.Transition));
+                                        _taskManager.AddTask(new TaskNode(selectedPortal, 200, TaskNodeType.Transition));
                                         BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Transition task added and prioritized");
                                     }
                                     else
@@ -2074,10 +2063,10 @@ namespace BetterFollowbotLite;
                             {
                                 // Since we cleared all tasks above when adding the transition task, this check is now simpler
                                 // We only add if we don't have any transition tasks (which we shouldn't after clearing)
-                                if (!tasks.Any(t => t.Type == TaskNodeType.Transition))
+                                if (!_taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition))
                                 {
                                     BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Found nearby portal '{transition.Label?.Text}', adding transition task");
-                                    tasks.Add(new TaskNode(transition,200, TaskNodeType.Transition));
+                                    _taskManager.AddTask(new TaskNode(transition,200, TaskNodeType.Transition));
                                 }
                                 else
                                 {
@@ -2099,7 +2088,7 @@ namespace BetterFollowbotLite;
                                     {
                                         BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Teleport confirmation dialog already open, handling it");
                                         var center = tpConfirmation.GetClientRect().Center;
-                                        tasks.Add(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
+                                        _taskManager.AddTask(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
                                     }
                                     else
                                     {
@@ -2110,7 +2099,7 @@ namespace BetterFollowbotLite;
                                             BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Clicking teleport button to initiate party teleport");
                                             // SET GLOBAL FLAG: Prevent SMITE and other skills from interfering
                                             IsTeleportInProgress = true;
-                                            tasks.Add(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
+                                            _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
                                         }
                                         else
                                         {
@@ -2126,7 +2115,7 @@ namespace BetterFollowbotLite;
                         }
                     }
                     //We have no path, set us to go to leader pos.
-                    else if (tasks.Count == 0 && distanceMoved < 2000 && distanceToLeader > 200 && distanceToLeader < 2000)
+                    else if (_taskManager.TaskCount == 0 && distanceMoved < 2000 && distanceToLeader > 200 && distanceToLeader < 2000)
                     {
                         // Validate followTarget position before creating tasks
                         if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
@@ -2135,7 +2124,7 @@ namespace BetterFollowbotLite;
                             if (distanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1500 to 3000 to reduce dash spam significantly
                             {
                             // CRITICAL: Don't add dash tasks if we have any active transition-related task OR another dash task OR teleport in progress
-                            var shouldSkipDashTasks = tasks.Any(t =>
+                            var shouldSkipDashTasks = _taskManager.Tasks.Any(t =>
                                 t.Type == TaskNodeType.Transition ||
                                 t.Type == TaskNodeType.TeleportConfirm ||
                                 t.Type == TaskNodeType.TeleportButton ||
@@ -2143,18 +2132,18 @@ namespace BetterFollowbotLite;
 
                             if (shouldSkipDashTasks || IsTeleportInProgress)
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping dash task creation - conflicting tasks active ({tasks.Count(t => t.Type == TaskNodeType.Dash)} dash tasks, {tasks.Count(t => t.Type == TaskNodeType.Transition)} transition tasks, teleport={IsTeleportInProgress})");
+                                BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping dash task creation - conflicting tasks active ({_taskManager.CountTasks(t => t.Type == TaskNodeType.Dash)} dash tasks, {_taskManager.CountTasks(t => t.Type == TaskNodeType.Transition)} transition tasks, teleport={IsTeleportInProgress})");
                             }
                             else
                             {
                                 BetterFollowbotLite.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled}");
-                                tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
+                                _taskManager.AddTask(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
                             }
                             }
                             else
                             {
                                 BetterFollowbotLite.Instance.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled}, Dash threshold: 700");
-                                tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                                _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                             }
                         }
                         else
@@ -2163,19 +2152,19 @@ namespace BetterFollowbotLite;
                         }
                     }
                     //We have a path. Check if the last task is far enough away from current one to add a new task node.
-                    else if (tasks.Count > 0)
+                    else if (_taskManager.TaskCount > 0)
                     {
                         // ADDITIONAL NULL CHECK: Ensure followTarget is still valid before extending path
                         if (followTarget != null && followTarget.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {
-                            var distanceFromLastTask = Vector3.Distance(tasks.Last().WorldPosition, followTarget.Pos);
+                            var distanceFromLastTask = Vector3.Distance(_taskManager.Tasks.Last().WorldPosition, followTarget.Pos);
                             // More responsive: reduce threshold by half for more frequent path updates
                             var responsiveThreshold = BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value / 2;
                             if (distanceFromLastTask >= responsiveThreshold)
                             {
                         BetterFollowbotLite.Instance.LogMessage($"RESPONSIVENESS: Adding new path node - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
                         BetterFollowbotLite.Instance.LogMessage($"DEBUG: Creating task to position: {FollowTargetPosition} (Player at: {BetterFollowbotLite.Instance.playerPosition})");
-                        tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                        _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                             }
                         }
                         else
@@ -2187,25 +2176,25 @@ namespace BetterFollowbotLite;
                 else
                 {
                     //Clear all tasks except for looting/claim portal (as those only get done when we're within range of leader. 
-                    if (tasks.Count > 0)
+                    if (_taskManager.TaskCount > 0)
                     {
-                        for (var i = tasks.Count - 1; i >= 0; i--)
-                            if (tasks[i].Type == TaskNodeType.Movement || tasks[i].Type == TaskNodeType.Transition)
-                                tasks.RemoveAt(i);
+                        for (var i = _taskManager.TaskCount - 1; i >= 0; i--)
+                            if (_taskManager.Tasks[i].Type == TaskNodeType.Movement || _taskManager.Tasks[i].Type == TaskNodeType.Transition)
+                                _taskManager.RemoveTaskAt(i);
                     }
                     if (BetterFollowbotLite.Instance.Settings.autoPilotCloseFollow.Value)
                     {
                         //Close follow logic. We have no current tasks. Check if we should move towards leader
                         if (distanceToLeader >= BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value)
-                            tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                     }
 
                     //Check if we should add quest loot logic. We're close to leader already
                     var questLoot = GetQuestItem();
                     if (questLoot != null &&
                         Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, questLoot.Pos) < BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value &&
-                        tasks.FirstOrDefault(I => I.Type == TaskNodeType.Loot) == null)
-                        tasks.Add(new TaskNode(questLoot.Pos, BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance, TaskNodeType.Loot));
+                        _taskManager.Tasks.FirstOrDefault(I => I.Type == TaskNodeType.Loot) == null)
+                        _taskManager.AddTask(new TaskNode(questLoot.Pos, BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance, TaskNodeType.Loot));
 
                 }
             }
@@ -2307,7 +2296,7 @@ namespace BetterFollowbotLite;
         if (BetterFollowbotLite.Instance.Settings.autoPilotToggleKey.PressedOnce())
         {
             BetterFollowbotLite.Instance.Settings.autoPilotEnabled.SetValueNoEvent(!BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value);
-            tasks = new List<TaskNode>();				
+            _taskManager.ClearTasks();				
         }
 
         // Restart coroutine if it died
@@ -2318,7 +2307,7 @@ namespace BetterFollowbotLite;
         }
         else if (BetterFollowbotLite.Instance.Settings.autoPilotEnabled)
         {
-            if (tasks?.Count > 0)
+            if (_taskManager.TaskCount > 0)
             {
                 // Removed excessive coroutine status logging
             }
@@ -2403,7 +2392,7 @@ namespace BetterFollowbotLite;
         {
             var taskCount = 0;
             var dist = 0f;
-            var cachedTasks = tasks;
+            var cachedTasks = _taskManager.Tasks;
             if (cachedTasks?.Count > 0)
             {
                 BetterFollowbotLite.Instance.Graphics.DrawText(
@@ -2448,7 +2437,7 @@ namespace BetterFollowbotLite;
         BetterFollowbotLite.Instance.Graphics.DrawText("Leader: " + (followTarget != null ? "Found" : "Null"), new System.Numerics.Vector2(350, 160));
 
         // Add transition task debugging
-        var transitionTasks = tasks.Where(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
+        var transitionTasks = _taskManager.Tasks.Where(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
         if (transitionTasks.Any())
         {
             var currentTransitionTask = transitionTasks.First();

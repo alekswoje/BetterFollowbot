@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
+using BetterFollowbotLite.Core.TaskManagement;
 
 namespace BetterFollowbotLite.Interfaces
 {

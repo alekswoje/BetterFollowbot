@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BetterFollowbotLite.Core.TaskManagement;
 
 namespace BetterFollowbotLite.Interfaces
 {
@@ -51,5 +52,20 @@ namespace BetterFollowbotLite.Interfaces
         /// Execute the next available task
         /// </summary>
         bool ExecuteNextTask();
+        
+        /// <summary>
+        /// Remove task at specific index
+        /// </summary>
+        void RemoveTaskAt(int index);
+        
+        /// <summary>
+        /// Remove all tasks matching a predicate
+        /// </summary>
+        void RemoveTaskAll(System.Func<TaskNode, bool> predicate);
+        
+        /// <summary>
+        /// Count tasks matching a predicate
+        /// </summary>
+        int CountTasks(System.Func<TaskNode, bool> predicate);
     }
 }

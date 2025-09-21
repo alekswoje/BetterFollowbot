@@ -13,16 +13,21 @@ using ExileCore.Shared.Enums;
 using SharpDX;
 using BetterFollowbotLite.Skills;
 using BetterFollowbotLite.Automation;
+using BetterFollowbotLite.Interfaces;
+using BetterFollowbotLite.Core.LeaderDetection;
 
 namespace BetterFollowbotLite;
 
-public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSettings>
+public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSettings>, IFollowbotCore
 {
     private const int Delay = 45;
 
     private const int MouseAutoSnapRange = 250;
     internal static BetterFollowbotLite Instance;
-    internal AutoPilot autoPilot = new AutoPilot();
+    
+    // Leader detection service
+    private ILeaderDetector leaderDetector;
+    internal AutoPilot autoPilot;
     private readonly Summons summons = new Summons();
     private SummonRagingSpirits summonRagingSpirits;
     private RespawnHandler respawnHandler;
@@ -34,7 +39,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     private bool isAttacking;
     private bool isCasting;
     private bool isMoving;
-    internal DateTime lastTimeAny;
     private DateTime lastAreaChangeTime = DateTime.MinValue;
     private DateTime lastGraceLogTime = DateTime.MinValue;
     private Entity lastFollowTarget;
@@ -52,6 +56,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     {
         if (Instance == null)
             Instance = this;
+
+        // Initialize services with dependency injection
+        leaderDetector = new LeaderDetector(this);
+        autoPilot = new AutoPilot(leaderDetector);
 
         // Initialize timestamps
         // lastAutoJoinPartyAttempt is now managed within PartyJoiner class
@@ -73,6 +81,24 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
         return true;
     }
+
+    #region IFollowbotCore Implementation
+    
+    public Vector3 PlayerPosition => playerPosition;
+    public Entity LocalPlayer => localPlayer;
+    public DateTime LastTimeAny { get; set; } = DateTime.MinValue;
+    
+    public void LogMessage(string message)
+    {
+        LogMsg(message);
+    }
+    
+    public void LogError(string message)
+    {
+        LogMsg($"ERROR: {message}");
+    }
+    
+    #endregion
         
 
     private int GetMinnionsWithin(float maxDistance)
@@ -222,7 +248,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
     public bool Gcd()
     {
-        return (DateTime.Now - lastTimeAny).TotalMilliseconds > Delay;
+        return (DateTime.Now - LastTimeAny).TotalMilliseconds > Delay;
     }
 
     private void Quit()
@@ -473,7 +499,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         if (shouldRemoveGrace)
                         {
                             // Check if we've recently pressed a key to avoid spam
-                            var timeSinceLastAction = (DateTime.Now - lastTimeAny).TotalSeconds;
+                            var timeSinceLastAction = (DateTime.Now - LastTimeAny).TotalSeconds;
 
                             if (timeSinceLastAction > 0.2) // Very fast cooldown for immediate grace removal
                             {
@@ -517,7 +543,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                 }
 
                                 Keyboard.KeyPress(Settings.autoPilotMoveKey.Value);
-                                lastTimeAny = DateTime.Now;
+                                LastTimeAny = DateTime.Now;
                             }
                             else
                             {
@@ -573,7 +599,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                             if (Keyboard.IsKeyDown((int)Settings.autoPilotMoveKey.Value))
                             {
                                 // Check cooldown to prevent spam
-                                var timeSinceLastAction = (DateTime.Now - lastTimeAny).TotalSeconds;
+                                var timeSinceLastAction = (DateTime.Now - LastTimeAny).TotalSeconds;
                                 if (timeSinceLastAction > 0.5) // 500ms cooldown
                                 {
                                     // Log manual grace breaking
@@ -586,7 +612,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                     // Press move key to break grace period
                                     Keyboard.KeyPress(Settings.autoPilotMoveKey);
-                                    lastTimeAny = DateTime.Now;
+                                    LastTimeAny = DateTime.Now;
                                 }
                             }
                         }
@@ -758,7 +784,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                         // Use the summon skeletons skill
                                         Keyboard.KeyPress(GetSkillInputKey(summonSkeletonsSkill.SkillSlotIndex));
-                                        lastTimeAny = DateTime.Now; // Update global cooldown
+                                        LastTimeAny = DateTime.Now; // Update global cooldown
 
                                         BetterFollowbotLite.Instance.LogMessage("SUMMON SKELETONS: Summoned skeletons successfully");
                                     }
@@ -1096,7 +1122,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                             // Activate the skill
                                             Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
                                             SkillInfo.smite.Cooldown = 100;
-                                            lastTimeAny = DateTime.Now; // Update global cooldown
+                                            LastTimeAny = DateTime.Now; // Update global cooldown
                                             BetterFollowbotLite.Instance.LogMessage("SMITE: Smite activated successfully");
                                         }
                                         else
@@ -1388,7 +1414,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                         // Set cooldown to prevent spamming (2 seconds as requested)
                                         SkillInfo.rejuvenationTotem.Cooldown = 2000;
-                                        lastTimeAny = DateTime.Now; // Update global cooldown like other skills
+                                        LastTimeAny = DateTime.Now; // Update global cooldown like other skills
                                         BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ⏰ Cooldown set to 2000ms (2 seconds) and global cooldown updated");
 
                                         BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ✨ TOTEM PLACED SUCCESSFULLY - Rare/Unique nearby: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
@@ -1684,7 +1710,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                             // Activate the mine skill
                                             Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
                                             mineSkill.Cooldown = 100; // Set cooldown to prevent spam
-                                            lastTimeAny = DateTime.Now;
+                                            LastTimeAny = DateTime.Now;
 
                                             if (Settings.debugMode)
                                             {

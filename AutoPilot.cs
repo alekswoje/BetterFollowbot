@@ -10,6 +10,7 @@ using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
+using BetterFollowbotLite.Interfaces;
 
 namespace BetterFollowbotLite;
 
@@ -17,6 +18,9 @@ namespace BetterFollowbotLite;
     {
         // Portal management moved to PortalManager class
         private PortalManager portalManager;
+        
+        // Leader detection service
+        private readonly ILeaderDetector _leaderDetector;
 
         // Most Logic taken from Alpha Plugin
         private Coroutine autoPilotCoroutine;
@@ -25,8 +29,9 @@ namespace BetterFollowbotLite;
         /// <summary>
         /// Constructor for AutoPilot
         /// </summary>
-        public AutoPilot()
+        public AutoPilot(ILeaderDetector leaderDetector)
         {
+            _leaderDetector = leaderDetector ?? throw new ArgumentNullException(nameof(leaderDetector));
             portalManager = new PortalManager();
         }
 
@@ -468,24 +473,6 @@ namespace BetterFollowbotLite;
         // instantPathOptimization flag is managed separately
     }
 
-    private PartyElementWindow GetLeaderPartyElement()
-    {
-        try
-        {
-            foreach (var partyElementWindow in PartyElements.GetPlayerInfoElementList())
-            {
-                if (string.Equals(partyElementWindow?.PlayerName?.ToLower(), BetterFollowbotLite.Instance.Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase))
-                {
-                    return partyElementWindow;
-                }
-            }
-            return null;
-        }
-        catch
-        {
-            return null;
-        }
-    }
 
     private LabelOnGround GetBestPortalLabel(PartyElementWindow leaderPartyElement, bool forceSearch = false)
     {
@@ -1657,7 +1644,7 @@ namespace BetterFollowbotLite;
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL: In portal transition mode - actively searching for portals to follow leader");
 
                 // Get leader party element for portal search
-                var leaderElement = GetLeaderPartyElement();
+                var leaderElement = _leaderDetector.GetLeaderPartyElement();
                 if (leaderElement != null)
                 {
                     // Force portal search during portal transition
@@ -1715,8 +1702,8 @@ namespace BetterFollowbotLite;
             }
 
             // ADDITIONAL SAFEGUARD: If no leader is found and no tasks exist, don't create any movement
-            var leaderPartyElement = GetLeaderPartyElement();
-            var followTarget = GetFollowingTarget();
+            var leaderPartyElement = _leaderDetector.GetLeaderPartyElement();
+            var followTarget = _leaderDetector.FindLeaderEntity();
 
             if (followTarget == null && tasks.Count == 0)
             {
@@ -2295,55 +2282,6 @@ namespace BetterFollowbotLite;
         return false;
     }
 
-    private Entity GetFollowingTarget()
-    {
-        try
-        {
-            // ZONE LOADING PROTECTION: If we're loading or don't have a valid game state, don't try to find leader
-            if (BetterFollowbotLite.Instance.GameController.IsLoading ||
-                BetterFollowbotLite.Instance.GameController.Area.CurrentArea == null ||
-                string.IsNullOrEmpty(BetterFollowbotLite.Instance.GameController.Area.CurrentArea.DisplayName))
-            {
-                return null;
-            }
-
-            string leaderName = BetterFollowbotLite.Instance.Settings.autoPilotLeader.Value?.ToLower();
-            if (string.IsNullOrEmpty(leaderName))
-            {
-                return null;
-            }
-
-            var players = BetterFollowbotLite.Instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player];
-            if (players == null)
-            {
-                return null;
-            }
-
-            var leader = players.FirstOrDefault(x =>
-            {
-                if (x == null || !x.IsValid)
-                    return false;
-
-                var playerComponent = x.GetComponent<Player>();
-                if (playerComponent == null)
-                    return false;
-
-                var playerName = playerComponent.PlayerName;
-                if (string.IsNullOrEmpty(playerName))
-                    return false;
-
-                return string.Equals(playerName.ToLower(), leaderName, StringComparison.OrdinalIgnoreCase);
-            });
-
-            return leader;
-        }
-        // Sometimes we can get "Collection was modified; enumeration operation may not execute" exception
-        catch (Exception ex)
-        {
-            BetterFollowbotLite.Instance.LogMessage($"GetFollowingTarget exception: {ex.Message}");
-            return null;
-        }
-    }
 
     private static Entity GetQuestItem()
     {

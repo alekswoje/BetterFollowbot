@@ -16,6 +16,7 @@ using BetterFollowbotLite.Automation;
 using BetterFollowbotLite.Interfaces;
 using BetterFollowbotLite.Core.LeaderDetection;
 using BetterFollowbotLite.Core.TaskManagement;
+using BetterFollowbotLite.Core.Movement;
 
 namespace BetterFollowbotLite;
 
@@ -31,7 +32,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     
     // Task management service
     private ITaskManager taskManager;
-    
+
+    // Pathfinding service
+    private IPathfinding pathfinding;
+
     internal AutoPilot autoPilot;
     private readonly Summons summons = new Summons();
     private SummonRagingSpirits summonRagingSpirits;
@@ -65,7 +69,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         // Initialize services with dependency injection
         leaderDetector = new LeaderDetector(this);
         taskManager = new TaskManager(this);
-        autoPilot = new AutoPilot(leaderDetector, taskManager);
+        pathfinding = new Pathfinding(this);
+        autoPilot = new AutoPilot(leaderDetector, taskManager, pathfinding);
 
         // Initialize timestamps
         // lastAutoJoinPartyAttempt is now managed within PartyJoiner class

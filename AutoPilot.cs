@@ -12,6 +12,7 @@ using ExileCore.Shared.Enums;
 using SharpDX;
 using BetterFollowbotLite.Interfaces;
 using BetterFollowbotLite.Core.TaskManagement;
+using BetterFollowbotLite.Core.Movement;
 
 namespace BetterFollowbotLite;
 
@@ -26,6 +27,9 @@ namespace BetterFollowbotLite;
         // Task management service
         private readonly ITaskManager _taskManager;
 
+        // Pathfinding service
+        private readonly IPathfinding _pathfinding;
+
         // Most Logic taken from Alpha Plugin
         private Coroutine autoPilotCoroutine;
         private readonly Random random = new Random();
@@ -33,10 +37,11 @@ namespace BetterFollowbotLite;
         /// <summary>
         /// Constructor for AutoPilot
         /// </summary>
-        public AutoPilot(ILeaderDetector leaderDetector, ITaskManager taskManager)
+        public AutoPilot(ILeaderDetector leaderDetector, ITaskManager taskManager, IPathfinding pathfinding)
         {
             _leaderDetector = leaderDetector ?? throw new ArgumentNullException(nameof(leaderDetector));
             _taskManager = taskManager ?? throw new ArgumentNullException(nameof(taskManager));
+            _pathfinding = pathfinding ?? throw new ArgumentNullException(nameof(pathfinding));
             portalManager = new PortalManager();
         }
 
@@ -126,8 +131,6 @@ namespace BetterFollowbotLite;
     private DateTime lastResponsivenessCheck = DateTime.MinValue; // Track last responsiveness check to prevent spam
     private DateTime lastEfficiencyCheck = DateTime.MinValue; // Track last efficiency check to prevent spam
 
-    private int numRows, numCols;
-    private byte[,] tiles;
 
     /// <summary>
     /// Checks if the cursor is pointing roughly towards the target direction in screen space
@@ -737,47 +740,8 @@ namespace BetterFollowbotLite;
     {
         ResetPathing();
 
-        var terrain = BetterFollowbotLite.Instance.GameController.IngameState.Data.Terrain;
-        var terrainBytes = BetterFollowbotLite.Instance.GameController.Memory.ReadBytes(terrain.LayerMelee.First, terrain.LayerMelee.Size);
-        numCols = (int)(terrain.NumCols - 1) * 23;
-        numRows = (int)(terrain.NumRows - 1) * 23;
-        if ((numCols & 1) > 0)
-            numCols++;
-
-        tiles = new byte[numCols, numRows];
-        var dataIndex = 0;
-        for (var y = 0; y < numRows; y++)
-        {
-            for (var x = 0; x < numCols; x += 2)
-            {
-                var b = terrainBytes[dataIndex + (x >> 1)];
-                tiles[x, y] = (byte)((b & 0xf) > 0 ? 1 : 255);
-                tiles[x+1, y] = (byte)((b >> 4) > 0 ? 1 : 255);
-            }
-            dataIndex += terrain.BytesPerRow;
-        }
-
-        terrainBytes = BetterFollowbotLite.Instance.GameController.Memory.ReadBytes(terrain.LayerRanged.First, terrain.LayerRanged.Size);
-        numCols = (int)(terrain.NumCols - 1) * 23;
-        numRows = (int)(terrain.NumRows - 1) * 23;
-        if ((numCols & 1) > 0)
-            numCols++;
-        dataIndex = 0;
-        for (var y = 0; y < numRows; y++)
-        {
-            for (var x = 0; x < numCols; x += 2)
-            {
-                var b = terrainBytes[dataIndex + (x >> 1)];
-
-                var current = tiles[x, y];
-                if(current == 255)
-                    tiles[x, y] = (byte)((b & 0xf) > 3 ? 2 : 255);
-                current = tiles[x+1, y];
-                if (current == 255)
-                    tiles[x + 1, y] = (byte)((b >> 4) > 3 ? 2 : 255);
-            }
-            dataIndex += terrain.BytesPerRow;
-        }
+        // Initialize terrain data through the pathfinding service
+        _pathfinding.InitializeTerrain();
     }
 
     public void StartCoroutine()
@@ -1064,12 +1028,12 @@ namespace BetterFollowbotLite;
                             if (BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled && (DateTime.Now - lastDashTime).TotalMilliseconds >= 3000)
                             {
                                 // Terrain dash check
-                                if (CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()) && IsCursorPointingTowardsTarget(currentTask.WorldPosition))
+                                if (_pathfinding.CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()) && IsCursorPointingTowardsTarget(currentTask.WorldPosition))
                                 {
                                     // Terrain dash executed
                                     shouldTerrainDash = true;
                                 }
-                                else if (CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()) && !IsCursorPointingTowardsTarget(currentTask.WorldPosition))
+                                else if (_pathfinding.CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()) && !IsCursorPointingTowardsTarget(currentTask.WorldPosition))
                                 {
                                     // Terrain dash blocked - cursor not pointing towards target
                                 }
@@ -2228,68 +2192,6 @@ namespace BetterFollowbotLite;
     }
     // ReSharper disable once IteratorNeverReturns
 
-    private bool CheckDashTerrain(Vector2 targetPosition)
-    {
-        if (tiles == null)
-            return false;
-        //TODO: Completely re-write this garbage. 
-        //It's not taking into account a lot of stuff, horribly inefficient and just not the right way to do this.
-        //Calculate the straight path from us to the target (this would be waypoints normally)
-        var dir = targetPosition - BetterFollowbotLite.Instance.GameController.Player.GridPos;
-        dir.Normalize();
-
-        var distanceBeforeWall = 0;
-        var distanceInWall = 0;
-
-        var shouldDash = false;
-        var points = new List<System.Drawing.Point>();
-        for (var i = 0; i < 500; i++)
-        {
-            var v2Point = BetterFollowbotLite.Instance.GameController.Player.GridPos + i * dir;
-            var point = new System.Drawing.Point((int)(BetterFollowbotLite.Instance.GameController.Player.GridPos.X + i * dir.X),
-                (int)(BetterFollowbotLite.Instance.GameController.Player.GridPos.Y + i * dir.Y));
-
-            if (points.Contains(point))
-                continue;
-            if (Vector2.Distance(v2Point,targetPosition) < 2)
-                break;
-
-            points.Add(point);
-            var tile = tiles[point.X, point.Y];
-
-
-            //Invalid tile: Block dash
-            if (tile == 255)
-            {
-                shouldDash = false;
-                break;
-            }
-            else if (tile == 2)
-            {
-                if (shouldDash)
-                    distanceInWall++;
-                shouldDash = true;
-            }
-            else if (!shouldDash)
-            {
-                distanceBeforeWall++;
-                if (distanceBeforeWall > 10)					
-                    break;					
-            }
-        }
-
-        if (distanceBeforeWall > 10 || distanceInWall < 5)
-            shouldDash = false;
-
-        if (shouldDash)
-        {
-            Mouse.SetCursorPos(Helper.WorldToValidScreenPosition(targetPosition.GridToWorld(followTarget == null ? BetterFollowbotLite.Instance.GameController.Player.Pos.Z : followTarget.Pos.Z)));
-            Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
-            return true;
-        }
-
-        return false;
-    }
 
 
 

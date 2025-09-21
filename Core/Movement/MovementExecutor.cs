@@ -1,7 +1,9 @@
 using System;
 using BetterFollowbotLite.Interfaces;
-using ExileCore.Input;
+using ExileCore;
 using SharpDX;
+
+using BetterFollowbotLite;
 
 namespace BetterFollowbotLite.Core.Movement
 {
@@ -53,7 +55,9 @@ namespace BetterFollowbotLite.Core.Movement
             // Check for terrain-based dashing
             if (_core.Settings.autoPilotDashEnabled && (DateTime.Now - _lastDashTime).TotalMilliseconds >= 3000)
             {
-                if (_pathfinding.CheckDashTerrain(targetPosition.WorldToGrid()) && IsCursorPointingTowardsTarget(targetPosition))
+                // Convert world position to grid coordinates (Vector2 from Vector3 X,Z)
+                var gridTargetPosition = new Vector2(targetPosition.X, targetPosition.Z);
+                if (_pathfinding.CheckDashTerrain(gridTargetPosition) && IsCursorPointingTowardsTarget(targetPosition))
                 {
                     shouldTerrainDash = true;
                     _lastDashTime = DateTime.Now;
@@ -119,8 +123,8 @@ namespace BetterFollowbotLite.Core.Movement
                 var targetPos = targetPosition;
 
                 // Convert world positions to screen space for angle calculation
-                var playerScreen = BetterFollowbotLite.Helper.WorldToValidScreenPosition(playerPos);
-                var targetScreen = BetterFollowbotLite.Helper.WorldToValidScreenPosition(targetPos);
+                var playerScreen = Helper.WorldToValidScreenPosition(playerPos);
+                var targetScreen = Helper.WorldToValidScreenPosition(targetPos);
 
                 // Calculate vectors
                 var toTarget = targetScreen - playerScreen;
@@ -133,10 +137,10 @@ namespace BetterFollowbotLite.Core.Movement
                 if (toTargetLength == 0 || toMouseLength == 0)
                     return false;
 
-                toTarget.X /= toTargetLength;
-                toTarget.Y /= toTargetLength;
-                toMouse.X /= toMouseLength;
-                toMouse.Y /= toMouseLength;
+                toTarget.X /= (float)toTargetLength;
+                toTarget.Y /= (float)toTargetLength;
+                toMouse.X /= (float)toMouseLength;
+                toMouse.Y /= (float)toMouseLength;
 
                 // Calculate dot product for angle
                 var dotProduct = toTarget.X * toMouse.X + toTarget.Y * toMouse.Y;

@@ -135,7 +135,7 @@ namespace BetterFollowbotLite.Skills
 
                                     // Use the Summon Raging Spirits skill
                                     Keyboard.KeyPress(_instance.GetSkillInputKey(summonRagingSpiritsSkill.SkillSlotIndex));
-                                    _instance.lastTimeAny = DateTime.Now; // Update global cooldown
+                                    _instance.LastTimeAny = DateTime.Now; // Update global cooldown
 
                                     _instance.LogMessage("SRS: Summoned Raging Spirit successfully");
                                 }

@@ -42,9 +42,9 @@ public static class Keyboard
     public static void KeyPress(Keys key, bool anyDelay = true)
     {
         if (anyDelay)
-            BetterFollowbotLite.Instance.lastTimeAny = DateTime.Now;
+            BetterFollowbotLite.Instance.LastTimeAny = DateTime.Now;
         _keyboardCoroutine = new Coroutine(KeyPressRoutine(key), BetterFollowbotLite.Instance, CoroutineKeyPress);
-        Core.ParallelRunner.Run(_keyboardCoroutine);
+        ExileCore.Core.ParallelRunner.Run(_keyboardCoroutine);
     }
 
     private static IEnumerator KeyPressRoutine(Keys key)

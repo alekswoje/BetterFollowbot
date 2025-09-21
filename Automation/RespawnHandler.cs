@@ -84,7 +84,7 @@ namespace BetterFollowbotLite.Automation
                                     Thread.Sleep(200);
                                 }
 
-                                _instance.lastTimeAny = DateTime.Now; // Update global cooldown
+                                _instance.LastTimeAny = DateTime.Now; // Update global cooldown
                             }
                             else
                             {

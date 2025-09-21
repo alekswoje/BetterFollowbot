@@ -66,7 +66,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
         GameController.LeftPanel.WantUse(() => Settings.Enable);
         skillCoroutine = new Coroutine(WaitForSkillsAfterAreaChange(), this);
-        Core.ParallelRunner.Run(skillCoroutine);
+        ExileCore.Core.ParallelRunner.Run(skillCoroutine);
         Input.RegisterKey(Settings.autoPilotToggleKey.Value);
         Settings.autoPilotToggleKey.OnValueChanged += () => { Input.RegisterKey(Settings.autoPilotToggleKey.Value); };
         autoPilot.StartCoroutine();
@@ -84,6 +84,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
     #region IFollowbotCore Implementation
     
+    // Settings property is already inherited from BaseSettingsPlugin<BetterFollowbotLiteSettings>
     public Vector3 PlayerPosition => playerPosition;
     public Entity LocalPlayer => localPlayer;
     public DateTime LastTimeAny { get; set; } = DateTime.MinValue;
@@ -240,7 +241,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         return minAny == 0 && minRare == 0 && minUnique == 0;
     }
 
-    internal Vector2 GetMousePosition()
+    public Vector2 GetMousePosition()
     {
         return new Vector2(GameController.IngameState.MousePosX, GameController.IngameState.MousePosY);
     }
@@ -316,7 +317,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         skills = null;
 
         var coroutine = new Coroutine(WaitForSkillsAfterAreaChange(), this);
-        Core.ParallelRunner.Run(coroutine);
+        ExileCore.Core.ParallelRunner.Run(coroutine);
 
         autoPilot.AreaChange();
 

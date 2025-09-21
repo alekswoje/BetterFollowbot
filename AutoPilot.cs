@@ -811,7 +811,7 @@ namespace BetterFollowbotLite;
     public void StartCoroutine()
     {
         autoPilotCoroutine = new Coroutine(AutoPilotLogic(), BetterFollowbotLite.Instance, "AutoPilot");
-        Core.ParallelRunner.Run(autoPilotCoroutine);
+        ExileCore.Core.ParallelRunner.Run(autoPilotCoroutine);
     }
     private IEnumerator MouseoverItem(Entity item)
     {

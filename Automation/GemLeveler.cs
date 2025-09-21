@@ -119,7 +119,7 @@ namespace BetterFollowbotLite.Automation
                                                 // Removed excessive gem level up completion logging
 
                                                 // Update global cooldown after leveling a gem
-                                                _instance.lastTimeAny = DateTime.Now;
+                                                        _instance.LastTimeAny = DateTime.Now;
 
                                                 // Only level up one gem per frame to avoid spam
                                                 break;

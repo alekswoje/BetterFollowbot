@@ -240,7 +240,7 @@ namespace BetterFollowbotLite.Automation
                                                         }
 
                                                         // Update cooldowns
-                                                        _instance.lastTimeAny = DateTime.Now;
+                                                        _instance.LastTimeAny = DateTime.Now;
                                                         _lastAutoJoinPartyAttempt = DateTime.Now;
                                                     }
                                                     else

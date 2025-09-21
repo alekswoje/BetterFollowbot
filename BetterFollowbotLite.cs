@@ -39,6 +39,9 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     // Pathfinding service
     private IPathfinding pathfinding;
 
+    // Movement executor service
+    private IMovementExecutor movementExecutor;
+
     internal AutoPilot autoPilot;
     private readonly Summons summons = new Summons();
     private SummonRagingSpirits summonRagingSpirits;
@@ -74,7 +77,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         taskManager = new TaskManager(this);
         terrainAnalyzer = new TerrainAnalyzer();
         pathfinding = new Core.Movement.Pathfinding(this, terrainAnalyzer);
-        autoPilot = new AutoPilot(leaderDetector, taskManager, pathfinding);
+        movementExecutor = new MovementExecutor(this, pathfinding);
+        autoPilot = new AutoPilot(leaderDetector, taskManager, pathfinding, movementExecutor);
 
         // Initialize timestamps
         // lastAutoJoinPartyAttempt is now managed within PartyJoiner class

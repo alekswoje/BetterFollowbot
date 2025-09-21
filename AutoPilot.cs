@@ -30,6 +30,9 @@ namespace BetterFollowbotLite;
         // Pathfinding service
         private readonly IPathfinding _pathfinding;
 
+        // Movement execution service
+        private readonly IMovementExecutor _movementExecutor;
+
         // Most Logic taken from Alpha Plugin
         private Coroutine autoPilotCoroutine;
         private readonly Random random = new Random();
@@ -37,13 +40,14 @@ namespace BetterFollowbotLite;
         /// <summary>
         /// Constructor for AutoPilot
         /// </summary>
-        public AutoPilot(ILeaderDetector leaderDetector, ITaskManager taskManager, IPathfinding pathfinding)
-        {
-            _leaderDetector = leaderDetector ?? throw new ArgumentNullException(nameof(leaderDetector));
-            _taskManager = taskManager ?? throw new ArgumentNullException(nameof(taskManager));
-            _pathfinding = pathfinding ?? throw new ArgumentNullException(nameof(pathfinding));
-            portalManager = new PortalManager();
-        }
+    public AutoPilot(ILeaderDetector leaderDetector, ITaskManager taskManager, IPathfinding pathfinding, IMovementExecutor movementExecutor)
+    {
+        _leaderDetector = leaderDetector ?? throw new ArgumentNullException(nameof(leaderDetector));
+        _taskManager = taskManager ?? throw new ArgumentNullException(nameof(taskManager));
+        _pathfinding = pathfinding ?? throw new ArgumentNullException(nameof(pathfinding));
+        _movementExecutor = movementExecutor ?? throw new ArgumentNullException(nameof(movementExecutor));
+        portalManager = new PortalManager();
+    }
 
         private Vector3 lastTargetPosition;
         private Vector3 lastPlayerPosition;
@@ -133,84 +137,6 @@ namespace BetterFollowbotLite;
 
 
     /// <summary>
-    /// Checks if the cursor is pointing roughly towards the target direction in screen space
-    /// Improved to handle off-screen targets
-    /// </summary>
-    private bool IsCursorPointingTowardsTarget(Vector3 targetPosition)
-    {
-        try
-        {
-            // Get the current mouse position in screen coordinates
-            var mouseScreenPos = BetterFollowbotLite.Instance.GetMousePosition();
-
-            // Get the player's screen position
-            var playerScreenPos = Helper.WorldToValidScreenPosition(BetterFollowbotLite.Instance.playerPosition);
-
-            // Get the target's screen position - handle off-screen targets
-            var targetScreenPos = Helper.WorldToValidScreenPosition(targetPosition);
-
-            // If target is off-screen, calculate direction based on world positions
-            if (targetScreenPos.X < 0 || targetScreenPos.Y < 0 ||
-                targetScreenPos.X > BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width ||
-                targetScreenPos.Y > BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height)
-            {
-                // For off-screen targets, calculate direction from world positions
-                var playerWorldPos = BetterFollowbotLite.Instance.playerPosition;
-                var directionToTarget = targetPosition - playerWorldPos;
-
-                if (directionToTarget.Length() < 10) // Target is very close in world space
-                    return true;
-
-                directionToTarget.Normalize();
-
-                // Convert world direction to screen space approximation
-                // This is a simplified approximation - we assume forward direction is towards positive X in screen space
-                var screenDirection = new Vector2(directionToTarget.X, -directionToTarget.Z); // Z is depth, flip for screen Y
-                screenDirection.Normalize();
-
-                // Calculate direction from player to cursor in screen space (off-screen version)
-                var playerToCursorOffscreen = mouseScreenPos - playerScreenPos;
-                if (playerToCursorOffscreen.Length() < 30) // Cursor is too close to player in screen space
-                    return false; // Can't determine direction reliably
-
-                playerToCursorOffscreen.Normalize();
-
-                // Calculate the angle between the two directions (off-screen version)
-                var dotProductOffscreen = Vector2.Dot(screenDirection, playerToCursorOffscreen);
-                var angleOffscreen = Math.Acos(Math.Max(-1, Math.Min(1, dotProductOffscreen))) * (180.0 / Math.PI);
-
-                // Allow up to 90 degrees difference for off-screen targets (more lenient)
-                return angleOffscreen <= 90.0;
-            }
-
-            // Original logic for on-screen targets
-            // Calculate the direction from player to target in screen space
-            var playerToTarget = targetScreenPos - playerScreenPos;
-            if (playerToTarget.Length() < 20) // Target is too close in screen space
-                return true; // Consider it pointing towards target
-
-            playerToTarget.Normalize();
-
-            // Calculate the direction from player to cursor in screen space
-            var playerToCursor = mouseScreenPos - playerScreenPos;
-            if (playerToCursor.Length() < 30) // Cursor is too close to player in screen space
-                return false; // Can't determine direction reliably
-
-            playerToCursor.Normalize();
-
-            // Calculate the angle between the two directions
-            var dotProduct = Vector2.Dot(playerToTarget, playerToCursor);
-            var angle = Math.Acos(Math.Max(-1, Math.Min(1, dotProduct))) * (180.0 / Math.PI);
-
-            // Allow up to 60 degrees difference (cursor should be roughly pointing towards target)
-            return angle <= 60.0;
-        }
-        catch (Exception e)
-        {
-            BetterFollowbotLite.Instance.LogMessage($"IsCursorPointingTowardsTarget error: {e.Message}");
-            return false; // Default to false if we can't determine direction
-        }
-    }
 
 
     /// <summary>
@@ -1003,104 +929,33 @@ namespace BetterFollowbotLite;
                 switch (currentTask.Type)
                     {
                         case TaskNodeType.Movement:
-                            // Check for distance-based dashing to keep up with leader
-                            if (BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled && followTarget != null && followTarget.Pos != null && (DateTime.Now - lastDashTime).TotalMilliseconds >= 3000)
-                            {
-                                try
-                                {
-                                    var distanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
-                                    if (distanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotDashDistance && IsCursorPointingTowardsTarget(followTarget.Pos)) // Dash if more than configured distance away and cursor is pointing towards leader
-                                    {
-                                        shouldDashToLeader = true;
-                                    }
-                                }
-                                catch (Exception e)
-                                {
-                                    // Error handling without logging
-                                }
-                            }
-                            else
-                            {
-                                // Dash check skipped
-                            }
+                            // Delegate movement execution to the specialized executor
+                            shouldMovementContinue = _movementExecutor.ExecuteMovementTask(
+                                currentTask.WorldPosition,
+                                taskDistance,
+                                followTarget,
+                                FollowTargetPosition
+                            );
 
-                            // Check for terrain-based dashing
-                            if (BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled && (DateTime.Now - lastDashTime).TotalMilliseconds >= 3000)
+                            // Handle task completion logic
+                            if (shouldMovementContinue)
                             {
-                                // Terrain dash check
-                                if (_pathfinding.CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()) && IsCursorPointingTowardsTarget(currentTask.WorldPosition))
+                                // Within bounding range. Task is complete
+                                if (taskDistance <= BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value * 1.5)
                                 {
-                                    // Terrain dash executed
-                                    shouldTerrainDash = true;
-                                }
-                                else if (_pathfinding.CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()) && !IsCursorPointingTowardsTarget(currentTask.WorldPosition))
-                                {
-                                    // Terrain dash blocked - cursor not pointing towards target
+                                    _taskManager.RemoveTask(currentTask);
+                                    lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
                                 }
                                 else
                                 {
-                                    // No terrain dash needed
-                                }
-                            }
-
-                            // Skip movement logic if dashing
-                            if (!shouldDashToLeader && !shouldTerrainDash)
-                            {
-                                try
-                                {
-                                    movementScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
-                                }
-                                catch (Exception e)
-                                {
-                                    screenPosError = true;
-                                }
-
-                                
-                                if (!screenPosError)
-                                {
-                                    
-                                    try
+                                    // Timeout mechanism - if we've been trying to reach this task for too long, give up
+                                    currentTask.AttemptCount++;
+                                    if (currentTask.AttemptCount > 10) // 10 attempts = ~5 seconds
                                     {
-                                        Input.KeyDown(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
-                                        BetterFollowbotLite.Instance.LogMessage("Movement task: Move key down pressed, waiting");
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        BetterFollowbotLite.Instance.LogError($"Movement task: KeyDown error: {e}");
-                                        keyDownError = true;
-                                    }
-
-                                    try
-                                    {
-                                        Input.KeyUp(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
-                                        BetterFollowbotLite.Instance.LogMessage("Movement task: Move key released");
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        BetterFollowbotLite.Instance.LogError($"Movement task: KeyUp error: {e}");
-                                        keyUpError = true;
-                                    }
-
-                                    //Within bounding range. Task is complete
-                                    //Note: Was getting stuck on close objects... testing hacky fix.
-                                    if (taskDistance <= BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value * 1.5)
-                                    {
-                                        // Removed excessive movement completion logging
+                                        BetterFollowbotLite.Instance.LogMessage($"Movement task timeout - Distance: {taskDistance:F1}, Attempts: {currentTask.AttemptCount}");
                                         _taskManager.RemoveTask(currentTask);
                                         lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
                                     }
-                                    else
-                                    {
-                                        // Timeout mechanism - if we've been trying to reach this task for too long, give up
-                                        currentTask.AttemptCount++;
-                                        if (currentTask.AttemptCount > 10) // 10 attempts = ~5 seconds
-                                        {
-                                            BetterFollowbotLite.Instance.LogMessage($"Movement task timeout - Distance: {taskDistance:F1}, Attempts: {currentTask.AttemptCount}");
-                                            _taskManager.RemoveTask(currentTask);
-                                            lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
-                                        }
-                                    }
-                                    shouldMovementContinue = true;
                                 }
                             }
                             break;
@@ -1222,8 +1077,8 @@ namespace BetterFollowbotLite;
 
                              if ((DateTime.Now - lastDashTime).TotalMilliseconds >= 3000)
                              {
-                                 // Check if cursor is pointing towards target
-                                 if (IsCursorPointingTowardsTarget(currentTask.WorldPosition))
+                                // Check if cursor is pointing towards target
+                                if (_movementExecutor.IsCursorPointingTowardsTarget(currentTask.WorldPosition))
                                  {
                                      BetterFollowbotLite.Instance.LogMessage("Dash task: Cursor direction valid, executing dash");
 
@@ -1283,8 +1138,8 @@ namespace BetterFollowbotLite;
                                      // Wait a bit for cursor to settle
                                      yield return new WaitTime(100);
 
-                                     // Check again if cursor is now pointing towards target
-                                     if (IsCursorPointingTowardsTarget(currentTask.WorldPosition))
+                                    // Check again if cursor is now pointing towards target
+                                    if (_movementExecutor.IsCursorPointingTowardsTarget(currentTask.WorldPosition))
                                      {
                                          BetterFollowbotLite.Instance.LogMessage("Dash task: Cursor now pointing correctly, executing dash");
                                          Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);

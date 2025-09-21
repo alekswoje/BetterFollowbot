@@ -14,12 +14,14 @@ namespace BetterFollowbotLite.Core.Movement
     public class Pathfinding : IPathfinding
     {
         private readonly IFollowbotCore _core;
+        private readonly ITerrainAnalyzer _terrainAnalyzer;
         private int _numRows, _numCols;
         private byte[,] _tiles;
 
-        public Pathfinding(IFollowbotCore core)
+        public Pathfinding(IFollowbotCore core, ITerrainAnalyzer terrainAnalyzer)
         {
             _core = core ?? throw new ArgumentNullException(nameof(core));
+            _terrainAnalyzer = terrainAnalyzer ?? throw new ArgumentNullException(nameof(terrainAnalyzer));
         }
 
         #region IPathfinding Implementation
@@ -88,54 +90,8 @@ namespace BetterFollowbotLite.Core.Movement
             if (_tiles == null)
                 return false;
 
-            //TODO: Completely re-write this garbage.
-            //It's not taking into account a lot of stuff, horribly inefficient and just not the right way to do this.
-            //Calculate the straight path from us to the target (this would be waypoints normally)
-            var dir = targetPosition - BetterFollowbotLite.Instance.GameController.Player.GridPos;
-            dir.Normalize();
-
-            var distanceBeforeWall = 0;
-            var distanceInWall = 0;
-
-            var shouldDash = false;
-            var points = new List<System.Drawing.Point>();
-            for (var i = 0; i < 500; i++)
-            {
-                var v2Point = BetterFollowbotLite.Instance.GameController.Player.GridPos + i * dir;
-                var point = new System.Drawing.Point((int)(BetterFollowbotLite.Instance.GameController.Player.GridPos.X + i * dir.X),
-                    (int)(BetterFollowbotLite.Instance.GameController.Player.GridPos.Y + i * dir.Y));
-
-                if (points.Contains(point))
-                    continue;
-                if (Vector2.Distance(v2Point, targetPosition) < 2)
-                    break;
-
-                points.Add(point);
-                var tile = _tiles[point.X, point.Y];
-
-
-                //Invalid tile: Block dash
-                if (tile == 255)
-                {
-                    shouldDash = false;
-                    break;
-                }
-                else if (tile == 2)
-                {
-                    if (shouldDash)
-                        distanceInWall++;
-                    shouldDash = true;
-                }
-                else if (!shouldDash)
-                {
-                    distanceBeforeWall++;
-                    if (distanceBeforeWall > 10)
-                        break;
-                }
-            }
-
-            if (distanceBeforeWall > 10 || distanceInWall < 5)
-                shouldDash = false;
+            // Delegate terrain analysis to the specialized analyzer
+            var shouldDash = _terrainAnalyzer.AnalyzeTerrainForDashing(targetPosition, GetTerrainTile);
 
             if (shouldDash)
             {

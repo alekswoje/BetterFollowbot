@@ -33,6 +33,9 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     // Task management service
     private ITaskManager taskManager;
 
+    // Terrain analyzer service
+    private ITerrainAnalyzer terrainAnalyzer;
+
     // Pathfinding service
     private IPathfinding pathfinding;
 
@@ -69,7 +72,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         // Initialize services with dependency injection
         leaderDetector = new LeaderDetector(this);
         taskManager = new TaskManager(this);
-        pathfinding = new Core.Movement.Pathfinding(this);
+        terrainAnalyzer = new TerrainAnalyzer();
+        pathfinding = new Core.Movement.Pathfinding(this, terrainAnalyzer);
         autoPilot = new AutoPilot(leaderDetector, taskManager, pathfinding);
 
         // Initialize timestamps

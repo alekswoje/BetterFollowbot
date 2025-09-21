@@ -98,11 +98,11 @@ namespace BetterFollowbotLite.Core.Movement
             var distanceInWall = 0;
 
             var shouldDash = false;
-            var points = new List<Point>();
+            var points = new List<System.Drawing.Point>();
             for (var i = 0; i < 500; i++)
             {
                 var v2Point = BetterFollowbotLite.Instance.GameController.Player.GridPos + i * dir;
-                var point = new Point((int)(BetterFollowbotLite.Instance.GameController.Player.GridPos.X + i * dir.X),
+                var point = new System.Drawing.Point((int)(BetterFollowbotLite.Instance.GameController.Player.GridPos.X + i * dir.X),
                     (int)(BetterFollowbotLite.Instance.GameController.Player.GridPos.Y + i * dir.Y));
 
                 if (points.Contains(point))

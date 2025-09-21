@@ -69,7 +69,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         // Initialize services with dependency injection
         leaderDetector = new LeaderDetector(this);
         taskManager = new TaskManager(this);
-        pathfinding = new Pathfinding(this);
+        pathfinding = new Core.Movement.Pathfinding(this);
         autoPilot = new AutoPilot(leaderDetector, taskManager, pathfinding);
 
         // Initialize timestamps

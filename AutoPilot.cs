@@ -209,13 +209,6 @@ namespace BetterFollowbotLite;
         }
     }
 
-    /// <summary>
-    /// Checks if enough time has passed since the last dash (3 second cooldown)
-    /// </summary>
-    private bool CanDash()
-    {
-        return (DateTime.Now - lastDashTime).TotalMilliseconds >= 3000; // Increased from 1000ms to 3000ms (3 seconds)
-    }
 
     /// <summary>
     /// Checks if the player has moved significantly and we should clear the current path for better responsiveness
@@ -451,16 +444,6 @@ namespace BetterFollowbotLite;
         IsTeleportInProgress = false;
     }
 
-    /// <summary>
-    /// Clears path due to efficiency optimization (not area change)
-    /// </summary>
-    private void ClearPathForEfficiency()
-    {
-        _taskManager.ClearTasksPreservingTransitions();
-        hasUsedWp = false; // Allow waypoint usage again
-        // Note: Don't reset dash cooldown for efficiency clears
-        // instantPathOptimization flag is managed separately
-    }
 
 
     private LabelOnGround GetBestPortalLabel(PartyElementWindow leaderPartyElement, bool forceSearch = false)
@@ -891,7 +874,8 @@ namespace BetterFollowbotLite;
                 if (ShouldClearPathForResponsiveness())
                 {
                     instantPathOptimization = true; // Enable instant mode for immediate response
-                    ClearPathForEfficiency(); // Clear all tasks and reset related state
+                    _taskManager.ClearTasksPreservingTransitions(); // Clear all tasks and reset related state
+                    hasUsedWp = false; // Allow waypoint usage again
                     
                     // FORCE IMMEDIATE PATH CREATION - Don't wait for UpdateAutoPilotLogic
                     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
@@ -926,7 +910,8 @@ namespace BetterFollowbotLite;
                 if (ShouldAbandonPathForEfficiency())
                 {
                     instantPathOptimization = true; // Enable instant mode for immediate response
-                    ClearPathForEfficiency(); // Clear all tasks and reset related state
+                    _taskManager.ClearTasksPreservingTransitions(); // Clear all tasks and reset related state
+                    hasUsedWp = false; // Allow waypoint usage again
                     
                     // FORCE IMMEDIATE PATH CREATION - Don't wait for UpdateAutoPilotLogic
                     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
@@ -1031,7 +1016,8 @@ namespace BetterFollowbotLite;
 
                     if (shouldOverride)
                     {
-                        ClearPathForEfficiency();
+                        _taskManager.ClearTasksPreservingTransitions();
+                        hasUsedWp = false; // Allow waypoint usage again
                         
                         // INSTANT OVERRIDE: Click towards the player's current position instead of stale followTarget
                         // Calculate a position closer to the player (not the exact player position to avoid issues)
@@ -1054,7 +1040,7 @@ namespace BetterFollowbotLite;
                     {
                         case TaskNodeType.Movement:
                             // Check for distance-based dashing to keep up with leader
-                            if (BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled && followTarget != null && followTarget.Pos != null && CanDash())
+                            if (BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled && followTarget != null && followTarget.Pos != null && (DateTime.Now - lastDashTime).TotalMilliseconds >= 3000)
                             {
                                 try
                                 {
@@ -1075,7 +1061,7 @@ namespace BetterFollowbotLite;
                             }
 
                             // Check for terrain-based dashing
-                            if (BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled && CanDash())
+                            if (BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled && (DateTime.Now - lastDashTime).TotalMilliseconds >= 3000)
                             {
                                 // Terrain dash check
                                 if (CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()) && IsCursorPointingTowardsTarget(currentTask.WorldPosition))
@@ -1157,7 +1143,21 @@ namespace BetterFollowbotLite;
                         case TaskNodeType.Loot:
                         {
                             currentTask.AttemptCount++;
-                            questLoot = GetQuestItem();
+                            try
+                            {
+                                questLoot = BetterFollowbotLite.Instance.GameController.EntityListWrapper.Entities
+                                    .Where(e => e?.Type == EntityType.WorldItem && e.IsTargetable && e.HasComponent<WorldItem>())
+                                    .FirstOrDefault(e =>
+                                    {
+                                        var itemEntity = e.GetComponent<WorldItem>().ItemEntity;
+                                        return BetterFollowbotLite.Instance.GameController.Files.BaseItemTypes.Translate(itemEntity.Path).ClassName ==
+                                               "QuestItem";
+                                    });
+                            }
+                            catch
+                            {
+                                questLoot = null;
+                            }
                             if (questLoot == null
                                 || currentTask.AttemptCount > 2
                                 || Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, questLoot.Pos) >=
@@ -1256,7 +1256,7 @@ namespace BetterFollowbotLite;
                                  break;
                              }
 
-                             if (CanDash())
+                             if ((DateTime.Now - lastDashTime).TotalMilliseconds >= 3000)
                              {
                                  // Check if cursor is pointing towards target
                                  if (IsCursorPointingTowardsTarget(currentTask.WorldPosition))
@@ -1424,7 +1424,8 @@ namespace BetterFollowbotLite;
                         if (ShouldClearPathForResponsiveness())
                         {
                             BetterFollowbotLite.Instance.LogMessage("LAST CHANCE 180 CHECK: Player direction changed before movement execution, aborting current task");
-                            ClearPathForEfficiency();
+                            _taskManager.ClearTasksPreservingTransitions();
+                            hasUsedWp = false; // Allow waypoint usage again
                             yield return null; // Skip this movement and recalculate
                             continue;
                         }
@@ -1516,7 +1517,8 @@ namespace BetterFollowbotLite;
                         if (ShouldClearPathForResponsiveness())
                         {
                             BetterFollowbotLite.Instance.LogMessage("LAST CHANCE 180 CHECK: Player direction changed before dash execution, aborting current task");
-                            ClearPathForEfficiency();
+                            _taskManager.ClearTasksPreservingTransitions();
+                            hasUsedWp = false; // Allow waypoint usage again
                             yield return null; // Skip this dash and recalculate
                             continue;
                         }
@@ -1528,7 +1530,8 @@ namespace BetterFollowbotLite;
                         if (ShouldClearPathForResponsiveness(true)) // Use aggressive override timing
                         {
                             BetterFollowbotLite.Instance.LogMessage("IMMEDIATE OVERRIDE: 180 detected after dash positioning - overriding with new position!");
-                            ClearPathForEfficiency();
+                            _taskManager.ClearTasksPreservingTransitions();
+                            hasUsedWp = false; // Allow waypoint usage again
                             
                             // INSTANT OVERRIDE: Position cursor towards player and dash there instead
                             var playerPos = BetterFollowbotLite.Instance.playerPosition;
@@ -1810,7 +1813,7 @@ namespace BetterFollowbotLite;
                         if (portal != null)
                         {
                             // Clear any existing movement tasks and add portal task
-                            var movementTaskCount = _taskManager.TaskCount(t => t.Type == TaskNodeType.Movement);
+                            var movementTaskCount = _taskManager.CountTasks(t => t.Type == TaskNodeType.Movement);
                             _taskManager.RemoveTaskAll(t => t.Type == TaskNodeType.Movement);
                             BetterFollowbotLite.Instance.LogMessage($"FOLLOW TARGET NULL: Cleared {movementTaskCount} movement tasks, adding portal transition");
                             BetterFollowbotLite.Instance.LogMessage($"FOLLOW TARGET NULL: Found portal '{portal.Label?.Text}' for leader in zone '{leaderPartyElement.ZoneName}'");
@@ -1855,7 +1858,7 @@ namespace BetterFollowbotLite;
                 else
                 {
                     // Leader party element not available or in same zone, clear movement tasks
-                    var movementTaskCount = _taskManager.TaskCount(t => t.Type == TaskNodeType.Movement);
+                    var movementTaskCount = _taskManager.CountTasks(t => t.Type == TaskNodeType.Movement);
                     if (movementTaskCount > 0)
                     {
                         _taskManager.RemoveTaskAll(t => t.Type == TaskNodeType.Movement);
@@ -1870,7 +1873,8 @@ namespace BetterFollowbotLite;
                 {
                     BetterFollowbotLite.Instance.LogMessage("RESPONSIVENESS: Preventing inefficient path creation - clearing for better tracking");
                     instantPathOptimization = true; // Enable instant mode for immediate response
-                    ClearPathForEfficiency();
+                    _taskManager.ClearTasksPreservingTransitions();
+                    hasUsedWp = false; // Allow waypoint usage again
                     
                     // FORCE IMMEDIATE PATH RECALCULATION - Skip normal logic and create direct path
                     // ADDITIONAL NULL CHECK: Ensure followTarget is still valid during responsiveness check
@@ -1910,7 +1914,8 @@ namespace BetterFollowbotLite;
                 {
                     // Removed excessive INSTANT PATH OPTIMIZATION logging
                     instantPathOptimization = true; // Enable instant mode for immediate response
-                    ClearPathForEfficiency();
+                    _taskManager.ClearTasksPreservingTransitions();
+                    hasUsedWp = false; // Allow waypoint usage again
                     
                     // FORCE IMMEDIATE PATH RECALCULATION - Skip normal logic and create direct path
                     // ADDITIONAL NULL CHECK: Ensure followTarget is still valid during efficiency check
@@ -2190,7 +2195,22 @@ namespace BetterFollowbotLite;
                     }
 
                     //Check if we should add quest loot logic. We're close to leader already
-                    var questLoot = GetQuestItem();
+                    Entity questLoot = null;
+                    try
+                    {
+                        questLoot = BetterFollowbotLite.Instance.GameController.EntityListWrapper.Entities
+                            .Where(e => e?.Type == EntityType.WorldItem && e.IsTargetable && e.HasComponent<WorldItem>())
+                            .FirstOrDefault(e =>
+                            {
+                                var itemEntity = e.GetComponent<WorldItem>().ItemEntity;
+                                return BetterFollowbotLite.Instance.GameController.Files.BaseItemTypes.Translate(itemEntity.Path).ClassName ==
+                                       "QuestItem";
+                            });
+                    }
+                    catch
+                    {
+                        questLoot = null;
+                    }
                     if (questLoot != null &&
                         Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, questLoot.Pos) < BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value &&
                         _taskManager.Tasks.FirstOrDefault(I => I.Type == TaskNodeType.Loot) == null)
@@ -2272,24 +2292,6 @@ namespace BetterFollowbotLite;
     }
 
 
-    private static Entity GetQuestItem()
-    {
-        try
-        {
-            return BetterFollowbotLite.Instance.GameController.EntityListWrapper.Entities
-                .Where(e => e?.Type == EntityType.WorldItem && e.IsTargetable && e.HasComponent<WorldItem>())
-                .FirstOrDefault(e =>
-                {
-                    var itemEntity = e.GetComponent<WorldItem>().ItemEntity;
-                    return BetterFollowbotLite.Instance.GameController.Files.BaseItemTypes.Translate(itemEntity.Path).ClassName ==
-                           "QuestItem";
-                });
-        }
-        catch
-        {
-            return null;
-        }
-    }
 
     public void Render()
     {

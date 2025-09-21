@@ -134,7 +134,7 @@ namespace BetterFollowbotLite.Core.TaskManagement
         /// </summary>
         public void RemoveTaskAll(System.Func<TaskNode, bool> predicate)
         {
-            _tasks.RemoveAll(predicate);
+            _tasks.RemoveAll(new System.Predicate<TaskNode>(predicate));
         }
 
         /// <summary>

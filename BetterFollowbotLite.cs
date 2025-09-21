@@ -108,10 +108,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     #endregion
         
 
-    private int GetMinnionsWithin(float maxDistance)
-    {
-        return localPlayer.GetComponent<Actor>().DeployedObjects.Where(x => x?.Entity != null && x.Entity.IsAlive).Select(minnion => Vector2.Distance(new Vector2(minnion.Entity.Pos.X, minnion.Entity.Pos.Y), new Vector2(playerPosition.X, playerPosition.Y))).Count(distance => distance <= maxDistance);
-    }
 
     private int GetMonsterWithin(float maxDistance, MonsterRarity rarity = MonsterRarity.White)
     {
@@ -195,57 +191,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
         
 
-    private bool MonsterCheck(int range, int minAny, int minRare, int minUnique)
-    {
-        int any = 0, rare = 0, unique = 0;
-        foreach (var monster in enemys)
-            switch (monster.Rarity)
-            {
-                case MonsterRarity.White:
-                {
-                    if (Vector2.Distance(new Vector2(monster.PosNum.X, monster.PosNum.Y),
-                            new Vector2(playerPosition.X, playerPosition.Y)) <= range)
-                        any++;
-                    break;
-                }
-                case MonsterRarity.Magic:
-                {
-                    if (Vector2.Distance(new Vector2(monster.PosNum.X, monster.PosNum.Y),
-                            new Vector2(playerPosition.X, playerPosition.Y)) <= range)
-                        any++;
-                    break;
-                }
-                case MonsterRarity.Rare:
-                {
-                    if (Vector2.Distance(new Vector2(monster.PosNum.X, monster.PosNum.Y),
-                            new Vector2(playerPosition.X, playerPosition.Y)) <= range)
-                    {
-                        any++;
-                        rare++;
-                    }
-                    break;
-                }
-                case MonsterRarity.Unique:
-                {
-                    if (Vector2.Distance(new Vector2(monster.PosNum.X, monster.PosNum.Y),
-                            new Vector2(playerPosition.X, playerPosition.Y)) <= range)
-                    {
-                        any++;
-                        rare++;
-                        unique++;
-                    }
-                    break;
-                }
-            }
-
-        if (minUnique > 0 && unique >= minUnique) return true;
-
-        if (minRare > 0 && rare >= minRare) return true;
-
-        if (minAny > 0 && any >= minAny) return true;
-
-        return minAny == 0 && minRare == 0 && minUnique == 0;
-    }
 
     public Vector2 GetMousePosition()
     {
@@ -258,17 +203,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         return (DateTime.Now - LastTimeAny).TotalMilliseconds > Delay;
     }
 
-    private void Quit()
-    {
-        try
-        {
-            CommandHandler.KillTcpConnectionForProcess(GameController.Window.Process.Id);
-        }
-        catch (Exception e)
-        {
-            // Error handling without logging
-        }
-    }
 
     internal Keys GetSkillInputKey(int index)
     {
@@ -405,21 +339,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
             ImGuiDrawSettings.DrawImGuiSettings();
     }
 
-    private static bool HasStat(Entity monster, GameStat stat)
-    {
-        // Using this with GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Monster].Where
-        // seems to cause Nullref errors on TC Fork. Where using the Code directly in a check seems fine, must have to do with Entity Parameter.
-        // Maybe someone knows why, i dont :)
-        try
-        {
-            var value = monster?.GetComponent<Stats>()?.StatDictionary?[stat];
-            return value > 0;
-        }
-        catch (Exception)
-        {
-            return false;
-        }
-    }
 
     public override void Render()
     {
@@ -887,7 +806,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 
             enemys = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Monster].Where(x =>
                 x != null && x.IsAlive && x.IsHostile && x.GetComponent<Life>()?.CurHP > 0 && 
-                x.GetComponent<Targetable>()?.isTargetable == true && !HasStat(x, GameStat.CannotBeDamaged) &&
+                x.GetComponent<Targetable>()?.isTargetable == true && 
+                !(x?.GetComponent<Stats>()?.StatDictionary?[GameStat.CannotBeDamaged] > 0) &&
                 GameController.Window.GetWindowRectangleTimeCache.Contains(
                     GameController.Game.IngameState.Camera.WorldToScreen(x.Pos))).ToList();
             if (Settings.debugMode)

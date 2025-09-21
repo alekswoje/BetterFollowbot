@@ -17,6 +17,7 @@ using BetterFollowbotLite.Interfaces;
 using BetterFollowbotLite.Core.LeaderDetection;
 using BetterFollowbotLite.Core.TaskManagement;
 using BetterFollowbotLite.Core.Movement;
+using BetterFollowbotLite.Core.Portal;
 
 namespace BetterFollowbotLite;
 
@@ -41,6 +42,12 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
     // Movement executor service
     private IMovementExecutor movementExecutor;
+
+    // Portal detector service
+    private IPortalDetector portalDetector;
+
+    // Portal manager (shared between AutoPilot and PortalDetector)
+    private PortalManager portalManager;
 
     internal AutoPilot autoPilot;
     private readonly Summons summons = new Summons();
@@ -77,7 +84,12 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         taskManager = new TaskManager(this);
         terrainAnalyzer = new TerrainAnalyzer();
         pathfinding = new Core.Movement.Pathfinding(this, terrainAnalyzer);
-        autoPilot = new AutoPilot(leaderDetector, taskManager, pathfinding, null); // Create AutoPilot first with null movementExecutor
+
+        // Initialize portal services
+        portalManager = new PortalManager();
+        portalDetector = new PortalDetector(this, portalManager);
+
+        autoPilot = new AutoPilot(leaderDetector, taskManager, pathfinding, portalManager, null); // Create AutoPilot first with null movementExecutor
         movementExecutor = new MovementExecutor(this, taskManager, pathfinding, autoPilot); // Now create movementExecutor with autoPilot instance
         // Set movementExecutor in autoPilot (assuming we add a setter method)
         autoPilot.SetMovementExecutor(movementExecutor);

@@ -412,33 +412,13 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     var timeSinceAreaChange = (DateTime.Now - lastAreaChangeTime).TotalSeconds;
                     var timeSinceLastGraceLog = (DateTime.Now - lastGraceLogTime).TotalSeconds;
 
-                    // Only log grace period status every 2 seconds to reduce spam
+                    // DEBUG: Log grace period status and buff details
                     if (timeSinceLastGraceLog > 2.0)
                     {
-                        LogMessage($"GRACE PERIOD: [{DateTime.Now:HH:mm:ss.fff}] Active grace period detected, time since area change: {timeSinceAreaChange:F1}s");
+                        var graceBuff = buffs.FirstOrDefault(x => x.Name == "grace_period");
+                        var buffTimeLeft = graceBuff?.Timer ?? 0;
+                        LogMessage($"GRACE PERIOD: [{DateTime.Now:HH:mm:ss.fff}] Active grace period detected (time left: {buffTimeLeft:F1}s), time since area change: {timeSinceAreaChange:F1}s");
                         lastGraceLogTime = DateTime.Now;
-                    }
-
-                    // CRITICAL FIX: Try to find leader immediately if AutoPilot doesn't have a follow target
-                    // This prevents the 15-second delay by ensuring we have a follow target for ultra-fast stabilization
-                    if (autoPilot != null && autoPilot.FollowTarget == null)
-                    {
-                        try
-                        {
-                            var playerEntities = GameController.Entities.Where(x => x.Type == EntityType.Player).ToList();
-                            var leaderEntity = playerEntities.FirstOrDefault(x =>
-                                x.GetComponent<Player>()?.PlayerName?.Equals(Settings.autoPilotLeader.Value, StringComparison.OrdinalIgnoreCase) == true);
-
-                            if (leaderEntity != null)
-                            {
-                                LogMessage($"GRACE PERIOD: [{DateTime.Now:HH:mm:ss.fff}] Emergency leader detection succeeded - setting follow target for ultra-fast stabilization");
-                                autoPilot.SetFollowTarget(leaderEntity);
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            LogMessage($"GRACE PERIOD: Emergency leader detection failed: {e.Message}");
-                        }
                     }
 
                     // Check if leader is available and AutoPilot can work - if so, reduce stabilization time
@@ -459,84 +439,94 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         stabilizationThreshold = 0.1; // Ultra fast if AutoPilot is already working
                     }
 
-                    if (timeSinceAreaChange > stabilizationThreshold)
+                    // FORCE BREAK: Allow grace breaking after 10 seconds regardless of movement (failsafe)
+                    var forceBreakGrace = timeSinceAreaChange > 10.0;
+
+                    if (timeSinceAreaChange > stabilizationThreshold || forceBreakGrace)
                     {
                         // Only log stabilization completion once
                         if (timeSinceLastGraceLog > 2.0)
                         {
-                            LogMessage($"GRACE PERIOD: [{DateTime.Now:HH:mm:ss.fff}] Zone stabilization period passed, checking if safe to remove grace");
+                            var reason = forceBreakGrace ? "FORCE BREAK after 10s timeout" : "normal stabilization period";
+                            LogMessage($"GRACE PERIOD: [{DateTime.Now:HH:mm:ss.fff}] {reason} passed, checking if safe to remove grace");
                         }
 
-                        // Check player position to ensure they're not moving
-                        var shouldRemoveGrace = true;
+                        // Check player position to ensure they're not moving (skip if force breaking)
+                        var shouldRemoveGrace = forceBreakGrace;
 
-                        if (localPlayer != null)
+                    if (localPlayer != null)
+                    {
+                        var currentPos = localPlayer.Pos;
+                        var distanceMoved = Vector3.Distance(currentPos, playerPosition);
+
+                        // MORE AGGRESSIVE: Reduce movement threshold from 10.0f to 5.0f
+                        // And be more lenient during zone transitions (first 5 seconds)
+                        var movementThreshold = timeSinceAreaChange < 5.0 ? 25.0f : 5.0f;
+
+                        if (distanceMoved > movementThreshold)
                         {
-                            var currentPos = localPlayer.Pos;
-                            var distanceMoved = Vector3.Distance(currentPos, playerPosition);
-
-                            if (distanceMoved > 10.0f)
+                            shouldRemoveGrace = false;
+                            if (timeSinceLastGraceLog > 2.0)
                             {
-                                shouldRemoveGrace = false;
-                                if (timeSinceLastGraceLog > 2.0)
-                                {
-                                    LogMessage($"GRACE PERIOD: Player moving ({distanceMoved:F1} units) - waiting to remove grace");
-                                }
+                                LogMessage($"GRACE PERIOD: Player moving ({distanceMoved:F1} units > {movementThreshold:F1} threshold) - waiting to remove grace");
                             }
-                            else
-                            {
-                                if (timeSinceLastGraceLog > 2.0)
-                                {
-                                    LogMessage($"GRACE PERIOD: Player stationary ({distanceMoved:F1} units moved) - safe to remove grace");
-                                }
-                            }
-
-                            playerPosition = currentPos;
                         }
+                        else
+                        {
+                            if (timeSinceLastGraceLog > 2.0)
+                            {
+                                LogMessage($"GRACE PERIOD: Player stationary ({distanceMoved:F1} units < {movementThreshold:F1} threshold) - safe to remove grace");
+                            }
+                        }
+
+                        playerPosition = currentPos;
+                    }
 
                         if (shouldRemoveGrace)
                         {
                             var timeSinceLastAction = (DateTime.Now - LastTimeAny).TotalSeconds;
 
-                            if (timeSinceLastAction > 0.2)
+                            // AGGRESSIVE: Reduce cooldown from 0.2s to 0.05s for faster grace breaking
+                            var actionCooldown = forceBreakGrace ? 0.02 : 0.05;
+
+                            if (timeSinceLastAction > actionCooldown)
                             {
+                                // SIMPLIFIED APPROACH: Just click at screen center without random offset
+                                // This is more reliable and faster
                                 var screenRect = GameController.Window.GetWindowRectangle();
                                 var screenCenterX = screenRect.Width / 2;
                                 var screenCenterY = screenRect.Height / 2;
 
-                                var random = new Random();
-                                int randomOffsetX, randomOffsetY;
-
-                                do
+                                // For force break, add small random offset, otherwise use exact center
+                                if (forceBreakGrace)
                                 {
-                                    randomOffsetX = random.Next(-35, 36);
+                                    var random = new Random();
+                                    var offsetX = random.Next(-10, 11);
+                                    var offsetY = random.Next(-10, 11);
+                                    screenCenterX += offsetX;
+                                    screenCenterY += offsetY;
                                 }
-                                while (randomOffsetX >= -5 && randomOffsetX <= 5);
 
-                                do
-                                {
-                                    randomOffsetY = random.Next(-35, 36);
-                                }
-                                while (randomOffsetY >= -5 && randomOffsetY <= 5);
+                                screenCenterX = Math.Max(0, Math.Min(screenRect.Width, screenCenterX));
+                                screenCenterY = Math.Max(0, Math.Min(screenRect.Height, screenCenterY));
 
-                                var targetX = screenCenterX + randomOffsetX;
-                                var targetY = screenCenterY + randomOffsetY;
-
-                                targetX = Math.Max(0, Math.Min(screenRect.Width, targetX));
-                                targetY = Math.Max(0, Math.Min(screenRect.Height, targetY));
-
-                                var randomMousePos = new Vector2(targetX, targetY);
-                                Mouse.SetCursorPos(randomMousePos);
+                                var mousePos = new Vector2(screenCenterX, screenCenterY);
+                                Mouse.SetCursorPos(mousePos);
 
                                 if (timeSinceLastGraceLog > 2.0)
                                 {
-                                    LogMessage($"GRACE PERIOD: [{DateTime.Now:HH:mm:ss.fff}] Moving mouse to ({targetX}, {targetY}) and pressing move key to break grace");
+                                    var breakType = forceBreakGrace ? "FORCE BREAK" : "normal break";
+                                    LogMessage($"GRACE PERIOD: [{DateTime.Now:HH:mm:ss.fff}] {breakType} - Moving mouse to center ({screenCenterX}, {screenCenterY}) and pressing move key");
                                 }
 
                                 Keyboard.KeyPress(Settings.autoPilotMoveKey.Value);
                                 LastTimeAny = DateTime.Now;
 
-                                LogMessage($"GRACE PERIOD: [{DateTime.Now:HH:mm:ss.fff}] Grace period broken successfully after {timeSinceAreaChange:F1}s");
+                                LogMessage($"GRACE PERIOD: [{DateTime.Now:HH:mm:ss.fff}] Grace period broken successfully after {timeSinceAreaChange:F1}s ({(forceBreakGrace ? "FORCE BREAK" : "normal")})");
+                            }
+                            else if (forceBreakGrace && timeSinceLastGraceLog > 1.0)
+                            {
+                                LogMessage($"GRACE PERIOD: Force break waiting for action cooldown ({timeSinceLastAction:F2}s < {actionCooldown:F2}s)");
                             }
                         }
                     }
@@ -669,13 +659,13 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 {
                     var timeSinceLastAutoPilotLog = (DateTime.Now - lastAutoPilotUpdateLogTime).TotalSeconds;
                     if (timeSinceLastAutoPilotLog > 5.0)
-                    {
-                        var followTarget = autoPilot.FollowTarget;
-                        LogMessage($"AUTOPILOT: After update - Task count: {autoPilot.Tasks.Count}, FollowTarget: {(followTarget != null ? followTarget.GetComponent<Player>()?.PlayerName ?? "Unknown" : "null")}");
+                {
+                    var followTarget = autoPilot.FollowTarget;
+                    LogMessage($"AUTOPILOT: After update - Task count: {autoPilot.Tasks.Count}, FollowTarget: {(followTarget != null ? followTarget.GetComponent<Player>()?.PlayerName ?? "Unknown" : "null")}");
 
-                        if (followTarget != null && autoPilot.Tasks.Count == 0)
-                        {
-                            LogMessage("AUTOPILOT: Has follow target but no tasks - AutoPilot may not be moving the bot");
+                    if (followTarget != null && autoPilot.Tasks.Count == 0)
+                    {
+                        LogMessage("AUTOPILOT: Has follow target but no tasks - AutoPilot may not be moving the bot");
                         }
                         lastAutoPilotUpdateLogTime = DateTime.Now;
                     }

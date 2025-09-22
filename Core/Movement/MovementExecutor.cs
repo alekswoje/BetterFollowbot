@@ -81,7 +81,7 @@ namespace BetterFollowbotLite.Core.Movement
                         try
                         {
                             var distanceToLeader = Vector3.Distance(_core.PlayerPosition, _autoPilot.FollowTargetPosition);
-                            if (distanceToLeader > _core.Settings.autoPilotDashDistance) // Dash if more than configured distance away from leader
+                            if (distanceToLeader > _core.Settings.autoPilotDashDistance && IsCursorPointingTowardsTarget(_autoPilot.FollowTarget.Pos)) // Dash if more than configured distance away and cursor is pointing towards leader
                             {
                                 shouldDashToLeader = true;
                             }
@@ -127,8 +127,31 @@ namespace BetterFollowbotLite.Core.Movement
                             screenPosError = true;
                         }
 
+
                         if (!screenPosError)
                         {
+
+                            try
+                            {
+                                Input.KeyDown(_core.Settings.autoPilotMoveKey);
+                                _core.LogMessage("Movement task: Move key down pressed, waiting");
+                            }
+                            catch (Exception e)
+                            {
+                                _core.LogError($"Movement task: KeyDown error: {e}");
+                                keyDownError = true;
+                            }
+
+                            try
+                            {
+                                Input.KeyUp(_core.Settings.autoPilotMoveKey);
+                                _core.LogMessage("Movement task: Move key released");
+                            }
+                            catch (Exception e)
+                            {
+                                _core.LogError($"Movement task: KeyUp error: {e}");
+                                keyUpError = true;
+                            }
 
                             //Within bounding range. Task is complete
                             //Note: Was getting stuck on close objects... testing hacky fix.
@@ -259,15 +282,31 @@ namespace BetterFollowbotLite.Core.Movement
                              _core.LogMessage("Dash task completed successfully");
                              shouldDashAndContinue = true;
                          }
-                        else
-                        {
-                            _core.LogMessage("Dash task: Cursor not pointing towards target, will reposition in AutoPilot");
+                         else
+                         {
+                             _core.LogMessage("Dash task: Cursor not pointing towards target, positioning cursor");
 
-                            // Set flag to indicate cursor needs repositioning
-                            // The AutoPilot will handle the actual mouse movement
-                            shouldDashAndContinue = false; // Don't execute dash yet
-                            currentTask.AttemptCount++; // Increment attempt count
-                        }
+                             // Try to position cursor towards the target
+                             var targetScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
+
+                             // If target is off-screen, position towards the edge of screen in the target's direction
+                             if (targetScreenPos.X < 0 || targetScreenPos.Y < 0 ||
+                                 targetScreenPos.X > _core.GameController.Window.GetWindowRectangle().Width ||
+                                 targetScreenPos.Y > _core.GameController.Window.GetWindowRectangle().Height)
+                             {
+                                 // Calculate direction to target and position mouse at screen edge
+                                 var playerPos = _core.PlayerPosition;
+                                 var directionToTarget = currentTask.WorldPosition - playerPos;
+                                 directionToTarget.Normalize();
+
+                                 // Position mouse at screen center (simplified approach)
+                                 var screenCenter = new Vector2(
+                                     _core.GameController.Window.GetWindowRectangle().Width / 2,
+                                     _core.GameController.Window.GetWindowRectangle().Height / 2);
+
+                                 // Note: This will need to be handled as a coroutine yield in the calling code
+                             }
+                         }
                      }
                      else
                      {

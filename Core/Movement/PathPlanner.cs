@@ -189,25 +189,6 @@ namespace BetterFollowbotLite.Core.Movement
                         return; // Exit early to prevent interference
                     }
 
-                    // PREVENT CONSTANT TASK CREATION: Don't add movement tasks if we already have movement tasks in queue
-                    // This prevents the bot from constantly recalculating paths while already executing movement
-                    var hasMovementTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Movement);
-                    if (hasMovementTasks)
-                    {
-                        // Only skip if we're not too far from the current task's position
-                        var currentTask = _taskManager.Tasks.FirstOrDefault(t => t.Type == TaskNodeType.Movement);
-                        if (currentTask != null)
-                        {
-                            var distanceFromCurrentTask = Vector3.Distance(_core.PlayerPosition, currentTask.WorldPosition);
-                            // If we're close to the current task or still moving towards it, don't create new tasks
-                            if (distanceFromCurrentTask > _core.Settings.autoPilotPathfindingNodeDistance.Value * 1.5)
-                            {
-                                _core.LogMessage($"PATH PLANNING: Already have movement tasks, current task distance: {distanceFromCurrentTask:F1}, skipping new path planning");
-                                return;
-                            }
-                        }
-                    }
-
                     //Leader moved VERY far in one frame. Check for transition to use to follow them.
                     var distanceMoved = Vector3.Distance(lastTargetPosition, followTarget.Pos);
                     if (lastTargetPosition != Vector3.Zero && distanceMoved > _core.Settings.autoPilotClearPathDistance.Value)
@@ -405,13 +386,12 @@ namespace BetterFollowbotLite.Core.Movement
                             var distanceFromLastTask = Vector3.Distance(_taskManager.Tasks.Last().WorldPosition, followTarget.Pos);
                             // More responsive: reduce threshold by half for more frequent path updates
                             var responsiveThreshold = _core.Settings.autoPilotPathfindingNodeDistance.Value / 2;
-                            // DISABLED: This responsiveness logic was causing erratic movement
-                            // if (distanceFromLastTask >= responsiveThreshold)
-                            // {
-                            //     _core.LogMessage($"RESPONSIVENESS: Adding new path node - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
-                            //     _core.LogMessage($"DEBUG: Creating task to position: {followTarget.Pos} (Player at: {_core.PlayerPosition})");
-                            //     _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                            // }
+                            if (distanceFromLastTask >= responsiveThreshold)
+                            {
+                                _core.LogMessage($"RESPONSIVENESS: Adding new path node - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
+                                _core.LogMessage($"DEBUG: Creating task to position: {followTarget.Pos} (Player at: {_core.PlayerPosition})");
+                                _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                            }
                         }
                         else
                         {

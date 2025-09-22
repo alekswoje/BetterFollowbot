@@ -599,39 +599,40 @@ namespace BetterFollowbotLite;
 
                 BetterFollowbotLite.Instance.LogMessage($"TASK EXECUTION: Processing {currentTask.Type} task at distance {taskDistance:F1}");
 
+                // DISABLED: Responsiveness system was causing erratic movement
                 // Check if we should clear path for better responsiveness to player movement
-                if (ShouldClearPathForResponsiveness())
-                {
-                    instantPathOptimization = true; // Enable instant mode for immediate response
-                    _taskManager.ClearTasksPreservingTransitions(); // Clear all tasks and reset related state
-                    hasUsedWp = false; // Allow waypoint usage again
-                    
-                    // FORCE IMMEDIATE PATH CREATION - Don't wait for UpdateAutoPilotLogic
-                    if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
-                    {
-                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
-
-                        if (instantDistanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotDashDistance && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Use configured dash distance
-                        {
-                            // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
-                            var hasConflictingTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
-                            if (!hasConflictingTasks)
-                            {
-                                _taskManager.AddTask(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
-                            }
-                            else
-                            {
-                            }
-                        }
-                        else
-                        {
-                            _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
-                        }
-                    }
-                    
-                    yield return null; // INSTANT: No delay, immediate path recalculation
-                    continue; // Skip current task processing, will recalculate path immediately
-                }
+                // if (ShouldClearPathForResponsiveness())
+                // {
+                //     instantPathOptimization = true; // Enable instant mode for immediate response
+                //     _taskManager.ClearTasksPreservingTransitions(); // Clear all tasks and reset related state
+                //     hasUsedWp = false; // Allow waypoint usage again
+                //
+                //     // FORCE IMMEDIATE PATH CREATION - Don't wait for UpdateAutoPilotLogic
+                //     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
+                //     {
+                //         var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
+                //
+                //         if (instantDistanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotDashDistance && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Use configured dash distance
+                //         {
+                //             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
+                //             var hasConflictingTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
+                //             if (!hasConflictingTasks)
+                //             {
+                //                 _taskManager.AddTask(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
+                //             }
+                //             else
+                //             {
+                //             }
+                //         }
+                //         else
+                //         {
+                //             _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                //         }
+                //     }
+                //
+                //     yield return null; // INSTANT: No delay, immediate path recalculation
+                //     continue; // Skip current task processing, will recalculate path immediately
+                // }
 
                 // Check if current path is inefficient and should be abandoned - INSTANT RESPONSE
                 if (ShouldAbandonPathForEfficiency())
@@ -820,15 +821,16 @@ namespace BetterFollowbotLite;
                 if (!screenPosError && currentTask.Type == TaskNodeType.Movement)
                 {
                     BetterFollowbotLite.Instance.LogMessage("TASK EXECUTION: Executing movement task");
+                    // DISABLED: Responsiveness checks were causing erratic movement
                     // LAST CHANCE CHECK: Before executing movement, check if player has turned around
-                    if (ShouldClearPathForResponsiveness())
-                    {
-                            BetterFollowbotLite.Instance.LogMessage("LAST CHANCE 180 CHECK: Player direction changed before movement execution, aborting current task");
-                            _taskManager.ClearTasksPreservingTransitions();
-                            hasUsedWp = false; // Allow waypoint usage again
-                            yield return null; // Skip this movement and recalculate
-                            continue;
-                        }
+                    // if (ShouldClearPathForResponsiveness())
+                    // {
+                    //         BetterFollowbotLite.Instance.LogMessage("LAST CHANCE 180 CHECK: Player direction changed before movement execution, aborting current task");
+                    //         _taskManager.ClearTasksPreservingTransitions();
+                    //         hasUsedWp = false; // Allow waypoint usage again
+                    //         yield return null; // Skip this movement and recalculate
+                    //         continue;
+                    // }
 
                         BetterFollowbotLite.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
                         BetterFollowbotLite.Instance.LogMessage($"Movement task: Move key: {BetterFollowbotLite.Instance.Settings.autoPilotMoveKey}");
@@ -909,53 +911,55 @@ namespace BetterFollowbotLite;
 
                     if (shouldDashAndContinue)
                     {
+                        // DISABLED: Responsiveness checks were causing erratic movement
                         // LAST CHANCE CHECK: Before executing dash, check if player has turned around
-                        if (ShouldClearPathForResponsiveness())
-                        {
-                            BetterFollowbotLite.Instance.LogMessage("LAST CHANCE 180 CHECK: Player direction changed before dash execution, aborting current task");
-                            _taskManager.ClearTasksPreservingTransitions();
-                            hasUsedWp = false; // Allow waypoint usage again
-                            yield return null; // Skip this dash and recalculate
-                            continue;
-                        }
+                        // if (ShouldClearPathForResponsiveness())
+                        // {
+                        //     BetterFollowbotLite.Instance.LogMessage("LAST CHANCE 180 CHECK: Player direction changed before dash execution, aborting current task");
+                        //     _taskManager.ClearTasksPreservingTransitions();
+                        //     hasUsedWp = false; // Allow waypoint usage again
+                        //     yield return null; // Skip this dash and recalculate
+                        //     continue;
+                        // }
 
                         yield return Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(currentTask.WorldPosition));
                         BetterFollowbotLite.Instance.LogMessage("Dash: Mouse positioned, pressing dash key");
                         
+                        // DISABLED: Responsiveness checks were causing erratic movement
                         // IMMEDIATE OVERRIDE CHECK: After positioning cursor, check if we need to override
-                        if (ShouldClearPathForResponsiveness(true)) // Use aggressive override timing
-                        {
-                            BetterFollowbotLite.Instance.LogMessage("IMMEDIATE OVERRIDE: 180 detected after dash positioning - overriding with new position!");
-                            _taskManager.ClearTasksPreservingTransitions();
-                            hasUsedWp = false; // Allow waypoint usage again
-                            
-                            // INSTANT OVERRIDE: Position cursor towards player and dash there instead
-                            var playerPos = BetterFollowbotLite.Instance.playerPosition;
-                            var botPos = BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition;
-                            
-                            // Calculate a position closer to the player for dash correction
-                            var directionToPlayer = playerPos - botPos;
-                            if (directionToPlayer.Length() > 10f) // Only if player is far enough away
-                            {
-                                directionToPlayer = Vector3.Normalize(directionToPlayer);
-                                var correctionTarget = botPos + (directionToPlayer * 400f); // Dash 400 units towards player
-                                
-                                var correctScreenPos = Helper.WorldToValidScreenPosition(correctionTarget);
-                                BetterFollowbotLite.Instance.LogMessage($"DEBUG: Dash override - Old position: {currentTask.WorldPosition}, Player position: {playerPos}");
-                                BetterFollowbotLite.Instance.LogMessage($"DEBUG: Dash override - Correction target: {correctionTarget}");
-                                yield return Mouse.SetCursorPosHuman(correctScreenPos);
-                                Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
-                                _movementExecutor.UpdateLastDashTime(DateTime.Now); // Record dash time for cooldown
-                                BetterFollowbotLite.Instance.LogMessage("DASH OVERRIDE: Dashed towards player position to override old dash");
-                            }
-                            else
-                            {
-                                BetterFollowbotLite.Instance.LogMessage("DEBUG: Dash override skipped - player too close to bot");
-                            }
-                            yield return null;
-                            continue;
-                        }
-                        
+                        // if (ShouldClearPathForResponsiveness(true)) // Use aggressive override timing
+                        // {
+                        //     BetterFollowbotLite.Instance.LogMessage("IMMEDIATE OVERRIDE: 180 detected after dash positioning - overriding with new position!");
+                        //     _taskManager.ClearTasksPreservingTransitions();
+                        //     hasUsedWp = false; // Allow waypoint usage again
+                        //
+                        //     // INSTANT OVERRIDE: Position cursor towards player and dash there instead
+                        //     var playerPos = BetterFollowbotLite.Instance.playerPosition;
+                        //     var botPos = BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition;
+                        //
+                        //     // Calculate a position closer to the player for dash correction
+                        //     var directionToPlayer = playerPos - botPos;
+                        //     if (directionToPlayer.Length() > 10f) // Only if player is far enough away
+                        //     {
+                        //         directionToPlayer = Vector3.Normalize(directionToPlayer);
+                        //         var correctionTarget = botPos + (directionToPlayer * 400f); // Dash 400 units towards player
+                        //
+                        //         var correctScreenPos = Helper.WorldToValidScreenPosition(correctionTarget);
+                        //         BetterFollowbotLite.Instance.LogMessage($"DEBUG: Dash override - Old position: {currentTask.WorldPosition}, Player position: {playerPos}");
+                        //         BetterFollowbotLite.Instance.LogMessage($"DEBUG: Dash override - Correction target: {correctionTarget}");
+                        //         yield return Mouse.SetCursorPosHuman(correctScreenPos);
+                        //         Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
+                        //         _movementExecutor.UpdateLastDashTime(DateTime.Now); // Record dash time for cooldown
+                        //         BetterFollowbotLite.Instance.LogMessage("DASH OVERRIDE: Dashed towards player position to override old dash");
+                        //     }
+                        //     else
+                        //     {
+                        //         BetterFollowbotLite.Instance.LogMessage("DEBUG: Dash override skipped - player too close to bot");
+                        //     }
+                        //     yield return null;
+                        //     continue;
+                        // }
+
                         if (instantPathOptimization)
                         {
                             // INSTANT MODE: Skip delays for immediate path correction

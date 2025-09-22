@@ -386,12 +386,13 @@ namespace BetterFollowbotLite.Core.Movement
                             var distanceFromLastTask = Vector3.Distance(_taskManager.Tasks.Last().WorldPosition, followTarget.Pos);
                             // More responsive: reduce threshold by half for more frequent path updates
                             var responsiveThreshold = _core.Settings.autoPilotPathfindingNodeDistance.Value / 2;
-                            if (distanceFromLastTask >= responsiveThreshold)
-                            {
-                                _core.LogMessage($"RESPONSIVENESS: Adding new path node - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
-                                _core.LogMessage($"DEBUG: Creating task to position: {followTarget.Pos} (Player at: {_core.PlayerPosition})");
-                                _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                            }
+                            // DISABLED: This responsiveness logic was causing erratic movement
+                            // if (distanceFromLastTask >= responsiveThreshold)
+                            // {
+                            //     _core.LogMessage($"RESPONSIVENESS: Adding new path node - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
+                            //     _core.LogMessage($"DEBUG: Creating task to position: {followTarget.Pos} (Player at: {_core.PlayerPosition})");
+                            //     _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                            // }
                         }
                         else
                         {

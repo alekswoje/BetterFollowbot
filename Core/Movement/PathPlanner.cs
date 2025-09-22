@@ -155,6 +155,29 @@ namespace BetterFollowbotLite.Core.Movement
                     }
                 }
 
+                // Handle null followTarget gracefully - can still do zone transitions via party element
+                if (followTarget == null || followTarget.Pos == null)
+                {
+                    // Still check for zone transitions even if entity is null
+                    if (leaderPartyElement != null && _core.GameController?.Area.CurrentArea != null)
+                    {
+                        var zonesAreDifferent = !leaderPartyElement.ZoneName.Equals(_core.GameController.Area.CurrentArea.DisplayName);
+                        if (zonesAreDifferent)
+                        {
+                            _core.LogMessage($"ZONE TRANSITION: Leader in different zone via party element - Current: '{_core.GameController.Area.CurrentArea.DisplayName}', Leader: '{leaderPartyElement.ZoneName}'");
+
+                            // Prioritize party teleport over portal clicking
+                            if (!HasConflictingTransitionTasks())
+                            {
+                                _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
+                                _taskManager.AddTask(new TaskNode("TeleportButton", 0, TaskNodeType.TeleportButton));
+                                _core.LogMessage("ZONE TRANSITION: Party teleport task added to queue");
+                            }
+                        }
+                    }
+                    return; // Can't do normal path planning without followTarget
+                }
+
                 var distanceToLeader = Vector3.Distance(_core.PlayerPosition, followTarget.Pos);
                 if (distanceToLeader >= _core.Settings.autoPilotClearPathDistance.Value)
                 {
@@ -436,6 +459,14 @@ namespace BetterFollowbotLite.Core.Movement
             {
                 return null;
             }
+        }
+
+        private bool HasConflictingTransitionTasks()
+        {
+            return _taskManager.Tasks.Any(t =>
+                t.Type == TaskNodeType.Transition ||
+                t.Type == TaskNodeType.TeleportConfirm ||
+                t.Type == TaskNodeType.TeleportButton);
         }
     }
 }

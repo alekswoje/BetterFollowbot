@@ -1015,13 +1015,12 @@ namespace BetterFollowbotLite;
 
             lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
 
-            // CRITICAL FIX: Only call PlanPath if we have a valid follow target
-            // Prevents NullReferenceException when leader entity isn't loaded yet
-            if (followTarget != null && followTarget.Pos != null)
-            {
-                _pathPlanner.PlanPath(followTarget, leaderPartyElement, lastTargetPosition, lastPlayerPosition);
+            // Allow PlanPath to run even with null followTarget for zone transitions
+            // PlanPath handles null followTarget gracefully
+            _pathPlanner.PlanPath(followTarget, leaderPartyElement, lastTargetPosition, lastPlayerPosition);
+
+            if (followTarget?.Pos != null)
                 lastTargetPosition = followTarget.Pos;
-            }
         }
         catch (Exception e)
         {

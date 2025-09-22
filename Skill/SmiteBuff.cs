@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using BetterFollowbotLite.Interfaces;
+using BetterFollowbotLite.Core.Skills;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -49,7 +50,7 @@ namespace BetterFollowbotLite.Skills
                             _instance.LogMessage("SMITE: Cooldown check passed");
 
                             // Check if we don't have the smite buff or it's about to expire
-                            var smiteBuff = _instance.buffs.FirstOrDefault(x => x.Name == "smite_buff");
+                            var smiteBuff = _instance.Buffs.FirstOrDefault(x => x.Name == "smite_buff");
                             var hasSmiteBuff = smiteBuff != null;
                             var buffTimeLeft = smiteBuff?.Timer ?? 0;
                             _instance.LogMessage($"SMITE: Has smite buff: {hasSmiteBuff}, Time left: {buffTimeLeft:F1}s");
@@ -60,7 +61,7 @@ namespace BetterFollowbotLite.Skills
                                 _instance.LogMessage("SMITE: No smite buff found, looking for targets");
 
                                 // Find monsters within 250 units of player (smite attack range)
-                                var targetMonster = _instance.enemys
+                                var targetMonster = _instance.Enemys
                                     .Where(monster =>
                                     {
                                         // Check if monster is within 250 units of player

@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using BetterFollowbotLite.Interfaces;
+using BetterFollowbotLite.Core.Skills;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -66,7 +67,7 @@ namespace BetterFollowbotLite.Skills
                                 var hasLinkTarget = leaderBuffs.Exists(x => x.Name == targetBuffName);
 
                                 // Check if we have the source buff and its timer
-                                var linkSourceBuff = _instance.buffs.FirstOrDefault(x => x.Name == linkSkill.BuffName);
+                                var linkSourceBuff = _instance.Buffs.FirstOrDefault(x => x.Name == linkSkill.BuffName);
                                 var linkSourceTimeLeft = linkSourceBuff?.Timer ?? 0;
 
                                 // Check distance from leader to mouse cursor in screen space

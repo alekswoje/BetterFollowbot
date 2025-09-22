@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using ExileCore;
+using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
+using ExileCore.Shared.Enums;
 using SharpDX;
 
 namespace BetterFollowbotLite.Interfaces
@@ -14,7 +17,7 @@ namespace BetterFollowbotLite.Interfaces
         /// Plugin settings
         /// </summary>
         BetterFollowbotLiteSettings Settings { get; }
-        
+
         /// <summary>
         /// Current player position
         /// </summary>
@@ -54,5 +57,25 @@ namespace BetterFollowbotLite.Interfaces
         /// Update last action time for GCD
         /// </summary>
         DateTime LastTimeAny { get; set; }
+
+        /// <summary>
+        /// Player buffs
+        /// </summary>
+        List<Buff> Buffs { get; }
+
+        /// <summary>
+        /// Enemy entities
+        /// </summary>
+        List<Entity> Enemys { get; }
+
+        /// <summary>
+        /// Summons manager
+        /// </summary>
+        Summons Summons { get; }
+
+        /// <summary>
+        /// Get monster count within distance by rarity
+        /// </summary>
+        int GetMonsterWithin(float maxDistance, MonsterRarity rarity);
     }
 }

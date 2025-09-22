@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using BetterFollowbotLite.Interfaces;
+using BetterFollowbotLite.Core.Skills;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -53,7 +54,7 @@ namespace BetterFollowbotLite.Skills
                     if (!(skill.RemainingUses <= 0 && skill.IsOnCooldown))
                     {
                         // Check if we don't already have the vaal haste buff
-                        var hasVaalHasteBuff = _instance.buffs.Exists(x => x.Name == "vaal_haste");
+                        var hasVaalHasteBuff = _instance.Buffs.Exists(x => x.Name == "vaal_haste");
                         _instance.LogMessage($"VAAL HASTE: Has vaal haste buff: {hasVaalHasteBuff}");
 
                         if (!hasVaalHasteBuff)
@@ -141,7 +142,7 @@ namespace BetterFollowbotLite.Skills
                         if (esBelowThreshold)
                         {
                             // Check if we don't already have the vaal discipline buff
-                            var hasVaalDisciplineBuff = _instance.buffs.Exists(x => x.Name == "vaal_discipline");
+                            var hasVaalDisciplineBuff = _instance.Buffs.Exists(x => x.Name == "vaal_discipline");
                             _instance.LogMessage($"VAAL DISCIPLINE: Has vaal discipline buff: {hasVaalDisciplineBuff}");
 
                             if (!hasVaalDisciplineBuff)

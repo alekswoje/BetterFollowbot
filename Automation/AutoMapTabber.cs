@@ -1,6 +1,7 @@
 using System;
 using System.Windows.Forms;
 using BetterFollowbotLite.Interfaces;
+using BetterFollowbotLite.Core.Skills;
 using ExileCore;
 
 namespace BetterFollowbotLite.Automation

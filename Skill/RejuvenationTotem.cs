@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using BetterFollowbotLite.Interfaces;
+using BetterFollowbotLite.Core.Skills;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -41,7 +42,7 @@ namespace BetterFollowbotLite.Skills
                             _instance.LogMessage("REJUVENATION TOTEM: ✅ Cooldown check passed, processing totem logic");
 
                             // Check if we already have the totem buff
-                            var hasTotemBuff = _instance.buffs.Exists(x => x.Name == "totem_aura_life_regen");
+                            var hasTotemBuff = _instance.Buffs.Exists(x => x.Name == "totem_aura_life_regen");
                             if (!hasTotemBuff)
                             {
                                 // Check for unique/rare monsters within range

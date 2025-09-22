@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using BetterFollowbotLite.Interfaces;
+using BetterFollowbotLite.Core.Skills;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -36,13 +37,13 @@ namespace BetterFollowbotLite.Skills
                     // Check cooldown to prevent double-spawning
                     if (SkillInfo.ManageCooldown(SkillInfo.holyRelict, skill))
                     {
-                        var lowestMinionHp = _instance.Summons.GetLowestMinionHpp();
+                        var lowestMinionHp = Summons.GetLowestMinionHpp();
                         // Convert HP percentage from 0-1 range to 0-100 range for comparison
                         var lowestMinionHpPercent = lowestMinionHp * 100f;
                         // Check for Holy Relic minion presence
                         // Prioritize ReAgent buff names, then check for other indicators
                         // Note: Avoid "guardian_life_regen" as it's just the life regen effect, not minion presence
-                        var hasGuardianBlessingMinion = _instance.buffs.Exists(x =>
+                        var hasGuardianBlessingMinion = _instance.Buffs.Exists(x =>
                             x.Name == "has_guardians_blessing_minion" ||
                             (x.Name.Contains("holy") && x.Name.Contains("relic") && !x.Name.Contains("life")) ||
                             x.Name.Contains("guardian_blessing_minion"));
@@ -65,14 +66,14 @@ namespace BetterFollowbotLite.Skills
                 {
                     // Check for Zealotry aura buff
                     // Prioritize ReAgent buff names, then check for aura effects
-                    var hasGuardianBlessingAura = _instance.buffs.Exists(x =>
+                    var hasGuardianBlessingAura = _instance.Buffs.Exists(x =>
                         x.Name == "has_guardians_blessing_aura" ||
                         x.Name == "zealotry" ||
                         x.Name == "player_aura_spell_damage" ||
                         (x.Name.Contains("blessing") && x.Name.Contains("aura")));
 
                     // Check for Holy Relic minion presence (same logic as Holy Relic section)
-                    var hasGuardianBlessingMinion = _instance.buffs.Exists(x =>
+                    var hasGuardianBlessingMinion = _instance.Buffs.Exists(x =>
                         x.Name == "has_guardians_blessing_minion" ||
                         (x.Name.Contains("holy") && x.Name.Contains("relic") && !x.Name.Contains("life")) ||
                         x.Name.Contains("guardian_blessing_minion"));

@@ -3,7 +3,7 @@ using ExileCore.PoEMemory.Components;
 
 namespace BetterFollowbotLite;
 
-internal class Summons
+public class Summons
 {
     public static float GetLowestMinionHpp()
     {

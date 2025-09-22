@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using SharpDX;
 using GameOffsets.Native;
+using Vector2i = GameOffsets.Native.Vector2i;
 
 namespace BetterFollowbotLite.Interfaces
 {

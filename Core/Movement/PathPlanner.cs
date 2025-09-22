@@ -448,15 +448,18 @@ namespace BetterFollowbotLite.Core.Movement
                                                 ? heightData[waypoint.Y][waypoint.X]
                                                 : followTarget.Pos.Y; // Fallback to target height
 
-                                            if (i <= 5) // Log first few waypoints
-                                                _core.LogMessage($"PATH: Waypoint {i}: grid({waypoint.X},{waypoint.Y}) -> height data: {heightData?[waypoint.Y]?[waypoint.X] ?? -999}, using height: {height}");
-
                                             var worldPos = new Vector3(
                                                 waypoint.X * gridToWorldMultiplier,
                                                 height, // Use terrain height like Radar
                                                 waypoint.Y * gridToWorldMultiplier
                                             );
-                                            _core.LogMessage($"A* PATH: Adding waypoint {i}/{pathWaypoints.Count}: grid({waypoint.X},{waypoint.Y}) -> world({worldPos.X:F1},{worldPos.Y:F1},{worldPos.Z:F1})");
+
+                                            // Only log first few waypoints to avoid spam
+                                            if (i <= 3)
+                                            {
+                                                _core.LogMessage($"A* PATH: Waypoint {i}: grid({waypoint.X},{waypoint.Y}) -> height: {height:F1}, world({worldPos.X:F1},{worldPos.Y:F1},{worldPos.Z:F1})");
+                                            }
+
                                             _taskManager.AddTask(new TaskNode(worldPos, _core.Settings.autoPilotPathfindingNodeDistance));
                                             waypointsAdded++;
                                         }

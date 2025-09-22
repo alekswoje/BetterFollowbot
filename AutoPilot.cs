@@ -549,6 +549,7 @@ namespace BetterFollowbotLite;
             // Only execute input tasks here - decision making moved to Render method
             if (_taskManager.TaskCount > 0)
             {
+                BetterFollowbotLite.Instance.LogMessage($"TASK EXECUTION: Found {_taskManager.TaskCount} tasks to execute");
                 TaskNode currentTask = null;
                 bool taskAccessError = false;
 
@@ -595,6 +596,8 @@ namespace BetterFollowbotLite;
 
                 var taskDistance = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, currentTask.WorldPosition);
                 var playerDistanceMoved = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, lastPlayerPosition);
+
+                BetterFollowbotLite.Instance.LogMessage($"TASK EXECUTION: Processing {currentTask.Type} task at distance {taskDistance:F1}");
 
                 // Check if we should clear path for better responsiveness to player movement
                 if (ShouldClearPathForResponsiveness())
@@ -773,6 +776,8 @@ namespace BetterFollowbotLite;
                 transitionPos = executionResult.TransitionPos;
                 waypointScreenPos = executionResult.WaypointScreenPos;
 
+                BetterFollowbotLite.Instance.LogMessage($"TASK EXECUTION: Flags - DashToLeader:{shouldDashToLeader}, TerrainDash:{shouldTerrainDash}, MovementContinue:{shouldMovementContinue}, ScreenPosError:{screenPosError}");
+
 
                 // Handle error cleanup (simplified without try-catch)
                 if (currentTask != null && currentTask.AttemptCount > 20)
@@ -829,11 +834,12 @@ namespace BetterFollowbotLite;
                         continue;
                     }
 
-                    if (!screenPosError && currentTask.Type == TaskNodeType.Movement)
+                if (!screenPosError && currentTask.Type == TaskNodeType.Movement)
+                {
+                    BetterFollowbotLite.Instance.LogMessage("TASK EXECUTION: Executing movement task");
+                    // LAST CHANCE CHECK: Before executing movement, check if player has turned around
+                    if (ShouldClearPathForResponsiveness())
                     {
-                        // LAST CHANCE CHECK: Before executing movement, check if player has turned around
-                        if (ShouldClearPathForResponsiveness())
-                        {
                             BetterFollowbotLite.Instance.LogMessage("LAST CHANCE 180 CHECK: Player direction changed before movement execution, aborting current task");
                             _taskManager.ClearTasksPreservingTransitions();
                             hasUsedWp = false; // Allow waypoint usage again

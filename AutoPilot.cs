@@ -859,8 +859,95 @@ namespace BetterFollowbotLite;
     {
         try
         {
-            // Decision making logic has been simplified - main logic moved to MovementLogic
-            // TODO: Review and potentially simplify this method further
+            // CRITICAL: Update leader position tracking
+            UpdateFollowTargetPosition();
+
+            // GLOBAL TELEPORT PROTECTION: Block ALL task creation and responsiveness during teleport
+            if (IsTeleportInProgress)
+            {
+                BetterFollowbotLite.Instance.LogMessage($"TELEPORT: Blocking all task creation - teleport in progress ({_taskManager.TaskCount} tasks)");
+                return; // Exit immediately to prevent any interference
+            }
+
+            // PORTAL TRANSITION HANDLING: Actively search for portals during portal transition mode
+            // TODO: Add logic to check how close the leader was to this portal before teleporting
+            // This would help determine if we should click this portal or if there might be a closer one
+            if (portalManager.IsInPortalTransition)
+            {
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL: In portal transition mode - actively searching for portals to follow leader");
+
+                // Get leader party element for portal search
+                var leaderElement = _leaderDetector.GetLeaderPartyElement();
+                if (leaderElement != null)
+                {
+                    // Force portal search during portal transition
+                    var portal = GetBestPortalLabel(leaderElement, forceSearch: true);
+                    if (portal != null)
+                    {
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL: Found portal '{portal.Label?.Text}' during transition - creating transition task");
+                        _taskManager.AddTask(new TaskNode(portal, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL: Portal transition task created for portal at {portal.ItemOnGround.Pos}");
+                    }
+                    else
+                    {
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL: No portals found during transition - will retry on next update");
+                    }
+                }
+                else
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Cannot search for portals - no leader party element found");
+                }
+            }
+
+            // PORTAL TRANSITION RESET: Clear portal transition mode when bot successfully reaches leader
+            if (portalManager.IsInPortalTransition && followTarget != null)
+            {
+                var distanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
+                // If bot is now close to leader after being far away, portal transition was successful
+                if (distanceToLeader < 1000) // Increased from 300 to 1000 for portal transitions
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Bot successfully reached leader after portal transition - clearing portal transition mode");
+                    portalManager.SetPortalTransitionMode(false); // Clear portal transition mode to allow normal operation
+                }
+            }
+
+            // Only create tasks if we have a valid follow target
+            if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
+            {
+                var distanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
+
+                // Create movement tasks if we're far from leader and not in portal transition
+                if (distanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value &&
+                    !portalManager.IsInPortalTransition)
+                {
+                    // Check if we should create a dash task instead
+                    if (distanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotDashDistance &&
+                        BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled)
+                    {
+                        // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
+                        var hasConflictingTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
+                        if (!hasConflictingTasks)
+                        {
+                            _taskManager.AddTask(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
+                            BetterFollowbotLite.Instance.LogMessage($"Created dash task to leader (distance: {distanceToLeader:F1})");
+                        }
+                    }
+                    else
+                    {
+                        // Create movement task
+                        _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                        BetterFollowbotLite.Instance.LogMessage($"Created movement task to leader (distance: {distanceToLeader:F1})");
+                    }
+                }
+            }
+            else
+            {
+                BetterFollowbotLite.Instance.LogMessage("No valid follow target - cannot create movement tasks");
+            }
+
+            // Update last target position for responsiveness tracking
+            if (followTarget?.Pos != null)
+                lastTargetPosition = followTarget.Pos;
         }
         catch (Exception e)
         {

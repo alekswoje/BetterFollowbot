@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using BetterFollowbotLite.Interfaces;
 using BetterFollowbotLite.Core.TaskManagement;

@@ -92,7 +92,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         ExileCore.Core.ParallelRunner.Run(skillCoroutine);
         Input.RegisterKey(Settings.autoPilotToggleKey.Value);
         Settings.autoPilotToggleKey.OnValueChanged += () => { Input.RegisterKey(Settings.autoPilotToggleKey.Value); };
-        // Task execution now happens automatically in autoPilot.Render() every frame
+        autoPilot.StartCoroutine();
 
         summonRagingSpirits = new SummonRagingSpirits(this, Settings, autoPilot, summons);
         summonSkeletons = new SummonSkeletons(this, Settings, autoPilot, summons);
@@ -307,12 +307,12 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         };
     }
 
-    private IEnumerator WaitForSkillsAfterAreaChange()
+    private void WaitForSkillsAfterAreaChange()
     {
         while (skills == null || localPlayer == null || GameController.IsLoading || !GameController.InGame)
-            yield return new WaitTime(200);
+            System.Threading.Thread.Sleep(200);
 
-        yield return new WaitTime(1000);
+        System.Threading.Thread.Sleep(1000);
         SkillInfo.UpdateSkillInfo(true);
     }
 
@@ -341,8 +341,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         SkillInfo.ResetSkills();
         skills = null;
 
-        var coroutine = new Coroutine(WaitForSkillsAfterAreaChange(), this);
-        ExileCore.Core.ParallelRunner.Run(coroutine);
+        System.Threading.Tasks.Task.Run(() => WaitForSkillsAfterAreaChange());
 
         autoPilot.AreaChange();
 
@@ -626,20 +625,20 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 }
 
                 autoPilot.UpdateFollowTargetPosition();
-                // Task execution now happens in autoPilot.Render()
+                autoPilot.UpdateAutoPilotLogic();
                 autoPilot.Render();
 
                 if (autoPilot != null)
                 {
                     var timeSinceLastAutoPilotLog = (DateTime.Now - lastAutoPilotUpdateLogTime).TotalSeconds;
                     if (timeSinceLastAutoPilotLog > 5.0)
-                    {
-                        var followTarget = autoPilot.FollowTarget;
-                        LogMessage($"AUTOPILOT: After update - Task count: {autoPilot.Tasks.Count}, FollowTarget: {(followTarget != null ? followTarget.GetComponent<Player>()?.PlayerName ?? "Unknown" : "null")}");
+                {
+                    var followTarget = autoPilot.FollowTarget;
+                    LogMessage($"AUTOPILOT: After update - Task count: {autoPilot.Tasks.Count}, FollowTarget: {(followTarget != null ? followTarget.GetComponent<Player>()?.PlayerName ?? "Unknown" : "null")}");
 
-                        if (followTarget != null && autoPilot.Tasks.Count == 0)
-                        {
-                            LogMessage("AUTOPILOT: Has follow target but no tasks - AutoPilot may not be moving the bot");
+                    if (followTarget != null && autoPilot.Tasks.Count == 0)
+                    {
+                        LogMessage("AUTOPILOT: Has follow target but no tasks - AutoPilot may not be moving the bot");
                         }
                         lastAutoPilotUpdateLogTime = DateTime.Now;
                     }

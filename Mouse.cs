@@ -51,23 +51,23 @@ public static class Mouse
         SetCursorPos((int)vec.X, (int)vec.Y);
     }
 
-    public static IEnumerator LeftClick()
+    public static void LeftClick()
     {
         LeftMouseDown();
-        yield return new WaitTime(40);
+        System.Threading.Thread.Sleep(40);
         LeftMouseUp();
-        yield return new WaitTime(100);
+        System.Threading.Thread.Sleep(100);
     }
         
-    public static IEnumerator RightClick()
+    public static void RightClick()
     {
         RightMouseDown();
-        yield return new WaitTime(40);
+        System.Threading.Thread.Sleep(40);
         RightMouseUp();
-        yield return new WaitTime(100);
+        System.Threading.Thread.Sleep(100);
     }
 
-    public static IEnumerator SetCursorPosHuman(Vector2 targetPos, bool limited = true)
+    public static void SetCursorPosHuman(Vector2 targetPos, bool limited = true)
     {
         // Keep Curser Away from Screen Edges to prevent UI Interaction.
         var windowRect = BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle();
@@ -81,8 +81,8 @@ public static class Mouse
             if (targetPos.X >= windowRect.Right - edgeBoundsX) targetPos.X = windowRect.Right -edgeBoundsX;
             if (targetPos.Y >= windowRect.Bottom - edgeBoundsY) targetPos.Y = windowRect.Bottom - edgeBoundsY;
         }
-            
-            
+
+
         var step = (float)Math.Sqrt(Vector2.Distance(BetterFollowbotLite.Instance.GetMousePosition(), targetPos)) * speedMouse / 20;
 
         if (step > 6)
@@ -90,18 +90,18 @@ public static class Mouse
             {
                 var vector2 = Vector2.SmoothStep(BetterFollowbotLite.Instance.GetMousePosition(), targetPos, i / step);
                 SetCursorPos((int)vector2.X, (int)vector2.Y);
-                yield return new WaitTime(5);
+                System.Threading.Thread.Sleep(5);
             }
         else
             SetCursorPos(targetPos);
     }
-    public static IEnumerator SetCursorPosAndLeftClickHuman(Vector2 coords, int extraDelay)
+    public static void SetCursorPosAndLeftClickHuman(Vector2 coords, int extraDelay)
     {
         SetCursorPos(coords);
-        yield return new WaitTime(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency + extraDelay);
+        System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency + extraDelay);
         LeftMouseDown();
-        yield return new WaitTime(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency + extraDelay);
+        System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency + extraDelay);
         LeftMouseUp();
-        yield return new WaitTime(100);
+        System.Threading.Thread.Sleep(100);
     }
 }

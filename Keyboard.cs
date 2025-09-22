@@ -1,16 +1,11 @@
 ﻿using System;
-using System.Collections;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using ExileCore;
-using ExileCore.Shared;
 
 namespace BetterFollowbotLite;
 
 public static class Keyboard
 {
-    private const string CoroutineKeyPress = "KeyPress";
-    private static Coroutine _keyboardCoroutine;
         
     private const int KeyeventfExtendedkey = 0x0001;
     private const int KeyeventfKeyup = 0x0002;
@@ -43,14 +38,13 @@ public static class Keyboard
     {
         if (anyDelay)
             BetterFollowbotLite.Instance.LastTimeAny = DateTime.Now;
-        _keyboardCoroutine = new Coroutine(KeyPressRoutine(key), BetterFollowbotLite.Instance, CoroutineKeyPress);
-        ExileCore.Core.ParallelRunner.Run(_keyboardCoroutine);
+        KeyPressRoutine(key);
     }
 
-    private static IEnumerator KeyPressRoutine(Keys key)
+    private static void KeyPressRoutine(Keys key)
     {
         KeyDown(key);
-        yield return new WaitTime(20);
+        System.Threading.Thread.Sleep(20);
         KeyUp(key);
     }
 }

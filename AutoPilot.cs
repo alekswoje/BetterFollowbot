@@ -113,7 +113,7 @@ namespace BetterFollowbotLite;
                 }
                 else if (newPosition != lastTargetPosition)
                 {
-                    // Removed excessive follow target position logging
+                    // Position updated
                 }
             }
 
@@ -865,11 +865,9 @@ namespace BetterFollowbotLite;
                             if (!hasConflictingTasks)
                             {
                                 _taskManager.AddTask(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
-                                // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                             else
                             {
-                                // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                         }
                         else
@@ -901,11 +899,9 @@ namespace BetterFollowbotLite;
                             if (!hasConflictingTasks)
                             {
                                 _taskManager.AddTask(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
-                                // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                             else
                             {
-                                // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                         }
                         else
@@ -1033,335 +1029,6 @@ namespace BetterFollowbotLite;
                 transitionPos = executionResult.TransitionPos;
                 waypointScreenPos = executionResult.WaypointScreenPos;
 
-                // LEGACY SWITCH STATEMENT - MOVED TO MovementExecutor
-                /*
-                switch (currentTask.Type)
-                    {
-                        case TaskNodeType.Movement:
-                            // Check for distance-based dashing to keep up with leader
-                            if (BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled && followTarget != null && followTarget.Pos != null && (DateTime.Now - lastDashTime).TotalMilliseconds >= 3000)
-                            {
-                                try
-                                {
-                                    var distanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
-                                    if (distanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotDashDistance && IsCursorPointingTowardsTarget(followTarget.Pos)) // Dash if more than configured distance away and cursor is pointing towards leader
-                                    {
-                                        shouldDashToLeader = true;
-                                    }
-                                }
-                                catch (Exception e)
-                                {
-                                    // Error handling without logging
-                                }
-                            }
-                            else
-                            {
-                                // Dash check skipped
-                            }
-
-                            // Check for terrain-based dashing
-                            if (BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled && (DateTime.Now - lastDashTime).TotalMilliseconds >= 3000)
-                            {
-                                // Terrain dash check
-                                if (_pathfinding.CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()) && IsCursorPointingTowardsTarget(currentTask.WorldPosition))
-                                {
-                                    // Terrain dash executed
-                                    shouldTerrainDash = true;
-                                }
-                                else if (_pathfinding.CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()) && !IsCursorPointingTowardsTarget(currentTask.WorldPosition))
-                                {
-                                    // Terrain dash blocked - cursor not pointing towards target
-                                }
-                                else
-                                {
-                                    // No terrain dash needed
-                                }
-                            }
-
-                            // Skip movement logic if dashing
-                            if (!shouldDashToLeader && !shouldTerrainDash)
-                            {
-                                try
-                                {
-                                    movementScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
-                                }
-                                catch (Exception e)
-                                {
-                                    screenPosError = true;
-                                }
-
-                                
-                                if (!screenPosError)
-                                {
-                                    
-                                    try
-                                    {
-                                        Input.KeyDown(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
-                                        BetterFollowbotLite.Instance.LogMessage("Movement task: Move key down pressed, waiting");
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        BetterFollowbotLite.Instance.LogError($"Movement task: KeyDown error: {e}");
-                                        keyDownError = true;
-                                    }
-
-                                    try
-                                    {
-                                        Input.KeyUp(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
-                                        BetterFollowbotLite.Instance.LogMessage("Movement task: Move key released");
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        BetterFollowbotLite.Instance.LogError($"Movement task: KeyUp error: {e}");
-                                        keyUpError = true;
-                                    }
-
-                                    //Within bounding range. Task is complete
-                                    //Note: Was getting stuck on close objects... testing hacky fix.
-                                    if (taskDistance <= BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value * 1.5)
-                                    {
-                                        // Removed excessive movement completion logging
-                                        _taskManager.RemoveTask(currentTask);
-                                        lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
-                                    }
-                                    else
-                                    {
-                                        // Timeout mechanism - if we've been trying to reach this task for too long, give up
-                                        currentTask.AttemptCount++;
-                                        if (currentTask.AttemptCount > 10) // 10 attempts = ~5 seconds
-                                        {
-                                            BetterFollowbotLite.Instance.LogMessage($"Movement task timeout - Distance: {taskDistance:F1}, Attempts: {currentTask.AttemptCount}");
-                                            _taskManager.RemoveTask(currentTask);
-                                            lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
-                                        }
-                                    }
-                                    shouldMovementContinue = true;
-                                }
-                            }
-                            break;
-                        case TaskNodeType.Loot:
-                        {
-                            currentTask.AttemptCount++;
-                            try
-                            {
-                                questLoot = BetterFollowbotLite.Instance.GameController.EntityListWrapper.Entities
-                                    .Where(e => e?.Type == EntityType.WorldItem && e.IsTargetable && e.HasComponent<WorldItem>())
-                                    .FirstOrDefault(e =>
-                                    {
-                                        var itemEntity = e.GetComponent<WorldItem>().ItemEntity;
-                                        return BetterFollowbotLite.Instance.GameController.Files.BaseItemTypes.Translate(itemEntity.Path).ClassName ==
-                                               "QuestItem";
-                                    });
-                            }
-                            catch
-                            {
-                                questLoot = null;
-                            }
-                            if (questLoot == null
-                                || currentTask.AttemptCount > 2
-                                || Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, questLoot.Pos) >=
-                                BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
-                            {
-                                _taskManager.RemoveTask(currentTask);
-                                shouldLootAndContinue = true;
-                            }
-                            else
-                            {
-                                Input.KeyUp(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
-                                if (questLoot != null)
-                                {
-                                    targetInfo = questLoot.GetComponent<Targetable>();
-                                }
-                                shouldLootAndContinue = true; // Set flag to execute loot logic outside try-catch
-                            }
-                            break;
-                        }
-                        case TaskNodeType.Transition:
-                        {
-                            BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Executing transition task - Attempt {currentTask.AttemptCount + 1}/6");
-
-                            // Initialize flag to true - will be set to false if portal is invalid
-                            shouldTransitionAndContinue = true;
-
-                            // Log portal information
-                            var portalLabel = currentTask.LabelOnGround?.Label?.Text ?? "NULL";
-                            var portalPos = currentTask.LabelOnGround?.ItemOnGround?.Pos ?? Vector3.Zero;
-                            var distanceToPortal = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, portalPos);
-
-                            BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Portal '{portalLabel}' at distance {distanceToPortal:F1}");
-
-                            // Check if portal is still visible and valid
-                            var isPortalVisible = currentTask.LabelOnGround?.Label?.IsVisible ?? false;
-                            var isPortalValid = currentTask.LabelOnGround?.Label?.IsValid ?? false;
-
-                            BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Portal visibility - Visible: {isPortalVisible}, Valid: {isPortalValid}");
-
-                            if (!isPortalVisible || !isPortalValid)
-                            {
-                                BetterFollowbotLite.Instance.LogMessage("TRANSITION: Portal no longer visible or valid, removing task");
-                                _taskManager.RemoveTask(currentTask);
-                                shouldTransitionAndContinue = false; // Don't continue with transition
-                                break; // Exit the switch case
-                            }
-
-                            //Click the transition
-                            Input.KeyUp(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
-
-                            // Get the portal click position with more detailed logging
-                            var portalRect = currentTask.LabelOnGround.Label.GetClientRect();
-                            transitionPos = new Vector2(portalRect.Center.X, portalRect.Center.Y);
-
-                            BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Portal click position - X: {transitionPos.X:F1}, Y: {transitionPos.Y:F1}");
-                            BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Portal screen rect - Left: {portalRect.Left:F1}, Top: {portalRect.Top:F1}, Width: {portalRect.Width:F1}, Height: {portalRect.Height:F1}");
-
-                            currentTask.AttemptCount++;
-                            if (currentTask.AttemptCount > 6)
-                            {
-                                BetterFollowbotLite.Instance.LogMessage("TRANSITION: Max attempts reached (6), removing transition task");
-                                _taskManager.RemoveTask(currentTask);
-                            }
-                            else
-                            {
-                                BetterFollowbotLite.Instance.LogMessage("TRANSITION: Transition task queued for execution");
-                            }
-                            shouldTransitionAndContinue = true;
-                            break;
-                        }
-
-                        case TaskNodeType.ClaimWaypoint:
-                        {
-                            if (Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, currentTask.WorldPosition) > 150)
-                            {
-                                waypointScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
-                                Input.KeyUp(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
-                            }
-                            currentTask.AttemptCount++;
-                            if (currentTask.AttemptCount > 3)
-                                _taskManager.RemoveTask(currentTask);
-                            shouldClaimWaypointAndContinue = true;
-                            break;
-                        }
-
-                         case TaskNodeType.Dash:
-                         {
-                             BetterFollowbotLite.Instance.LogMessage($"Executing Dash task - Target: {currentTask.WorldPosition}, Distance: {Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, currentTask.WorldPosition):F1}, Attempts: {currentTask.AttemptCount}");
-
-                             // TIMEOUT MECHANISM: If dash task has been tried too many times, give up
-                             currentTask.AttemptCount++;
-                             if (currentTask.AttemptCount > 15) // Allow more attempts for dash tasks
-                             {
-                                 BetterFollowbotLite.Instance.LogMessage($"Dash task timeout - Too many attempts ({currentTask.AttemptCount}), removing task");
-                                 _taskManager.RemoveTask(currentTask);
-                                 break;
-                             }
-
-                             if ((DateTime.Now - lastDashTime).TotalMilliseconds >= 3000)
-                             {
-                                 // Check if cursor is pointing towards target
-                                 if (IsCursorPointingTowardsTarget(currentTask.WorldPosition))
-                                 {
-                                     BetterFollowbotLite.Instance.LogMessage("Dash task: Cursor direction valid, executing dash");
-
-                                     // Position mouse towards target if needed
-                                     var targetScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
-                                     if (targetScreenPos.X >= 0 && targetScreenPos.Y >= 0 &&
-                                         targetScreenPos.X <= BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width &&
-                                         targetScreenPos.Y <= BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height)
-                                     {
-                                         // Target is on-screen, position mouse
-                                         yield return Mouse.SetCursorPosHuman(targetScreenPos);
-                                     }
-
-                                     // Execute the dash
-                                     Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
-                                     _movementExecutor.UpdateLastDashTime(DateTime.Now); // Record dash time for cooldown
-                                     lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
-
-                                     // Remove the task since dash was executed
-                                     _taskManager.RemoveTask(currentTask);
-                                     BetterFollowbotLite.Instance.LogMessage("Dash task completed successfully");
-                                     shouldDashAndContinue = true;
-                                 }
-                                 else
-                                 {
-                                     BetterFollowbotLite.Instance.LogMessage("Dash task: Cursor not pointing towards target, positioning cursor");
-
-                                     // Try to position cursor towards the target
-                                     var targetScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
-
-                                     // If target is off-screen, position towards the edge of screen in the target's direction
-                                     if (targetScreenPos.X < 0 || targetScreenPos.Y < 0 ||
-                                         targetScreenPos.X > BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width ||
-                                         targetScreenPos.Y > BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height)
-                                     {
-                                         // Calculate direction to target and position mouse at screen edge
-                                         var playerPos = BetterFollowbotLite.Instance.playerPosition;
-                                         var directionToTarget = currentTask.WorldPosition - playerPos;
-                                         directionToTarget.Normalize();
-
-                                         // Position mouse at screen center (simplified approach)
-                                         var screenCenter = new Vector2(
-                                             BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width / 2,
-                                             BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height / 2
-                                         );
-
-                                         yield return Mouse.SetCursorPosHuman(screenCenter);
-                                         BetterFollowbotLite.Instance.LogMessage("Dash task: Positioned cursor at screen center for off-screen target");
-                                     }
-                                     else
-                                     {
-                                         // Target is on-screen but cursor isn't pointing towards it
-                                         yield return Mouse.SetCursorPosHuman(targetScreenPos);
-                                         BetterFollowbotLite.Instance.LogMessage("Dash task: Repositioned cursor towards target");
-                                     }
-
-                                     // Wait a bit for cursor to settle
-                                     yield return new WaitTime(100);
-
-                                     // Check again if cursor is now pointing towards target
-                                     if (IsCursorPointingTowardsTarget(currentTask.WorldPosition))
-                                     {
-                                         BetterFollowbotLite.Instance.LogMessage("Dash task: Cursor now pointing correctly, executing dash");
-                                         Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
-                                         _movementExecutor.UpdateLastDashTime(DateTime.Now);
-                                         lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
-                                         _taskManager.RemoveTask(currentTask);
-                                         shouldDashAndContinue = true;
-                                     }
-                                     else
-                                     {
-                                         BetterFollowbotLite.Instance.LogMessage("Dash task: Still can't position cursor correctly, will retry");
-                                         // Don't remove the task - let it try again later
-                                         yield return new WaitTime(300); // Longer delay before retry
-                                     }
-                                 }
-                             }
-                             else
-                             {
-                                 BetterFollowbotLite.Instance.LogMessage("Dash task blocked - Cooldown active");
-                                 // Don't remove the task - wait for cooldown to expire
-                                 yield return new WaitTime(600); // Wait before retry during cooldown
-                             }
-                             break;
-                         }
-
-                        case TaskNodeType.TeleportConfirm:
-                        {
-                            _taskManager.RemoveTask(currentTask);
-                            shouldTeleportConfirmAndContinue = true;
-                            break;
-                        }
-
-                        case TaskNodeType.TeleportButton:
-                        {
-                            _taskManager.RemoveTask(currentTask);
-                            // CLEAR GLOBAL FLAG: Teleport task completed
-                            IsTeleportInProgress = false;
-                            shouldTeleportButtonAndContinue = true;
-                            break;
-                        }
-                    }
-                */
 
                 // Handle error cleanup (simplified without try-catch)
                 if (currentTask != null && currentTask.AttemptCount > 20)
@@ -1432,7 +1099,6 @@ namespace BetterFollowbotLite;
 
                         BetterFollowbotLite.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
                         BetterFollowbotLite.Instance.LogMessage($"Movement task: Move key: {BetterFollowbotLite.Instance.Settings.autoPilotMoveKey}");
-                        // Removed excessive DEBUG logging for cleaner logs
                         yield return Mouse.SetCursorPosHuman(movementScreenPos);
                         
                         if (instantPathOptimization)
@@ -1890,11 +1556,9 @@ namespace BetterFollowbotLite;
                             if (!hasConflictingTasks)
                             {
                                 _taskManager.AddTask(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
-                                // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                             else
                             {
-                                // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                         }
                         else
@@ -1933,11 +1597,9 @@ namespace BetterFollowbotLite;
                             if (!hasConflictingTasks)
                             {
                                 _taskManager.AddTask(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
-                                // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                             else
                             {
-                                // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                         }
                         else
@@ -2242,18 +1904,18 @@ namespace BetterFollowbotLite;
         // Restart coroutine if it died
         if (BetterFollowbotLite.Instance.Settings.autoPilotEnabled && (autoPilotCoroutine == null || !autoPilotCoroutine.Running))
         {
-            // Removed excessive coroutine restart logging
+            // Restart coroutine if needed
             StartCoroutine();
         }
         else if (BetterFollowbotLite.Instance.Settings.autoPilotEnabled)
         {
             if (_taskManager.TaskCount > 0)
             {
-                // Removed excessive coroutine status logging
+                // Check task status
             }
             else
             {
-                // Removed excessive coroutine status logging
+                // Check task status
             }
         }
 
@@ -2302,30 +1964,6 @@ namespace BetterFollowbotLite;
         {
             //ignore
         }
-        /*
-        // Debug for UI Element
-        try
-        {
-            foreach (var partyElementWindow in PartyElements.GetPlayerInfoElementList())
-            {
-                if (string.Equals(partyElementWindow.PlayerName.ToLower(), BetterFollowbotLite.instance.Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase))
-                {
-                    var windowOffset = BetterFollowbotLite.instance.GameController.Window.GetWindowRectangle().TopLeft;
-
-                    var elemCenter = partyElementWindow.TPButton.GetClientRectCache.Center;
-                    var finalPos = new Vector2(elemCenter.X + windowOffset.X, elemCenter.Y + windowOffset.Y);
-
-                    BetterFollowbotLite.instance.Graphics.DrawText("Offset: " +windowOffset.ToString("F2"),new Vector2(300, 560));
-                    BetterFollowbotLite.instance.Graphics.DrawText("Element: " +elemCenter.ToString("F2"),new Vector2(300, 580));
-                    BetterFollowbotLite.instance.Graphics.DrawText("Final: " +finalPos.ToString("F2"),new Vector2(300, 600));
-                }
-            }
-        }
-        catch (Exception e)
-        {
-
-        }
-        */
 
         // Cache Task to prevent access while Collection is changing.
         try

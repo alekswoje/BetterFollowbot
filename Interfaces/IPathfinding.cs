@@ -49,8 +49,9 @@ namespace BetterFollowbotLite.Interfaces
         /// </summary>
         /// <param name="startWorld">Start position in world coordinates</param>
         /// <param name="targetWorld">Target position in world coordinates</param>
+        /// <param name="targetEntity">Optional target entity for accurate grid positioning</param>
         /// <returns>List of grid waypoints or null if no path found</returns>
-        List<Vector2i> GetPath(Vector3 startWorld, Vector3 targetWorld);
+        List<Vector2i> GetPath(Vector3 startWorld, Vector3 targetWorld, ExileCore.PoEMemory.MemoryObjects.Entity targetEntity = null);
 
         /// <summary>
         /// Clear the path cache

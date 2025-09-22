@@ -107,7 +107,7 @@ namespace BetterFollowbotLite.Core.Movement
                 return false;
 
             // Convert world position to grid coordinates
-            var gridPos = WorldToGrid(targetPosition); // Target position (defaults to false for isPlayerPosition)
+            var gridPos = WorldToGrid(targetPosition); // Target position
 
             // Delegate terrain analysis to the specialized analyzer
             var shouldDash = _terrainAnalyzer.AnalyzeTerrainForDashing(targetPosition, GetTerrainTileFromGrid);
@@ -295,10 +295,10 @@ namespace BetterFollowbotLite.Core.Movement
 
         #region Utility Methods
 
-        public List<Vector2i> GetPath(Vector3 startWorld, Vector3 targetWorld)
+        public List<Vector2i> GetPath(Vector3 startWorld, Vector3 targetWorld, ExileCore.PoEMemory.MemoryObjects.Entity targetEntity = null)
         {
             var startGrid = WorldToGrid(startWorld, true);  // Player position
-            var targetGrid = WorldToGrid(targetWorld, false); // Target position
+            var targetGrid = WorldToGrid(targetWorld, false, targetEntity); // Target position
 
             _core.LogMessage($"A* DEBUG: Finding path from grid ({startGrid.X}, {startGrid.Y}) to ({targetGrid.X}, {targetGrid.Y})");
 
@@ -370,7 +370,7 @@ namespace BetterFollowbotLite.Core.Movement
             _pathCache.Clear();
         }
 
-        private Vector2i WorldToGrid(Vector3 worldPos, bool isPlayerPosition = false)
+        private Vector2i WorldToGrid(Vector3 worldPos, bool isPlayerPosition = false, ExileCore.PoEMemory.MemoryObjects.Entity targetEntity = null)
         {
             try
             {
@@ -390,7 +390,19 @@ namespace BetterFollowbotLite.Core.Movement
                     }
                 }
 
-                // For any position (player or target), use manual conversion (similar to Radar's GridToWorldMultiplier)
+                // For target positions, use the provided entity if available
+                if (targetEntity != null && targetEntity.IsValid)
+                {
+                    var positioned = targetEntity.GetComponent<Positioned>();
+                    if (positioned != null)
+                    {
+                        var gridPos = new Vector2i(positioned.GridX, positioned.GridY);
+                        _core.LogMessage($"PATHFINDING: Using target entity Positioned component grid coords: ({gridPos.X}, {gridPos.Y})");
+                        return gridPos;
+                    }
+                }
+
+                // Fallback to manual conversion (similar to Radar's GridToWorldMultiplier)
                 const float GridToWorldMultiplier = 250f / 23f; // TileToWorldConversion / TileToGridConversion
                 var gridX = (int)(worldPos.X / GridToWorldMultiplier);
                 var gridY = (int)(worldPos.Z / GridToWorldMultiplier); // Z is north-south in world space, Y in grid
@@ -408,9 +420,9 @@ namespace BetterFollowbotLite.Core.Movement
             }
         }
 
-        private Vector2i WorldToGrid(Vector2 worldPos, bool isPlayerPosition = false)
+        private Vector2i WorldToGrid(Vector2 worldPos, bool isPlayerPosition = false, ExileCore.PoEMemory.MemoryObjects.Entity targetEntity = null)
         {
-            return WorldToGrid(new Vector3(worldPos.X, 0, worldPos.Y), isPlayerPosition);
+            return WorldToGrid(new Vector3(worldPos.X, 0, worldPos.Y), isPlayerPosition, targetEntity);
         }
 
         private byte GetTerrainTileFromGrid(int x, int y)

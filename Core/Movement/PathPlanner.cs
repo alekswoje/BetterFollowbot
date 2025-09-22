@@ -401,7 +401,7 @@ namespace BetterFollowbotLite.Core.Movement
                             {
                                 // Use A* pathfinding to create waypoint tasks instead of straight line
                                 _core.LogMessage($"A* PATH: Attempting to find path - Player: {_core.PlayerPosition}, Leader: {followTarget.Pos}");
-                                var pathWaypoints = _core.Pathfinding.GetPath(_core.PlayerPosition, followTarget.Pos);
+                                var pathWaypoints = _core.Pathfinding.GetPath(_core.PlayerPosition, followTarget.Pos, followTarget);
 
                                 if (pathWaypoints != null && pathWaypoints.Count > 1) // Need more than just start position
                                 {
@@ -515,7 +515,7 @@ namespace BetterFollowbotLite.Core.Movement
                                 }
                                 else
                                 {
-                                    var extensionWaypoints = _core.Pathfinding.GetPath(currentPathEnd, followTarget.Pos);
+                                    var extensionWaypoints = _core.Pathfinding.GetPath(currentPathEnd, followTarget.Pos, followTarget);
 
                                     if (extensionWaypoints != null && extensionWaypoints.Count > 1)
                                     {

@@ -25,12 +25,31 @@ namespace BetterFollowbotLite.Automation
 
         public string AutomationName => "Auto Level Gems";
 
+        private DateTime _lastGemLevelTime = DateTime.MinValue;
+
         public void Execute()
         {
             if (_settings.autoLevelGemsEnabled && _instance.Gcd())
             {
                 try
                 {
+                    // Protection checks - don't level gems if:
+                    // 1. Inventory is open
+                    // 2. Game is not focused
+                    // 3. Game is paused/menu is open
+                    // 4. Game is loading
+                    // 5. Not in game
+                    var inventoryOpen = _instance.GameController.IngameState.IngameUi.InventoryPanel.IsVisible;
+                    var gameNotFocused = !_instance.GameController.IsForeGroundCache;
+                    var menuWindowOpen = MenuWindow.IsOpened;
+                    var gameLoading = _instance.GameController.IsLoading;
+                    var notInGame = !_instance.GameController.InGame;
+
+                    if (inventoryOpen || gameNotFocused || menuWindowOpen || gameLoading || notInGame)
+                    {
+                        BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Skipping - InventoryOpen: {inventoryOpen}, GameNotFocused: {gameNotFocused}, MenuOpen: {menuWindowOpen}, Loading: {gameLoading}, NotInGame: {notInGame}");
+                        return;
+                    }
 
                     // Check if the gem level up panel is visible
                     var gemLvlUpPanel = _instance.GetGemLvlUpPanel();
@@ -50,8 +69,32 @@ namespace BetterFollowbotLite.Automation
                                     {
                                         // Get the children of the gem element
                                         var gemChildren = gem.Children;
-                                        if (gemChildren != null && gemChildren.Count > 1)
+                                        if (gemChildren != null && gemChildren.Count > 3)
                                         {
+                                            // Check if gemChildren[3] exists and contains text about leveling up
+                                            var gemStatusText = gemChildren[3]?.Text ?? "";
+                                            BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Gem status text: '{gemStatusText}'");
+
+                                            if (gemStatusText.Contains("Gem cannot level up"))
+                                            {
+                                                BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Skipping gem that cannot level up");
+                                                continue; // Skip this gem
+                                            }
+
+                                            if (!gemStatusText.Contains("Click to level up") && !string.IsNullOrWhiteSpace(gemStatusText))
+                                            {
+                                                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Skipping gem with unknown status: '{gemStatusText}'");
+                                                continue; // Skip gems with unknown status
+                                            }
+
+                                            // Check cooldown between gem leveling (1 second minimum)
+                                            var timeSinceLastLevel = DateTime.Now - _lastGemLevelTime;
+                                            if (timeSinceLastLevel.TotalSeconds < 1.0)
+                                            {
+                                                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Waiting for cooldown, {1.0 - timeSinceLastLevel.TotalSeconds:F1}s remaining");
+                                                return; // Wait for cooldown
+                                            }
+
                                             // Get the second child ([1]) which contains the level up button
                                             var levelUpButton = gemChildren[1];
                                             if (levelUpButton != null && levelUpButton.IsVisible)
@@ -124,7 +167,10 @@ namespace BetterFollowbotLite.Automation
                                                 // Removed excessive gem level up completion logging
 
                                                 // Update global cooldown after leveling a gem
-                                                        _instance.LastTimeAny = DateTime.Now;
+                                                _instance.LastTimeAny = DateTime.Now;
+
+                                                // Update gem leveling cooldown
+                                                _lastGemLevelTime = DateTime.Now;
 
                                                 // Only level up one gem per frame to avoid spam
                                                 break;
@@ -136,7 +182,7 @@ namespace BetterFollowbotLite.Automation
                                         }
                                         else
                                         {
-                                            BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Gem children not found or insufficient count");
+                                            BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Gem children not found or insufficient count (need at least 4 children)");
                                         }
                                     }
                                     catch (Exception gemEx)

@@ -863,6 +863,24 @@ namespace BetterFollowbotLite;
             // CRITICAL: Update leader position tracking
             UpdateFollowTargetPosition();
 
+            // PROXIMITY-BASED LEADER DETECTION: If no follow target or invalid, look for nearby players
+            if (followTarget == null || !followTarget.IsValid || followTarget.Pos == null ||
+                float.IsNaN(followTarget.Pos.X) || float.IsNaN(followTarget.Pos.Y) || float.IsNaN(followTarget.Pos.Z))
+            {
+                // Look for the closest player within 300 units to automatically follow
+                var closestPlayer = BetterFollowbotLite.Instance.GameController?.EntityListWrapper?.ValidEntitiesByType[EntityType.Player]
+                    ?.Where(p => p.IsValid && p.Pos != null && !float.IsNaN(p.Pos.X) && !float.IsNaN(p.Pos.Y) && !float.IsNaN(p.Pos.Z))
+                    ?.OrderBy(p => Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, p.Pos))
+                    ?.FirstOrDefault(p => Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, p.Pos) < 300f);
+
+                if (closestPlayer != null)
+                {
+                    var playerName = closestPlayer.GetComponent<Player>()?.PlayerName ?? "Unknown";
+                    BetterFollowbotLite.Instance.LogMessage($"PROXIMITY LEADER: Auto-detected nearby player '{playerName}' at distance {Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, closestPlayer.Pos):F1} - setting as follow target");
+                    SetFollowTarget(closestPlayer);
+                }
+            }
+
             // GLOBAL TELEPORT PROTECTION: Block ALL task creation and responsiveness during teleport
             if (IsTeleportInProgress)
             {
@@ -915,7 +933,7 @@ namespace BetterFollowbotLite;
             // Only create tasks if we have a valid follow target
             if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
             {
-                var distanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
+                var distanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
 
                 // Create movement tasks if we're far from leader and not in portal transition
                 if (distanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value &&
@@ -929,14 +947,14 @@ namespace BetterFollowbotLite;
                         var hasConflictingTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
                         if (!hasConflictingTasks)
                         {
-                            _taskManager.AddTask(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
+                            _taskManager.AddTask(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
                             BetterFollowbotLite.Instance.LogMessage($"Created dash task to leader (distance: {distanceToLeader:F1})");
                         }
                     }
                     else
                     {
                         // Create movement task
-                        _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                        _taskManager.AddTask(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                         BetterFollowbotLite.Instance.LogMessage($"Created movement task to leader (distance: {distanceToLeader:F1})");
                     }
                 }

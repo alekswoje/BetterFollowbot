@@ -59,6 +59,7 @@ namespace BetterFollowbotLite;
     public void SetMovementExecutor(IMovementExecutor movementExecutor)
     {
         _movementExecutor = movementExecutor ?? throw new ArgumentNullException(nameof(movementExecutor));
+        _movementLogic?.SetMovementExecutor(movementExecutor);
     }
 
         private Vector3 lastTargetPosition;

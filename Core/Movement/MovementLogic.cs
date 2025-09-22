@@ -20,7 +20,7 @@ namespace BetterFollowbotLite.Core.Movement
         private readonly ILeaderDetector _leaderDetector;
         private readonly ITaskManager _taskManager;
         private readonly IPathfinding _pathfinding;
-        private readonly IMovementExecutor _movementExecutor;
+        private IMovementExecutor _movementExecutor;
         private readonly PortalManager _portalManager;
         private readonly Random _random;
 
@@ -36,9 +36,17 @@ namespace BetterFollowbotLite.Core.Movement
             _leaderDetector = leaderDetector ?? throw new ArgumentNullException(nameof(leaderDetector));
             _taskManager = taskManager ?? throw new ArgumentNullException(nameof(taskManager));
             _pathfinding = pathfinding ?? throw new ArgumentNullException(nameof(pathfinding));
-            _movementExecutor = movementExecutor ?? throw new ArgumentNullException(nameof(movementExecutor));
+            _movementExecutor = movementExecutor; // Allow null for circular dependency resolution
             _portalManager = portalManager ?? throw new ArgumentNullException(nameof(portalManager));
             _random = new Random();
+        }
+
+        /// <summary>
+        /// Sets the movement executor (used to resolve circular dependency)
+        /// </summary>
+        public void SetMovementExecutor(IMovementExecutor movementExecutor)
+        {
+            _movementExecutor = movementExecutor ?? throw new ArgumentNullException(nameof(movementExecutor));
         }
 
         /// <summary>
@@ -95,6 +103,12 @@ namespace BetterFollowbotLite.Core.Movement
             }
 
             // Execute the task via MovementExecutor
+            if (_movementExecutor == null)
+            {
+                _core.LogMessage("MovementLogic: MovementExecutor not set, cannot execute task");
+                yield break;
+            }
+
             var executionResult = _movementExecutor.ExecuteTask(currentTask,
                 Vector3.Distance(_core.PlayerPosition, currentTask.WorldPosition),
                 Vector3.Distance(_core.PlayerPosition, _lastPlayerPosition));
@@ -224,14 +238,14 @@ namespace BetterFollowbotLite.Core.Movement
                 if (_instantPathOptimization)
                 {
                     Keyboard.KeyPress(_core.Settings.autoPilotDashKey);
-                    _movementExecutor.UpdateLastDashTime(DateTime.Now);
+                    _movementExecutor?.UpdateLastDashTime(DateTime.Now);
                     _instantPathOptimization = false;
                 }
                 else
                 {
                     yield return new WaitTime(_random.Next(25) + 30);
                     Keyboard.KeyPress(_core.Settings.autoPilotDashKey);
-                    _movementExecutor.UpdateLastDashTime(DateTime.Now);
+                    _movementExecutor?.UpdateLastDashTime(DateTime.Now);
                     yield return new WaitTime(_random.Next(25) + 30);
                 }
                 yield return null;
@@ -240,7 +254,7 @@ namespace BetterFollowbotLite.Core.Movement
 
             if (result.ShouldTerrainDash)
             {
-                _movementExecutor.UpdateLastDashTime(DateTime.Now);
+                _movementExecutor?.UpdateLastDashTime(DateTime.Now);
                 yield return null;
                 yield break;
             }
@@ -345,7 +359,7 @@ namespace BetterFollowbotLite.Core.Movement
                 var correctScreenPos = Helper.WorldToValidScreenPosition(correctionTarget);
                 yield return Mouse.SetCursorPosHuman(correctScreenPos);
                 Keyboard.KeyPress(_core.Settings.autoPilotDashKey);
-                _movementExecutor.UpdateLastDashTime(DateTime.Now);
+                _movementExecutor?.UpdateLastDashTime(DateTime.Now);
                 _core.LogMessage("DASH OVERRIDE: Dashed towards player position to override old dash");
             }
             else

@@ -19,6 +19,11 @@ namespace BetterFollowbotLite.Skills
         private readonly AutoPilot _autoPilot;
         private readonly Summons _summons;
 
+        // Throttling for repetitive logs to reduce spam
+        private DateTime _lastExecuteLog = DateTime.MinValue;
+        private DateTime _lastMinionCountLog = DateTime.MinValue;
+        private DateTime _lastEnemyDetectionLog = DateTime.MinValue;
+
         public SummonRagingSpirits(BetterFollowbotLite instance, BetterFollowbotLiteSettings settings,
                                    AutoPilot autoPilot, Summons summons)
         {
@@ -51,8 +56,12 @@ namespace BetterFollowbotLite.Skills
         {
             try
             {
-                // Debug: Always log when SRS Execute is called
-                _instance.LogMessage($"SRS: Execute called - Enabled: {_settings.summonRagingSpiritsEnabled.Value}, AutoPilot: {_autoPilot != null}, FollowTarget: {_autoPilot?.FollowTarget != null}");
+                // Debug: Log when SRS Execute is called (throttled to reduce spam)
+                if ((DateTime.Now - _lastExecuteLog).TotalSeconds >= 3)
+                {
+                    _instance.LogMessage($"SRS: Execute called - Enabled: {_settings.summonRagingSpiritsEnabled.Value}, AutoPilot: {_autoPilot != null}, FollowTarget: {_autoPilot?.FollowTarget != null}");
+                    _lastExecuteLog = DateTime.Now;
+                }
 
                 if (_settings.summonRagingSpiritsEnabled.Value && _autoPilot != null && _autoPilot.FollowTarget != null)
                 {
@@ -64,7 +73,13 @@ namespace BetterFollowbotLite.Skills
                         // Count current summoned raging spirits
                         var ragingSpiritCount = Summons.GetRagingSpiritCount();
                         var totalMinionCount = Summons.GetTotalMinionCount();
-                        _instance.LogMessage($"SRS: Minion count check - Raging spirits: {ragingSpiritCount}, Total minions: {totalMinionCount}, Required: {_settings.summonRagingSpiritsMinCount.Value}");
+
+                        // Throttle minion count logs to reduce spam (only log every 2 seconds)
+                        if ((DateTime.Now - _lastMinionCountLog).TotalSeconds >= 2)
+                        {
+                            _instance.LogMessage($"SRS: Minion count check - Raging spirits: {ragingSpiritCount}, Total minions: {totalMinionCount}, Required: {_settings.summonRagingSpiritsMinCount.Value}");
+                            _lastMinionCountLog = DateTime.Now;
+                        }
 
                         // Only cast SRS if we have less than the minimum required count
                         if (totalMinionCount < _settings.summonRagingSpiritsMinCount.Value)
@@ -72,7 +87,13 @@ namespace BetterFollowbotLite.Skills
                             // Check for HOSTILE rare/unique enemies within 500 units (exclude player's own minions)
                             bool rareOrUniqueNearby = false;
                             var entities = GetEntities().Where(x => x.Type == EntityType.Monster);
-                            _instance.LogMessage($"SRS: Checking for enemies - Monster entities found: {entities.Count()}");
+
+                            // Throttle enemy detection logs to reduce spam (only log every 3 seconds)
+                            if ((DateTime.Now - _lastEnemyDetectionLog).TotalSeconds >= 3)
+                            {
+                                _instance.LogMessage($"SRS: Checking for enemies - Monster entities found: {entities.Count()}");
+                                _lastEnemyDetectionLog = DateTime.Now;
+                            }
 
                             // Get list of deployed object IDs to exclude player's own minions
                             var deployedObjectIds = new HashSet<uint>();

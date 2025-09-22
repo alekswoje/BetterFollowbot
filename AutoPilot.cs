@@ -103,6 +103,7 @@ namespace BetterFollowbotLite;
     {
         if (followTarget != null && followTarget.IsValid)
         {
+            var updateStartTime = DateTime.Now;
             var newPosition = followTarget.Pos;
 
             // Check if position has changed significantly (zone transition or major movement)
@@ -113,11 +114,13 @@ namespace BetterFollowbotLite;
                 // If the target moved more than 500 units, it's likely a zone transition
                 if (distanceMoved > 500)
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Follow target moved {distanceMoved:F0} units (possible zone transition) from {lastTargetPosition} to {newPosition}");
+                    var updateDuration = DateTime.Now - updateStartTime;
+                    BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Follow target moved {distanceMoved:F0} units (possible zone transition) from {lastTargetPosition} to {newPosition} (update took {updateDuration.TotalMilliseconds:F0}ms)");
                 }
                 else if (newPosition != lastTargetPosition)
                 {
-                    // Position updated
+                    // Position updated normally
+                    lastTargetPosition = newPosition;
                 }
             }
 
@@ -125,6 +128,13 @@ namespace BetterFollowbotLite;
             portalManager.DetectPortalTransition(lastTargetPosition, newPosition);
 
             lastTargetPosition = newPosition;
+
+            // Debug: Log position update timing for zone transition debugging
+            var totalUpdateDuration = DateTime.Now - updateStartTime;
+            if (totalUpdateDuration.TotalMilliseconds > 10) // Only log if it took more than 10ms
+            {
+                BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Position update completed in {totalUpdateDuration.TotalMilliseconds:F0}ms");
+            }
         }
         else if (followTarget != null && !followTarget.IsValid)
         {

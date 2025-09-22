@@ -314,12 +314,13 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         // Track area change time to prevent random movement during transitions
         lastAreaChangeTime = DateTime.Now;
 
-        // Log area change details
+        // Log area change details with timestamp for debugging zone transition delays
+        var areaChangeStartTime = DateTime.Now;
         var newAreaName = area?.DisplayName ?? "Unknown";
         var isHideout = area?.IsHideout ?? false;
         var realLevel = area?.RealLevel ?? 0;
 
-        LogMessage($"AREA CHANGE: Transitioned to '{newAreaName}' - Hideout: {isHideout}, Level: {realLevel}");
+        LogMessage($"AREA CHANGE: [{areaChangeStartTime:HH:mm:ss.fff}] Transitioned to '{newAreaName}' - Hideout: {isHideout}, Level: {realLevel}");
 
         // Reset player position to prevent large distance calculations in grace period logic
         if (GameController?.Game?.IngameState?.Data?.LocalPlayer != null)
@@ -403,6 +404,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 LogMessage("AREA CHANGE: Leader still not found - may not be loaded in zone yet");
             }
         }
+
+        // Log completion time for debugging
+        var areaChangeDuration = DateTime.Now - areaChangeStartTime;
+        LogMessage($"AREA CHANGE: [{DateTime.Now:HH:mm:ss.fff}] Area change processing completed in {areaChangeDuration.TotalSeconds:F2}s");
     }
         
     public override void DrawSettings()
@@ -433,7 +438,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     // Only log grace period status every 2 seconds to reduce spam
                     if (timeSinceLastGraceLog > 2.0)
                     {
-                        LogMessage($"GRACE PERIOD: Active grace period detected, time since area change: {timeSinceAreaChange:F1}s");
+                        LogMessage($"GRACE PERIOD: [{DateTime.Now:HH:mm:ss.fff}] Active grace period detected, time since area change: {timeSinceAreaChange:F1}s");
                         lastGraceLogTime = DateTime.Now;
                     }
 
@@ -460,7 +465,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         // Only log stabilization completion once
                         if (timeSinceLastGraceLog > 2.0)
                         {
-                            LogMessage("GRACE PERIOD: Zone stabilization period passed, checking if safe to remove grace");
+                            LogMessage($"GRACE PERIOD: [{DateTime.Now:HH:mm:ss.fff}] Zone stabilization period passed, checking if safe to remove grace");
                         }
 
                         // Check player position to ensure they're not moving
@@ -540,11 +545,14 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                 // Only log grace removal every 2 seconds to reduce spam
                                 if (timeSinceLastGraceLog > 2.0)
                                 {
-                                    LogMessage($"GRACE PERIOD: Moving mouse to ({targetX}, {targetY}) and pressing move key to break grace");
+                                    LogMessage($"GRACE PERIOD: [{DateTime.Now:HH:mm:ss.fff}] Moving mouse to ({targetX}, {targetY}) and pressing move key to break grace");
                                 }
 
                                 Keyboard.KeyPress(Settings.autoPilotMoveKey.Value);
                                 LastTimeAny = DateTime.Now;
+
+                                // Log successful grace removal
+                                LogMessage($"GRACE PERIOD: [{DateTime.Now:HH:mm:ss.fff}] Grace period broken successfully after {timeSinceAreaChange:F1}s");
                             }
                             else
                             {
@@ -571,7 +579,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     var hasBuffs = buffs != null;
                     var hasGraceBuff = buffs != null && buffs.Exists(x => x.Name == "grace_period");
 
-                    LogMessage($"GRACE CHECK: AutoPilot: {autopilotEnabled}, Grace Enabled: {graceEnabled}, Has Buffs: {hasBuffs}, Has Grace Buff: {hasGraceBuff}");
+                    LogMessage($"GRACE CHECK: [{DateTime.Now:HH:mm:ss.fff}] AutoPilot: {autopilotEnabled}, Grace Enabled: {graceEnabled}, Has Buffs: {hasBuffs}, Has Grace Buff: {hasGraceBuff}");
                 }
 
                 // Manual grace period breaking by pressing move key near screen center
@@ -655,21 +663,34 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 // Check if AutoPilot has a follow target before updating
                 if (autoPilot != null && autoPilot.FollowTarget == null)
                 {
-                    LogMessage("AUTOPILOT: No follow target set - attempting to find leader");
+                    var leaderDetectionTime = DateTime.Now;
+                    LogMessage($"AUTOPILOT: [{leaderDetectionTime:HH:mm:ss.fff}] No follow target set - attempting to find leader '{Settings.autoPilotLeader.Value}'");
 
                     // Try to find leader manually
                     var playerEntities = GameController.Entities.Where(x => x.Type == EntityType.Player).ToList();
+                    LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Found {playerEntities.Count} player entities to search");
+
                     var manualLeaderEntity = playerEntities.FirstOrDefault(x =>
                         x.GetComponent<Player>()?.PlayerName?.Equals(Settings.autoPilotLeader.Value, StringComparison.OrdinalIgnoreCase) == true);
 
                     if (manualLeaderEntity != null)
                     {
-                        LogMessage($"AUTOPILOT: Found leader manually - setting as follow target: '{manualLeaderEntity.GetComponent<Player>()?.PlayerName}'");
+                        var detectionDuration = DateTime.Now - leaderDetectionTime;
+                        LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Found leader manually in {detectionDuration.TotalSeconds:F2}s - setting as follow target: '{manualLeaderEntity.GetComponent<Player>()?.PlayerName}' at distance {Vector3.Distance(playerPosition, manualLeaderEntity.Pos):F1}");
                         autoPilot.SetFollowTarget(manualLeaderEntity);
                     }
                     else
                     {
-                        LogMessage("AUTOPILOT: Still no leader found - bot will not move");
+                        var detectionDuration = DateTime.Now - leaderDetectionTime;
+                        LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Still no leader found after {detectionDuration.TotalSeconds:F2}s - bot will not move. Available players:");
+                        foreach (var player in playerEntities)
+                        {
+                            var playerComp = player.GetComponent<Player>();
+                            if (playerComp != null)
+                            {
+                                LogMessage($"AUTOPILOT:   - '{playerComp.PlayerName}' (distance: {Vector3.Distance(playerPosition, player.Pos):F1})");
+                            }
+                        }
                     }
                 }
 

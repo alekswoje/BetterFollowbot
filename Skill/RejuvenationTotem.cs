@@ -16,6 +16,11 @@ namespace BetterFollowbotLite.Skills
         private readonly BetterFollowbotLite _instance;
         private readonly BetterFollowbotLiteSettings _settings;
 
+        // Throttling for repetitive logs to reduce spam
+        private DateTime _lastDistanceLog = DateTime.MinValue;
+        private DateTime _lastPlacementLog = DateTime.MinValue;
+        private DateTime _lastCooldownLog = DateTime.MinValue;
+
         public RejuvenationTotem(BetterFollowbotLite instance, BetterFollowbotLiteSettings settings)
         {
             _instance = instance;
@@ -76,9 +81,6 @@ namespace BetterFollowbotLite.Skills
                                                 var currentES = lifeComponent.EnergyShield.Current;
                                                 var maxES = lifeComponent.EnergyShield.Unreserved;
 
-                                                // Debug raw values
-                                                _instance.LogMessage($"REJUVENATION TOTEM: Raw values for {partyMember.PlayerName} - Life Current: {currentLife}, Life Max: {maxLife}, ES Current: {currentES}, ES Max: {maxES}");
-
                                                 // Calculate meaningful thresholds - only consider ES if they have a meaningful amount
                                                 var hasMeaningfulES = maxES >= 500; // Only consider ES if they have 500+ max ES
                                                 var effectiveCurrentES = hasMeaningfulES ? currentES : 0;
@@ -88,11 +90,6 @@ namespace BetterFollowbotLite.Skills
                                                 var totalCurrent = currentLife + effectiveCurrentES;
                                                 var totalMax = maxLife + effectiveMaxES;
                                                 var totalPoolPercentage = totalMax > 0 ? ((double)totalCurrent / (double)totalMax) * 100 : 100;
-
-                                                // Debug calculation
-                                                _instance.LogMessage($"REJUVENATION TOTEM: Calculation for {partyMember.PlayerName} - Total Current: {totalCurrent}, Total Max: {totalMax}, Percentage: {totalPoolPercentage:F2}%");
-
-                                                _instance.LogMessage($"REJUVENATION TOTEM: Party member {partyMember.PlayerName} - Life: {currentLife:F0}/{maxLife:F0}, ES: {currentES:F0}/{maxES:F0} ({(hasMeaningfulES ? "meaningful" : "negligible")}), Total Pool: {totalPoolPercentage:F1}%");
 
                                                 if (totalPoolPercentage < _settings.rejuvenationTotemHpThreshold.Value)
                                                 {
@@ -139,7 +136,13 @@ namespace BetterFollowbotLite.Skills
 
                                             // Use the following distance setting
                                             withinFollowingDistance = distanceToLeader <= _settings.autoPilotPathfindingNodeDistance.Value;
-                                            _instance.LogMessage($"REJUVENATION TOTEM: Distance to leader: {distanceToLeader:F1}, Max allowed: {_settings.autoPilotPathfindingNodeDistance.Value}, Within range: {withinFollowingDistance}");
+
+                                            // Throttle distance logs to reduce spam (only log every 2 seconds)
+                                            if ((DateTime.Now - _lastDistanceLog).TotalSeconds >= 2)
+                                            {
+                                                _instance.LogMessage($"REJUVENATION TOTEM: Distance to leader: {distanceToLeader:F1}, Max allowed: {_settings.autoPilotPathfindingNodeDistance.Value}, Within range: {withinFollowingDistance}");
+                                                _lastDistanceLog = DateTime.Now;
+                                            }
                                         }
                                         else
                                         {
@@ -156,8 +159,12 @@ namespace BetterFollowbotLite.Skills
                                     _instance.LogMessage("REJUVENATION TOTEM: No leader set, allowing totem placement");
                                 }
 
-                                // Debug logging for placement conditions
-                                _instance.LogMessage($"REJUVENATION TOTEM: Placement check - Rare/Unique: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
+                                // Debug logging for placement conditions (throttled to reduce spam)
+                                if ((DateTime.Now - _lastPlacementLog).TotalSeconds >= 3)
+                                {
+                                    _instance.LogMessage($"REJUVENATION TOTEM: Placement check - Rare/Unique: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
+                                    _lastPlacementLog = DateTime.Now;
+                                }
 
                                 // Place totem if conditions are met
                                 if ((hasRareOrUniqueNearby || partyMembersLowHp) && withinFollowingDistance)
@@ -252,7 +259,12 @@ namespace BetterFollowbotLite.Skills
                         }
                         else
                         {
-                            _instance.LogMessage($"REJUVENATION TOTEM: ❌ Cooldown check FAILED (remaining: {SkillInfo.rejuvenationTotem.Cooldown:F0}ms), skipping totem");
+                            // Throttle cooldown logs to reduce spam (only log every 5 seconds)
+                            if ((DateTime.Now - _lastCooldownLog).TotalSeconds >= 5)
+                            {
+                                _instance.LogMessage($"REJUVENATION TOTEM: ❌ Cooldown check FAILED (remaining: {SkillInfo.rejuvenationTotem.Cooldown:F0}ms), skipping totem");
+                                _lastCooldownLog = DateTime.Now;
+                            }
                             return; // Exit early if on cooldown
                         }
                     }

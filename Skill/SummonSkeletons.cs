@@ -17,6 +17,10 @@ namespace BetterFollowbotLite.Skills
         private readonly AutoPilot _autoPilot;
         private readonly Summons _summons;
 
+        // Throttling for repetitive logs to reduce spam
+        private DateTime _lastExecuteLog = DateTime.MinValue;
+        private DateTime _lastSummonLog = DateTime.MinValue;
+
         public SummonSkeletons(BetterFollowbotLite instance, BetterFollowbotLiteSettings settings,
                               AutoPilot autoPilot, Summons summons)
         {
@@ -34,8 +38,12 @@ namespace BetterFollowbotLite.Skills
         {
             try
             {
-                // Debug: Always log when Summon Skeletons Execute is called
-                _instance.LogMessage($"SUMMON SKELETONS: Execute called - Enabled: {_settings.summonSkeletonsEnabled.Value}, AutoPilot: {_autoPilot != null}, GCD: {_instance.Gcd()}");
+                // Debug: Log when Summon Skeletons Execute is called (throttled to reduce spam)
+                if ((DateTime.Now - _lastExecuteLog).TotalSeconds >= 3)
+                {
+                    _instance.LogMessage($"SUMMON SKELETONS: Execute called - Enabled: {_settings.summonSkeletonsEnabled.Value}, AutoPilot: {_autoPilot != null}, GCD: {_instance.Gcd()}");
+                    _lastExecuteLog = DateTime.Now;
+                }
 
                 if (_settings.summonSkeletonsEnabled.Value && _instance.Gcd())
                 {

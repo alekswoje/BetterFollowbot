@@ -92,7 +92,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         ExileCore.Core.ParallelRunner.Run(skillCoroutine);
         Input.RegisterKey(Settings.autoPilotToggleKey.Value);
         Settings.autoPilotToggleKey.OnValueChanged += () => { Input.RegisterKey(Settings.autoPilotToggleKey.Value); };
-        autoPilot.StartCoroutine();
+        // Task execution now happens automatically in autoPilot.Render() every frame
 
         summonRagingSpirits = new SummonRagingSpirits(this, Settings, autoPilot, summons);
         summonSkeletons = new SummonSkeletons(this, Settings, autoPilot, summons);
@@ -626,7 +626,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 }
 
                 autoPilot.UpdateFollowTargetPosition();
-                autoPilot.UpdateAutoPilotLogic();
+                // Task execution now happens in autoPilot.Render()
                 autoPilot.Render();
 
                 if (autoPilot != null)

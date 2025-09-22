@@ -519,11 +519,7 @@ namespace BetterFollowbotLite;
         _pathfinding.InitializeTerrain();
     }
 
-    public void StartCoroutine()
-    {
-        autoPilotCoroutine = new Coroutine(AutoPilotLogic(), BetterFollowbotLite.Instance, "AutoPilot");
-        ExileCore.Core.ParallelRunner.Run(autoPilotCoroutine);
-    }
+    // Removed StartCoroutine - task execution now happens in Render() method
     // Replace iterator with state machine
     public enum TaskExecutionState
     {
@@ -714,5 +710,14 @@ namespace BetterFollowbotLite;
     {
         // TODO: Implement teleport button execution logic
         CompleteCurrentTask();
+    }
+
+    /// <summary>
+    /// Render method called every frame - handles task execution
+    /// </summary>
+    public void Render()
+    {
+        // Execute current task in the render loop
+        ExecuteCurrentTask();
     }
 }

@@ -265,7 +265,19 @@ namespace BetterFollowbotLite.Core.Movement
                      }
                      else
                      {
-                         _core.LogMessage($"Dash task: Cooldown active - {((DateTime.Now - _lastDashTime).TotalMilliseconds):F0}ms remaining");
+                         // CRITICAL FIX: Instead of retrying dash task on cooldown, convert it to a movement task
+                         // This prevents the dash task from blocking the entire task queue
+                         _core.LogMessage($"Dash task: Cooldown active - {((DateTime.Now - _lastDashTime).TotalMilliseconds):F0}ms remaining, converting to movement task");
+
+                         // Remove the dash task and create a movement task instead
+                         _taskManager.RemoveTask(currentTask);
+
+                         // Create a movement task to the same position
+                         if (_autoPilot.FollowTarget != null)
+                         {
+                             _taskManager.AddTask(new TaskNode(currentTask.WorldPosition, _core.Settings.autoPilotPathfindingNodeDistance));
+                             _core.LogMessage("Dash task converted to movement task due to cooldown");
+                         }
                      }
                      break;
                  }

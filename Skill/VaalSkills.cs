@@ -48,32 +48,17 @@ namespace BetterFollowbotLite.Skills
             {
                 if (skill.Id == SkillInfo.vaalHaste.Id)
                 {
-                    _instance.LogMessage($"VAAL HASTE: Vaal Haste skill detected - ID: {skill.Id}, Name: {skill.Name}");
-
                     // Vaal skills use charges, not traditional cooldowns
                     if (!(skill.RemainingUses <= 0 && skill.IsOnCooldown))
                     {
                         // Check if we don't already have the vaal haste buff
                         var hasVaalHasteBuff = _instance.Buffs.Exists(x => x.Name == "vaal_haste");
-                        _instance.LogMessage($"VAAL HASTE: Has vaal haste buff: {hasVaalHasteBuff}");
 
                         if (!hasVaalHasteBuff)
                         {
-                            _instance.LogMessage("VAAL HASTE: No vaal haste buff found, activating");
-
                             // Activate the skill
                             Keyboard.KeyPress(_instance.GetSkillInputKey(skill.SkillSlotIndex));
-
-                            _instance.LogMessage("VAAL HASTE: Vaal Haste activated successfully");
                         }
-                        else
-                        {
-                            _instance.LogMessage("VAAL HASTE: Already have vaal haste buff, skipping");
-                        }
-                    }
-                    else
-                    {
-                        _instance.LogMessage("VAAL HASTE: Cooldown check failed");
                     }
                 }
             }
@@ -86,8 +71,6 @@ namespace BetterFollowbotLite.Skills
             {
                 if (skill.Id == SkillInfo.vaalDiscipline.Id)
                 {
-                    _instance.LogMessage($"VAAL DISCIPLINE: Vaal Discipline skill detected - ID: {skill.Id}, Name: {skill.Name}");
-
                     // Vaal skills use charges, not traditional cooldowns
                     if (!(skill.RemainingUses <= 0 && skill.IsOnCooldown))
                     {
@@ -95,8 +78,6 @@ namespace BetterFollowbotLite.Skills
                         var playerEsPercentage = _instance.player.ESPercentage;
                         var threshold = (float)_settings.vaalDisciplineEsp / 100;
                         var esBelowThreshold = playerEsPercentage < threshold;
-
-                        _instance.LogMessage($"VAAL DISCIPLINE: Player ES%: {playerEsPercentage:F1}, Threshold: {threshold:F2}");
 
                         // Check party members' ES if player's ES is not below threshold
                         if (!esBelowThreshold)
@@ -120,20 +101,13 @@ namespace BetterFollowbotLite.Skills
                                         if (lifeComponent != null)
                                         {
                                             var partyEsPercentage = lifeComponent.ESPercentage; // Already in 0-1 range
-                                            _instance.LogMessage($"VAAL DISCIPLINE: Party member {partyMember.PlayerName} ES%: {partyEsPercentage:F1}");
 
                                             if (partyEsPercentage < threshold)
                                             {
                                                 esBelowThreshold = true;
-                                                _instance.LogMessage($"VAAL DISCIPLINE: Party member {partyMember.PlayerName} ES below threshold");
                                                 break;
                                             }
                                         }
-                                    }
-                                    else
-                                    {
-                                        // Skip this party member if we can't get entity info
-                                        _instance.LogMessage($"VAAL DISCIPLINE: Could not get entity info for party member {partyMember.PlayerName}, skipping");
                                     }
                                 }
                             }
@@ -143,30 +117,13 @@ namespace BetterFollowbotLite.Skills
                         {
                             // Check if we don't already have the vaal discipline buff
                             var hasVaalDisciplineBuff = _instance.Buffs.Exists(x => x.Name == "vaal_discipline");
-                            _instance.LogMessage($"VAAL DISCIPLINE: Has vaal discipline buff: {hasVaalDisciplineBuff}");
 
                             if (!hasVaalDisciplineBuff)
                             {
-                                _instance.LogMessage("VAAL DISCIPLINE: ES below threshold and no buff found, activating");
-
                                 // Activate the skill
                                 Keyboard.KeyPress(_instance.GetSkillInputKey(skill.SkillSlotIndex));
-
-                                _instance.LogMessage("VAAL DISCIPLINE: Vaal Discipline activated successfully");
-                            }
-                            else
-                            {
-                                _instance.LogMessage("VAAL DISCIPLINE: Already have vaal discipline buff, skipping");
                             }
                         }
-                        else
-                        {
-                            _instance.LogMessage("VAAL DISCIPLINE: ES above threshold, skipping");
-                        }
-                    }
-                    else
-                    {
-                        _instance.LogMessage("VAAL DISCIPLINE: Cooldown check failed");
                     }
                 }
             }

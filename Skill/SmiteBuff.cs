@@ -33,8 +33,6 @@ namespace BetterFollowbotLite.Skills
             {
                 if (skill.Id == SkillInfo.smite.Id)
                 {
-                    _instance.LogMessage("SMITE: Smite skill detected");
-
                     // Custom cooldown check for smite that bypasses GCD since it's a buff skill
                     if (SkillInfo.smite.Cooldown <= 0 &&
                         !(skill.RemainingUses <= 0 && skill.IsOnCooldown))
@@ -47,19 +45,14 @@ namespace BetterFollowbotLite.Skills
                             (_instance.localPlayer.Stats.TryGetValue(GameStat.VirtualEnergyShieldProtectsMana, out var hasEldritchBattery) &&
                              hasEldritchBattery > 0 && (_instance.player.CurES + _instance.player.CurMana) >= manaCost))
                         {
-                            _instance.LogMessage("SMITE: Cooldown check passed");
-
                             // Check if we don't have the smite buff or it's about to expire
                             var smiteBuff = _instance.Buffs.FirstOrDefault(x => x.Name == "smite_buff");
                             var hasSmiteBuff = smiteBuff != null;
                             var buffTimeLeft = smiteBuff?.Timer ?? 0;
-                            _instance.LogMessage($"SMITE: Has smite buff: {hasSmiteBuff}, Time left: {buffTimeLeft:F1}s");
 
                             // Refresh if no buff or buff has less than 2 seconds left
                             if (!hasSmiteBuff || buffTimeLeft < 2.0f)
                             {
-                                _instance.LogMessage("SMITE: No smite buff found, looking for targets");
-
                                 // Find monsters within 250 units of player (smite attack range)
                                 var targetMonster = _instance.Enemys
                                     .Where(monster =>
@@ -69,7 +62,6 @@ namespace BetterFollowbotLite.Skills
                                         // Check if monster is on screen (can be targeted)
                                         var screenPos = _instance.GameController.IngameState.Camera.WorldToScreen(monster.Pos);
                                         var isOnScreen = _instance.GameController.Window.GetWindowRectangleTimeCache.Contains(screenPos);
-                                        _instance.LogMessage($"SMITE: Monster at distance {distanceToPlayer:F1} from player, on screen: {isOnScreen}");
                                         return distanceToPlayer <= 250 && isOnScreen;
                                     })
                                     .OrderBy(monster => Vector3.Distance(_instance.playerPosition, monster.Pos)) // Closest first
@@ -77,8 +69,6 @@ namespace BetterFollowbotLite.Skills
 
                                 if (targetMonster != null)
                                 {
-                                    _instance.LogMessage("SMITE: Found suitable target, activating smite!");
-
                                     // Move mouse to monster position
                                     var monsterScreenPos = _instance.GameController.IngameState.Camera.WorldToScreen(targetMonster.Pos);
                                     Mouse.SetCursorPos(monsterScreenPos);
@@ -95,27 +85,45 @@ namespace BetterFollowbotLite.Skills
                                         Keyboard.KeyPress(_instance.GetSkillInputKey(skill.SkillSlotIndex));
                                         SkillInfo.smite.Cooldown = 100;
                                         _instance.LastTimeAny = DateTime.Now; // Update global cooldown
-                                        _instance.LogMessage("SMITE: Smite activated successfully");
                                     }
-                                    else
+                                }
+                                else
+                                {
+                                    // No suitable targets found - dash to leader to get near monsters
+                                    if (_instance.Settings.autoPilotDashEnabled &&
+                                        (DateTime.Now - _instance.movementExecutor.LastDashTime).TotalMilliseconds >= 3000 &&
+                                        _instance.autoPilot.FollowTarget != null)
                                     {
-                                        _instance.LogMessage($"SMITE: Mouse positioning failed, distance: {distanceFromTarget:F1}");
+                                        var leaderPos = _instance.autoPilot.FollowTarget.Pos;
+                                        var distanceToLeader = Vector3.Distance(_instance.playerPosition, leaderPos);
+
+                                        // CRITICAL: Don't dash if teleport is in progress
+                                        if (!AutoPilot.IsTeleportInProgress)
+                                        {
+                                            // Check for transition tasks
+                                            var hasTransitionTask = _instance.autoPilot.Tasks.Any(t =>
+                                                t.Type == TaskNodeType.Transition ||
+                                                t.Type == TaskNodeType.TeleportConfirm ||
+                                                t.Type == TaskNodeType.TeleportButton);
+
+                                            if (!hasTransitionTask && distanceToLeader > _instance.Settings.autoPilotDashDistance)
+                                            {
+                                                // Position mouse towards leader
+                                                var leaderScreenPos = _instance.GameController.IngameState.Camera.WorldToScreen(leaderPos);
+                                                Mouse.SetCursorPos(leaderScreenPos);
+
+                                                // Small delay to ensure mouse movement is registered
+                                                System.Threading.Thread.Sleep(50);
+
+                                                // Execute dash
+                                                Keyboard.KeyPress(_instance.Settings.autoPilotDashKey);
+                                                _instance.movementExecutor.UpdateLastDashTime(DateTime.Now);
+                                            }
+                                        }
                                     }
                                 }
                             }
-                            else
-                            {
-                                _instance.LogMessage("SMITE: Smite buff still active, skipping");
-                            }
                         }
-                        else
-                        {
-                            _instance.LogMessage("SMITE: Insufficient mana for smite");
-                        }
-                    }
-                    else
-                    {
-                        _instance.LogMessage("SMITE: Cooldown check failed");
                     }
                 }
             }

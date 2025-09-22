@@ -90,6 +90,9 @@ namespace BetterFollowbotLite;
             if (leaderEntity != null && leaderEntity.IsValid)
             {
                 SetFollowTarget(leaderEntity);
+                // CRITICAL FIX: Reset lastTargetPosition when re-finding leader after invalidation
+                // This prevents huge distanceMoved calculations that trigger false zone transition detection
+                lastTargetPosition = leaderEntity.Pos;
                 BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Re-found leader after invalid target: '{BetterFollowbotLite.Instance.Settings.autoPilotLeader.Value}' at distance {Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, leaderEntity.Pos):F1}");
             }
             else

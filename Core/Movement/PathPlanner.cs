@@ -30,6 +30,57 @@ namespace BetterFollowbotLite.Core.Movement
         }
 
         /// <summary>
+        /// Creates appropriate movement or dash task for following the leader
+        /// </summary>
+        private void CreateMovementTaskForLeader(Entity followTarget, float distanceToLeader, string reason)
+        {
+            // Validate followTarget position before creating tasks
+            if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
+            {
+                // If very far away, add dash task instead of movement task
+                if (distanceToLeader > 3000 && _core.Settings.autoPilotDashEnabled) // Increased from 1500 to 3000 to reduce dash spam significantly
+                {
+                    // CRITICAL: Don't add dash tasks if we have any active transition-related task OR another dash task OR teleport in progress
+                    var shouldSkipDashTasks = _taskManager.Tasks.Any(t =>
+                        t.Type == TaskNodeType.Transition ||
+                        t.Type == TaskNodeType.TeleportConfirm ||
+                        t.Type == TaskNodeType.TeleportButton ||
+                        t.Type == TaskNodeType.Dash);
+
+                    // ADDITIONAL CHECK: Don't create dash task if dash is on cooldown
+                    var dashCooldownRemaining = (DateTime.Now - _core.MovementExecutor.LastDashTime).TotalMilliseconds;
+                    var dashAvailable = dashCooldownRemaining >= 3000;
+
+                    if (shouldSkipDashTasks || AutoPilot.IsTeleportInProgress)
+                    {
+                        _core.LogMessage($"ZONE TRANSITION: Skipping dash task creation - conflicting tasks active ({_taskManager.CountTasks(t => t.Type == TaskNodeType.Dash)} dash tasks, {_taskManager.CountTasks(t => t.Type == TaskNodeType.Transition)} transition tasks, teleport={AutoPilot.IsTeleportInProgress})");
+                    }
+                    else if (!dashAvailable)
+                    {
+                        _core.LogMessage($"ZONE TRANSITION: Skipping dash task creation - dash on cooldown ({dashCooldownRemaining:F0}ms remaining)");
+                        // Fall through to movement task creation
+                        _core.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}, Dash threshold: 3000 (dash on cooldown) - {reason}");
+                        _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                    }
+                    else
+                    {
+                        _core.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled} - {reason}");
+                        _taskManager.AddTask(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                    }
+                }
+                else
+                {
+                    _core.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}, Dash threshold: 700 - {reason}");
+                    _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                }
+            }
+            else
+            {
+                _core.LogError($"Invalid followTarget position: {followTarget?.Pos}, skipping task creation - {reason}");
+            }
+        }
+
+        /// <summary>
         /// Plans and creates movement tasks based on leader position and current game state
         /// </summary>
         public void PlanPath(Entity followTarget, PartyElementWindow leaderPartyElement, Vector3 lastTargetPosition, Vector3 lastPlayerPosition)
@@ -174,6 +225,13 @@ namespace BetterFollowbotLite.Core.Movement
                 }
 
                 // TODO: If in town, do not follow (optional)
+                // NULL CHECK: Ensure followTarget position is valid before calculating distance
+                if (followTarget == null || followTarget.Pos == null || float.IsNaN(followTarget.Pos.X) || float.IsNaN(followTarget.Pos.Y) || float.IsNaN(followTarget.Pos.Z))
+                {
+                    _core.LogMessage("PATHPLANNER: Follow target or position is invalid, cannot calculate distance");
+                    return;
+                }
+
                 var distanceToLeader = Vector3.Distance(_core.PlayerPosition, followTarget.Pos);
                 //We are NOT within clear path distance range of leader. Logic can continue
                 if (distanceToLeader >= _core.Settings.autoPilotClearPathDistance.Value)
@@ -343,50 +401,13 @@ namespace BetterFollowbotLite.Core.Movement
                     //We have no path, set us to go to leader pos.
                     else if (_taskManager.TaskCount == 0 && distanceMoved < 2000 && distanceToLeader > 200 && distanceToLeader < 2000)
                     {
-                        // Validate followTarget position before creating tasks
-                        if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
-                        {
-                            // If very far away, add dash task instead of movement task
-                            if (distanceToLeader > 3000 && _core.Settings.autoPilotDashEnabled) // Increased from 1500 to 3000 to reduce dash spam significantly
-                            {
-                                // CRITICAL: Don't add dash tasks if we have any active transition-related task OR another dash task OR teleport in progress
-                                var shouldSkipDashTasks = _taskManager.Tasks.Any(t =>
-                                    t.Type == TaskNodeType.Transition ||
-                                    t.Type == TaskNodeType.TeleportConfirm ||
-                                    t.Type == TaskNodeType.TeleportButton ||
-                                    t.Type == TaskNodeType.Dash);
-
-                                // ADDITIONAL CHECK: Don't create dash task if dash is on cooldown
-                                var dashCooldownRemaining = (DateTime.Now - _core.MovementExecutor.LastDashTime).TotalMilliseconds;
-                                var dashAvailable = dashCooldownRemaining >= 3000;
-
-                                if (shouldSkipDashTasks || AutoPilot.IsTeleportInProgress)
-                                {
-                                    _core.LogMessage($"ZONE TRANSITION: Skipping dash task creation - conflicting tasks active ({_taskManager.CountTasks(t => t.Type == TaskNodeType.Dash)} dash tasks, {_taskManager.CountTasks(t => t.Type == TaskNodeType.Transition)} transition tasks, teleport={AutoPilot.IsTeleportInProgress})");
-                                }
-                                else if (!dashAvailable)
-                                {
-                                    _core.LogMessage($"ZONE TRANSITION: Skipping dash task creation - dash on cooldown ({dashCooldownRemaining:F0}ms remaining)");
-                                    // Fall through to movement task creation
-                                    _core.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}, Dash threshold: 3000 (dash on cooldown)");
-                                    _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                }
-                                else
-                                {
-                                    _core.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}");
-                                    _taskManager.AddTask(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
-                                }
-                            }
-                            else
-                            {
-                                _core.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}, Dash threshold: 700");
-                                _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                            }
-                        }
-                        else
-                        {
-                            _core.LogError($"Invalid followTarget position: {followTarget?.Pos}, skipping task creation");
-                        }
+                        CreateMovementTaskForLeader(followTarget, distanceToLeader, "normal conditions");
+                    }
+                    // EMERGENCY FALLBACK: If we have a follow target but no tasks, create movement tasks regardless of distance conditions
+                    // This prevents the bot from getting stuck with "Has follow target but no tasks"
+                    else if (_taskManager.TaskCount == 0 && followTarget != null && distanceToLeader > 50)
+                    {
+                        CreateMovementTaskForLeader(followTarget, distanceToLeader, "emergency fallback - bot has follow target but no tasks");
                     }
                     //We have a path. Check if the last task is far enough away from current one to add a new task node.
                     else if (_taskManager.TaskCount > 0)

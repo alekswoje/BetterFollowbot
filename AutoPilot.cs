@@ -867,4 +867,40 @@ namespace BetterFollowbotLite;
             BetterFollowbotLite.Instance.LogError($"UpdateAutoPilotLogic Error: {e}");
         }
     }
+
+    /// <summary>
+    /// Render debug information for AutoPilot
+    /// </summary>
+    public void Render()
+    {
+        if (BetterFollowbotLite.Instance.Settings.debugMode)
+        {
+            // Task count display
+            var taskCount = _taskManager?.TaskCount ?? 0;
+            BetterFollowbotLite.Instance.Graphics.DrawText($"AutoPilot Tasks: {taskCount}", new System.Numerics.Vector2(10, 100), Color.White);
+
+            // Portal transition status
+            if (portalManager?.IsInPortalTransition ?? false)
+            {
+                BetterFollowbotLite.Instance.Graphics.DrawText("Portal Transition: ACTIVE", new System.Numerics.Vector2(10, 120), Color.Yellow);
+            }
+
+            // Movement logic status
+            if (_movementLogic != null)
+            {
+                BetterFollowbotLite.Instance.Graphics.DrawText("Movement Logic: ACTIVE", new System.Numerics.Vector2(10, 140), Color.Green);
+            }
+
+            // Leader detection status
+            var leaderEntity = _leaderDetector?.LeaderEntity;
+            if (leaderEntity != null)
+            {
+                BetterFollowbotLite.Instance.Graphics.DrawText($"Leader: DETECTED", new System.Numerics.Vector2(10, 160), Color.Green);
+            }
+            else
+            {
+                BetterFollowbotLite.Instance.Graphics.DrawText("Leader: NOT FOUND", new System.Numerics.Vector2(10, 160), Color.Red);
+            }
+        }
+    }
 }

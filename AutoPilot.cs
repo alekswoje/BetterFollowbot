@@ -833,7 +833,23 @@ namespace BetterFollowbotLite;
                         BetterFollowbotLite.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
                         BetterFollowbotLite.Instance.LogMessage($"Movement task: Move key: {BetterFollowbotLite.Instance.Settings.autoPilotMoveKey}");
                         yield return Mouse.SetCursorPosHuman(movementScreenPos);
-                        Keyboard.KeyDown(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
+                        // Only press move key if we're far from the target
+                        if (taskDistance > BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value)
+                        {
+                            Keyboard.KeyDown(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
+                        }
+                        else
+                        {
+                            // Close to target - release move key to stop
+                            try
+                            {
+                                Keyboard.KeyUp(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
+                            }
+                            catch (Exception e)
+                            {
+                                // Ignore key release errors
+                            }
+                        }
                         
                         if (instantPathOptimization)
                         {
@@ -990,8 +1006,8 @@ namespace BetterFollowbotLite;
                 }
             }
 
-            // Release move key if no tasks to execute
-            if (_taskManager.TaskCount == 0)
+            // Release move key if no tasks to execute or if follow target is lost
+            if (_taskManager.TaskCount == 0 || followTarget == null)
             {
                 try
                 {

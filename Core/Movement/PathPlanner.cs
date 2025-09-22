@@ -118,37 +118,37 @@ namespace BetterFollowbotLite.Core.Movement
 
                     if (!hasTransitionTasks)
                     {
-                        _core.LogMessage("ZONE TRANSITION: No pending transition tasks, searching for portal");
-                        var portal = GetBestPortalLabel(leaderPartyElement);
-                        if (portal != null)
+                        _core.LogMessage("ZONE TRANSITION: Leader in different zone, prioritizing party teleport over portals");
+
+                        var tpConfirmation = GetTpConfirmation();
+                        if (tpConfirmation != null)
                         {
-                            _core.LogMessage($"ZONE TRANSITION: Found portal '{portal.Label?.Text}' leading to leader zone '{leaderPartyElement.ZoneName}'");
-                            _taskManager.AddTask(new TaskNode(portal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
-                            _core.LogMessage("ZONE TRANSITION: Portal transition task added to queue");
+                            _core.LogMessage("ZONE TRANSITION: Teleport confirmation dialog already open, handling it");
+                            var center = tpConfirmation.GetClientRect().Center;
+                            _taskManager.AddTask(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
                         }
                         else
                         {
-                            _core.LogMessage($"ZONE TRANSITION: No matching portal found for '{leaderPartyElement.ZoneName}', falling back to party teleport");
-
-                            var tpConfirmation = GetTpConfirmation();
-                            if (tpConfirmation != null)
+                            var tpButton = GetTpButton(leaderPartyElement);
+                            if (!tpButton.Equals(Vector2.Zero))
                             {
-                                _core.LogMessage("ZONE TRANSITION: Teleport confirmation dialog already open, handling it");
-                                var center = tpConfirmation.GetClientRect().Center;
-                                _taskManager.AddTask(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
+                                _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
+                                AutoPilot.IsTeleportInProgress = true;
+                                _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
                             }
                             else
                             {
-                                var tpButton = GetTpButton(leaderPartyElement);
-                                if (!tpButton.Equals(Vector2.Zero))
+                                _core.LogMessage("ZONE TRANSITION: Party teleport button not available, falling back to portal search");
+                                var portal = GetBestPortalLabel(leaderPartyElement);
+                                if (portal != null)
                                 {
-                                    _core.LogMessage("ZONE TRANSITION: Clicking teleport button to initiate party teleport");
-                                    AutoPilot.IsTeleportInProgress = true;
-                                    _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
+                                    _core.LogMessage($"ZONE TRANSITION: Found portal '{portal.Label?.Text}' leading to leader zone '{leaderPartyElement.ZoneName}'");
+                                    _taskManager.AddTask(new TaskNode(portal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                                    _core.LogMessage("ZONE TRANSITION: Portal transition task added to queue");
                                 }
                                 else
                                 {
-                                    _core.LogMessage("ZONE TRANSITION: No teleport button available, cannot follow through transition");
+                                    _core.LogMessage("ZONE TRANSITION: No teleport button or portal available, cannot follow through transition");
                                 }
                             }
                         }
@@ -187,118 +187,82 @@ namespace BetterFollowbotLite.Core.Movement
                                 _core.LogMessage($"ZONE TRANSITION: Zone names same but large distance, assuming transition anyway");
                             }
 
-                            var transition = GetBestPortalLabel(leaderPartyElement, forceSearch: true);
+                            _core.LogMessage("ZONE TRANSITION: Leader moved far, prioritizing party teleport for following");
 
-                            if (transition == null)
+                            // Check if teleport confirmation dialog is already open
+                            var tpConfirmation = GetTpConfirmation();
+                            if (tpConfirmation != null)
                             {
-                                _core.LogMessage("ZONE TRANSITION: No portal matched by name, looking for closest portal");
-
-                                var allPortals = _core.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
-                                    x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
-                                    x.ItemOnGround != null &&
-                                    (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") || x.ItemOnGround.Metadata.ToLower().Contains("portal")))
-                                    .OrderBy(x => Vector3.Distance(_core.PlayerPosition, x.ItemOnGround.Pos))
-                                    .ToList();
-
-                                if (allPortals != null && allPortals.Count > 0)
-                                {
-                                    var specialPortal = allPortals.FirstOrDefault(p =>
-                                        PortalManager.IsSpecialPortal(p.Label?.Text ?? ""));
-                                    LabelOnGround selectedPortal;
-
-                                    if (specialPortal != null)
-                                    {
-                                        var portalType = PortalManager.GetSpecialPortalType(specialPortal.Label?.Text ?? "");
-                                        var portalDistance = Vector3.Distance(_core.PlayerPosition, specialPortal.ItemOnGround.Pos);
-                                        _core.LogMessage($"ZONE TRANSITION: Found {portalType} portal at distance {portalDistance:F1}");
-
-                                        if (portalDistance < 200)
-                                        {
-                                            _core.LogMessage($"ZONE TRANSITION: Using {portalType} portal as likely destination");
-                                            selectedPortal = specialPortal;
-                                        }
-                                        else
-                                        {
-                                            selectedPortal = allPortals.First();
-                                            _core.LogMessage($"ZONE TRANSITION: {portalType} portal too far, using closest instead");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        selectedPortal = allPortals.First();
-                                    }
-
-                                    var selectedDistance = Vector3.Distance(_core.PlayerPosition, selectedPortal.ItemOnGround.Pos);
-
-                                    _core.LogMessage($"ZONE TRANSITION: Selected portal '{selectedPortal.Label?.Text}' at distance {selectedDistance:F1}");
-                                    // Increased from 500 to 800 to handle cases where leader transitions quickly
-                                    if (selectedDistance < 800)
-                                    {
-                                        _core.LogMessage($"ZONE TRANSITION: Using selected portal '{selectedPortal.Label?.Text}' as likely destination");
-                                        transition = selectedPortal; // Set transition so we use this portal
-
-                                        // CRITICAL: Clear all existing tasks when adding a transition task to ensure it executes immediately
-                                        _core.LogMessage("ZONE TRANSITION: Clearing all existing tasks to prioritize transition");
-                                        _taskManager.ClearTasks();
-
-                                        // Add the transition task immediately since we found a suitable portal
-                                        _taskManager.AddTask(new TaskNode(selectedPortal, 200, TaskNodeType.Transition));
-                                        _core.LogMessage("ZONE TRANSITION: Transition task added and prioritized");
-                                    }
-                                    else
-                                    {
-                                        _core.LogMessage($"ZONE TRANSITION: Selected portal too far ({selectedDistance:F1}), using party teleport");
-                                    }
-                                }
-                            }
-
-                            // Check for Portal within Screen Distance (original logic) - only if we haven't already added a task
-                            if (transition != null && transition.ItemOnGround.DistancePlayer < 80)
-                            {
-                                // Since we cleared all tasks above when adding the transition task, this check is now simpler
-                                // We only add if we don't have any transition tasks (which we shouldn't after clearing)
-                                if (!_taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition))
-                                {
-                                    _core.LogMessage($"ZONE TRANSITION: Found nearby portal '{transition.Label?.Text}', adding transition task");
-                                    _taskManager.AddTask(new TaskNode(transition, 200, TaskNodeType.Transition));
-                                }
-                                else
-                                {
-                                    _core.LogMessage($"ZONE TRANSITION: Transition task already exists, portal handling already in progress");
-                                }
+                                _core.LogMessage("ZONE TRANSITION: Teleport confirmation dialog already open, handling it");
+                                var center = tpConfirmation.GetClientRect().Center;
+                                _taskManager.AddTask(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
                             }
                             else
                             {
-                                _core.LogMessage($"ZONE TRANSITION: No suitable portal found for zone transition");
-
-                                // If no portal found but this looks like a zone transition, try party teleport as fallback
-                                if (zonesAreDifferent || distanceMoved > 1500) // Even more aggressive for very large distances
+                                // Try to click the teleport button - this is the preferred method for following party members
+                                var tpButton = GetTpButton(leaderPartyElement);
+                                if (!tpButton.Equals(Vector2.Zero))
                                 {
-                                    _core.LogMessage($"ZONE TRANSITION: No portal found, trying party teleport fallback");
+                                    _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
+                                    // SET GLOBAL FLAG: Prevent SMITE and other skills from interfering
+                                    AutoPilot.IsTeleportInProgress = true;
+                                    _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
+                                }
+                                else
+                                {
+                                    _core.LogMessage("ZONE TRANSITION: Party teleport button not available, checking for portals as fallback");
 
-                                    // Check if teleport confirmation dialog is already open
-                                    var tpConfirmation = GetTpConfirmation();
-                                    if (tpConfirmation != null)
+                                    var transition = GetBestPortalLabel(leaderPartyElement, forceSearch: true);
+
+                                    if (transition == null)
                                     {
-                                        _core.LogMessage("ZONE TRANSITION: Teleport confirmation dialog already open, handling it");
-                                        var center = tpConfirmation.GetClientRect().Center;
-                                        _taskManager.AddTask(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
-                                    }
-                                    else
-                                    {
-                                        // Try to click the teleport button
-                                        var tpButton = GetTpButton(leaderPartyElement);
-                                        if (!tpButton.Equals(Vector2.Zero))
+                                        _core.LogMessage("ZONE TRANSITION: No portal matched by name, looking for closest portal");
+
+                                        var allPortals = _core.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
+                                            x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
+                                            x.ItemOnGround != null &&
+                                            (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") || x.ItemOnGround.Metadata.ToLower().Contains("portal")))
+                                            .OrderBy(x => Vector3.Distance(_core.PlayerPosition, x.ItemOnGround.Pos))
+                                            .ToList();
+
+                                        if (allPortals != null && allPortals.Count > 0)
                                         {
-                                            _core.LogMessage("ZONE TRANSITION: Clicking teleport button to initiate party teleport");
-                                            // SET GLOBAL FLAG: Prevent SMITE and other skills from interfering
-                                            AutoPilot.IsTeleportInProgress = true;
-                                            _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
+                                            var selectedPortal = allPortals.First();
+                                            var selectedDistance = Vector3.Distance(_core.PlayerPosition, selectedPortal.ItemOnGround.Pos);
+
+                                            _core.LogMessage($"ZONE TRANSITION: Found portal '{selectedPortal.Label?.Text}' at distance {selectedDistance:F1}");
+                                            if (selectedDistance < 200)
+                                            {
+                                                _core.LogMessage($"ZONE TRANSITION: Using portal '{selectedPortal.Label?.Text}' as fallback");
+                                                transition = selectedPortal; // Set transition so we use this portal
+
+                                                // Add the transition task since party teleport failed
+                                                _taskManager.AddTask(new TaskNode(selectedPortal, 200, TaskNodeType.Transition));
+                                                _core.LogMessage("ZONE TRANSITION: Portal transition task added as fallback");
+                                            }
+                                            else
+                                            {
+                                                _core.LogMessage($"ZONE TRANSITION: Portal too far ({selectedDistance:F1}), no transition method available");
+                                            }
+                                        }
+                                    }
+
+                                    // Check for Portal within Screen Distance (original logic) - only if we haven't already added a task
+                                    if (transition != null && transition.ItemOnGround.DistancePlayer < 80)
+                                    {
+                                        if (!_taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition))
+                                        {
+                                            _core.LogMessage($"ZONE TRANSITION: Found nearby portal '{transition.Label?.Text}', adding transition task");
+                                            _taskManager.AddTask(new TaskNode(transition, 200, TaskNodeType.Transition));
                                         }
                                         else
                                         {
-                                            _core.LogMessage("ZONE TRANSITION: No teleport button available, cannot follow through transition");
+                                            _core.LogMessage($"ZONE TRANSITION: Transition task already exists, portal handling already in progress");
                                         }
+                                    }
+                                    else
+                                    {
+                                        _core.LogMessage("ZONE TRANSITION: No party teleport button or suitable portal found, cannot follow through transition");
                                     }
                                 }
                             }

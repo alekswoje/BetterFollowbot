@@ -147,7 +147,11 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     #endregion
     public int GetMonsterWithin(float maxDistance, MonsterRarity rarity = MonsterRarity.White)
     {
-        return (from monster in enemys where monster.Rarity >= rarity select Vector2.Distance(new Vector2(monster.PosNum.X, monster.PosNum.Y), new Vector2(playerPosition.X, playerPosition.Y))).Count(distance => distance <= maxDistance);
+        return (from monster in enemys
+                let rarityComponent = monster.GetComponent<ObjectMagicProperties>()
+                where rarityComponent != null && rarityComponent.Rarity >= rarity
+                select Vector2.Distance(new Vector2(monster.PosNum.X, monster.PosNum.Y), new Vector2(playerPosition.X, playerPosition.Y)))
+                .Count(distance => distance <= maxDistance);
     }
 
     // Method to get entities from GameController (used by skill classes)

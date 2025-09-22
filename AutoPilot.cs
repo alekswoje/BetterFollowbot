@@ -116,9 +116,24 @@ namespace BetterFollowbotLite;
         }
         else if (followTarget != null && !followTarget.IsValid)
         {
-            BetterFollowbotLite.Instance.LogMessage("AUTOPILOT: Follow target became invalid, clearing");
-            followTarget = null;
-            lastTargetPosition = Vector3.Zero;
+            // Instead of immediately clearing, try to find the leader again
+            var retryTarget = _leaderDetector.FindLeaderEntity();
+            if (retryTarget != null && retryTarget.IsValid)
+            {
+                BetterFollowbotLite.Instance.LogMessage("AUTOPILOT: Follow target was invalid but found again, continuing");
+                followTarget = retryTarget;
+                // Update lastTargetPosition to the new valid position
+                if (followTarget.Pos != null)
+                {
+                    lastTargetPosition = followTarget.Pos;
+                }
+            }
+            else
+            {
+                BetterFollowbotLite.Instance.LogMessage("AUTOPILOT: Follow target became invalid and retry failed, clearing");
+                followTarget = null;
+                lastTargetPosition = Vector3.Zero;
+            }
         }
     }
 

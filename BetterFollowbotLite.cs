@@ -67,6 +67,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     private bool isMoving;
     private DateTime lastAreaChangeTime = DateTime.MinValue;
     private DateTime lastGraceLogTime = DateTime.MinValue;
+    private DateTime lastGraceCheckLogTime = DateTime.MinValue;
+    private DateTime lastAutoPilotUpdateLogTime = DateTime.MinValue;
     private Entity lastFollowTarget;
     private bool lastHadGrace;
     internal Entity localPlayer;
@@ -579,7 +581,13 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     var hasBuffs = buffs != null;
                     var hasGraceBuff = buffs != null && buffs.Exists(x => x.Name == "grace_period");
 
-                    LogMessage($"GRACE CHECK: [{DateTime.Now:HH:mm:ss.fff}] AutoPilot: {autopilotEnabled}, Grace Enabled: {graceEnabled}, Has Buffs: {hasBuffs}, Has Grace Buff: {hasGraceBuff}");
+                    // Throttle grace check logs to reduce spam (only log every 10 seconds when not in grace period)
+                    var timeSinceLastGraceCheckLog = (DateTime.Now - lastGraceCheckLogTime).TotalSeconds;
+                    if (timeSinceLastGraceCheckLog > 10.0)
+                    {
+                        LogMessage($"GRACE CHECK: [{DateTime.Now:HH:mm:ss.fff}] AutoPilot: {autopilotEnabled}, Grace Enabled: {graceEnabled}, Has Buffs: {hasBuffs}, Has Grace Buff: {hasGraceBuff}");
+                        lastGraceCheckLogTime = DateTime.Now;
+                    }
                 }
 
                 // Manual grace period breaking by pressing move key near screen center
@@ -703,15 +711,20 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 autoPilot.UpdateAutoPilotLogic();
                 autoPilot.Render();
 
-                // Debug AutoPilot tasks after update
+                // Debug AutoPilot tasks after update (throttled to reduce spam)
                 if (autoPilot != null)
                 {
-                    var followTarget = autoPilot.FollowTarget;
-                    LogMessage($"AUTOPILOT: After update - Task count: {autoPilot.Tasks.Count}, FollowTarget: {(followTarget != null ? followTarget.GetComponent<Player>()?.PlayerName ?? "Unknown" : "null")}");
-
-                    if (followTarget != null && autoPilot.Tasks.Count == 0)
+                    var timeSinceLastAutoPilotLog = (DateTime.Now - lastAutoPilotUpdateLogTime).TotalSeconds;
+                    if (timeSinceLastAutoPilotLog > 5.0) // Log every 5 seconds
                     {
-                        LogMessage("AUTOPILOT: Has follow target but no tasks - AutoPilot may not be moving the bot");
+                        var followTarget = autoPilot.FollowTarget;
+                        LogMessage($"AUTOPILOT: After update - Task count: {autoPilot.Tasks.Count}, FollowTarget: {(followTarget != null ? followTarget.GetComponent<Player>()?.PlayerName ?? "Unknown" : "null")}");
+
+                        if (followTarget != null && autoPilot.Tasks.Count == 0)
+                        {
+                            LogMessage("AUTOPILOT: Has follow target but no tasks - AutoPilot may not be moving the bot");
+                        }
+                        lastAutoPilotUpdateLogTime = DateTime.Now;
                     }
                 }
             }

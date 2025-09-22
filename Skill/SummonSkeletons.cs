@@ -17,9 +17,6 @@ namespace BetterFollowbotLite.Skills
         private readonly AutoPilot _autoPilot;
         private readonly Summons _summons;
 
-        // Throttling for repetitive logs to reduce spam
-        private DateTime _lastExecuteLog = DateTime.MinValue;
-        private DateTime _lastSummonLog = DateTime.MinValue;
 
         public SummonSkeletons(BetterFollowbotLite instance, BetterFollowbotLiteSettings settings,
                               AutoPilot autoPilot, Summons summons)
@@ -38,36 +35,14 @@ namespace BetterFollowbotLite.Skills
         {
             try
             {
-                // Debug: Log when Summon Skeletons Execute is called (throttled to reduce spam)
-                if ((DateTime.Now - _lastExecuteLog).TotalSeconds >= 3)
-                {
-                    _instance.LogMessage($"SUMMON SKELETONS: Execute called - Enabled: {_settings.summonSkeletonsEnabled.Value}, AutoPilot: {_autoPilot != null}, GCD: {_instance.Gcd()}");
-                    _lastExecuteLog = DateTime.Now;
-                }
-
                 if (_settings.summonSkeletonsEnabled.Value && _instance.Gcd())
                 {
                     // Check if we have a party leader to follow
                     var partyMembers = PartyElements.GetPlayerInfoElementList();
-                    _instance.LogMessage($"PARTY: Checking for leader '{_settings.autoPilotLeader.Value}', Party members: {partyMembers.Count}");
 
                     var leaderPartyElement = partyMembers
                         .FirstOrDefault(x => string.Equals(x?.PlayerName?.ToLower(),
                             _settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
-
-                    if (leaderPartyElement != null)
-                    {
-                        _instance.LogMessage($"PARTY: Found leader in party - Name: '{leaderPartyElement.PlayerName}'");
-                    }
-                    else
-                    {
-                        _instance.LogMessage("PARTY: Leader NOT found in party list");
-                        // Debug all party members
-                        foreach (var member in partyMembers)
-                        {
-                            _instance.LogMessage($"PARTY: Member - Name: '{member?.PlayerName}'");
-                        }
-                    }
 
                     if (leaderPartyElement != null)
                     {
@@ -100,21 +75,9 @@ namespace BetterFollowbotLite.Skills
 
                                     if (summonSkeletonsSkill != null && summonSkeletonsSkill.IsOnSkillBar && summonSkeletonsSkill.CanBeUsed)
                                     {
-                                        _instance.LogMessage($"SUMMON SKELETONS: Current: {skeletonCount}, Required: {_settings.summonSkeletonsMinCount.Value}, Distance to leader: {distanceToLeader:F1}");
-
                                         // Use the summon skeletons skill
                                         Keyboard.KeyPress(_instance.GetSkillInputKey(summonSkeletonsSkill.SkillSlotIndex));
                                         _instance.LastTimeAny = DateTime.Now; // Update global cooldown
-
-                                        _instance.LogMessage("SUMMON SKELETONS: Summoned skeletons successfully");
-                                    }
-                                    else if (summonSkeletonsSkill == null)
-                                    {
-                                        _instance.LogMessage("SUMMON SKELETONS: Summon Skeletons skill not found in skill bar");
-                                    }
-                                    else if (!summonSkeletonsSkill.CanBeUsed)
-                                    {
-                                        _instance.LogMessage("SUMMON SKELETONS: Summon Skeletons skill is on cooldown or unavailable");
                                     }
                                 }
                             }
@@ -124,7 +87,7 @@ namespace BetterFollowbotLite.Skills
             }
             catch (Exception e)
             {
-                _instance.LogMessage($"SUMMON SKELETONS: Exception occurred - {e.Message}");
+                // Silent exception handling
             }
         }
     }

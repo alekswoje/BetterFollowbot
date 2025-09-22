@@ -19,10 +19,6 @@ namespace BetterFollowbotLite.Skills
         private readonly AutoPilot _autoPilot;
         private readonly Summons _summons;
 
-        // Throttling for repetitive logs to reduce spam
-        private DateTime _lastExecuteLog = DateTime.MinValue;
-        private DateTime _lastMinionCountLog = DateTime.MinValue;
-        private DateTime _lastEnemyDetectionLog = DateTime.MinValue;
 
         public SummonRagingSpirits(BetterFollowbotLite instance, BetterFollowbotLiteSettings settings,
                                    AutoPilot autoPilot, Summons summons)
@@ -56,12 +52,6 @@ namespace BetterFollowbotLite.Skills
         {
             try
             {
-                // Debug: Log when SRS Execute is called (throttled to reduce spam)
-                if ((DateTime.Now - _lastExecuteLog).TotalSeconds >= 3)
-                {
-                    _instance.LogMessage($"SRS: Execute called - Enabled: {_settings.summonRagingSpiritsEnabled.Value}, AutoPilot: {_autoPilot != null}, FollowTarget: {_autoPilot?.FollowTarget != null}");
-                    _lastExecuteLog = DateTime.Now;
-                }
 
                 if (_settings.summonRagingSpiritsEnabled.Value && _autoPilot != null && _autoPilot.FollowTarget != null)
                 {
@@ -74,26 +64,12 @@ namespace BetterFollowbotLite.Skills
                         var ragingSpiritCount = Summons.GetRagingSpiritCount();
                         var totalMinionCount = Summons.GetTotalMinionCount();
 
-                        // Throttle minion count logs to reduce spam (only log every 2 seconds)
-                        if ((DateTime.Now - _lastMinionCountLog).TotalSeconds >= 2)
-                        {
-                            _instance.LogMessage($"SRS: Minion count check - Raging spirits: {ragingSpiritCount}, Total minions: {totalMinionCount}, Required: {_settings.summonRagingSpiritsMinCount.Value}");
-                            _lastMinionCountLog = DateTime.Now;
-                        }
-
                         // Only cast SRS if we have less than the minimum required count
                         if (totalMinionCount < _settings.summonRagingSpiritsMinCount.Value)
                         {
                             // Check for HOSTILE rare/unique enemies within 500 units (exclude player's own minions)
                             bool rareOrUniqueNearby = false;
                             var entities = GetEntities().Where(x => x.Type == EntityType.Monster);
-
-                            // Throttle enemy detection logs to reduce spam (only log every 3 seconds)
-                            if ((DateTime.Now - _lastEnemyDetectionLog).TotalSeconds >= 3)
-                            {
-                                _instance.LogMessage($"SRS: Checking for enemies - Monster entities found: {entities.Count()}");
-                                _lastEnemyDetectionLog = DateTime.Now;
-                            }
 
                             // Get list of deployed object IDs to exclude player's own minions
                             var deployedObjectIds = new HashSet<uint>();
@@ -126,7 +102,6 @@ namespace BetterFollowbotLite.Skills
                                             if (rarity == MonsterRarity.Unique || rarity == MonsterRarity.Rare)
                                             {
                                                 rareOrUniqueNearby = true;
-                                                _instance.LogMessage($"SRS: Found hostile {rarity} enemy within range! Distance: {distanceToEntity:F1}");
                                                 break;
                                             }
                                             // Also check for magic/white if enabled
@@ -134,15 +109,12 @@ namespace BetterFollowbotLite.Skills
                                                     (rarity == MonsterRarity.Magic || rarity == MonsterRarity.White))
                                             {
                                                 rareOrUniqueNearby = true;
-                                                _instance.LogMessage($"SRS: Found hostile {rarity} enemy within range! Distance: {distanceToEntity:F1}");
                                                 break;
                                             }
                                         }
                                     }
                                 }
                             }
-
-                            _instance.LogMessage($"SRS: Enemy detection result - Rare/Unique nearby: {rareOrUniqueNearby}");
 
                             if (rareOrUniqueNearby)
                             {
@@ -152,26 +124,11 @@ namespace BetterFollowbotLite.Skills
                                     s.Name.Contains("Summon Raging Spirit") ||
                                     (s.Name.Contains("summon") && s.Name.Contains("spirit") && s.Name.Contains("rag")));
 
-                                _instance.LogMessage($"SRS: Skill search - Found: {summonRagingSpiritsSkill != null}, OnSkillBar: {summonRagingSpiritsSkill?.IsOnSkillBar}, CanBeUsed: {summonRagingSpiritsSkill?.CanBeUsed}");
-
                                 if (summonRagingSpiritsSkill != null && summonRagingSpiritsSkill.IsOnSkillBar && summonRagingSpiritsSkill.CanBeUsed)
                                 {
-                                    var enemyType = _settings.summonRagingSpiritsMagicNormal.Value ? "Rare/Unique/Magic/White" : "Rare/Unique";
-                                    _instance.LogMessage($"SRS: Current spirits: {ragingSpiritCount}, Total minions: {totalMinionCount}, Required: {_settings.summonRagingSpiritsMinCount.Value}, Distance to leader: {distanceToLeader:F1} (max: {_settings.autoPilotClearPathDistance.Value}), Hostile {enemyType} enemy within 500 units detected");
-
                                     // Use the Summon Raging Spirits skill
                                     Keyboard.KeyPress(_instance.GetSkillInputKey(summonRagingSpiritsSkill.SkillSlotIndex));
                                     _instance.LastTimeAny = DateTime.Now; // Update global cooldown
-
-                                    _instance.LogMessage("SRS: Summoned Raging Spirit successfully");
-                                }
-                                else if (summonRagingSpiritsSkill == null)
-                                {
-                                    _instance.LogMessage("SRS: SummonRagingSpirit skill not found in skill bar");
-                                }
-                                else if (!summonRagingSpiritsSkill.CanBeUsed)
-                                {
-                                    _instance.LogMessage("SRS: SummonRagingSpirit skill is on cooldown or unavailable");
                                 }
                             }
                         }
@@ -180,7 +137,7 @@ namespace BetterFollowbotLite.Skills
             }
             catch (Exception e)
             {
-                _instance.LogMessage($"SRS: Exception occurred - {e.Message}");
+                // Silent exception handling
             }
         }
     }

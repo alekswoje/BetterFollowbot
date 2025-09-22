@@ -22,9 +22,7 @@ namespace BetterFollowbotLite
                 new[]
                 {
                     "enter the arena", "arena portal", "the pit", "pit portal", "warden's quarters", "wardens quarters",
-                    "combat", "merveil's lair", "merveils lair", "the weaver's nest", "weavers nest", "weaver's nest",
-                    "arena", "pit", "wardens", "warden", "combat arena", "pit of fire", "flames of defiance",
-                    "frozen trials", "temple of decay", "temple of decay ii", "temple of decay iii"
+                    "combat", "merveil's lair", "merveils lair", "the weaver's nest", "stairs"
                 }, "Arena"
             }
         };

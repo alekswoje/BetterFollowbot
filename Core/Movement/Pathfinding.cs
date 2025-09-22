@@ -31,7 +31,7 @@ namespace BetterFollowbotLite.Core.Movement
         // A* pathfinding data structures
         private ConcurrentDictionary<Vector2i, Dictionary<Vector2i, float>> _exactDistanceField = new();
         private ConcurrentDictionary<Vector2i, byte[][]> _directionField = new();
-        private ConcurrentDictionary<Vector2, List<Vector2i>> _pathCache = new();
+        private ConcurrentDictionary<string, List<Vector2i>> _pathCache = new();
 
         public Pathfinding(IFollowbotCore core, ITerrainAnalyzer terrainAnalyzer)
         {
@@ -60,16 +60,38 @@ namespace BetterFollowbotLite.Core.Movement
                 _dimension1 = numRows;
                 _dimension2 = numCols;
 
+                _core.LogMessage($"PATHFINDING: Terrain dimensions - Cols: {_dimension2}, Rows: {_dimension1}");
+
                 // Initialize grid with walkable values (1, 2, 3, 4, 5 are walkable)
                 var pathableValues = new[] { 1, 2, 3, 4, 5 };
                 var pv = pathableValues.ToHashSet();
 
                 _processedTerrainData = BetterFollowbotLite.Instance.GameController.IngameState.Data.RawPathfindingData;
+                if (_processedTerrainData == null)
+                {
+                    _core.LogError("PATHFINDING: RawPathfindingData is null!");
+                    _grid = null;
+                    return;
+                }
+
+                _core.LogMessage($"PATHFINDING: Processing {_processedTerrainData.Length} terrain rows");
+
                 _grid = _processedTerrainData.Select(x => x.Select(y => pv.Contains(y)).ToArray()).ToArray();
 
                 _processedTerrainTargetingData = BetterFollowbotLite.Instance.GameController.IngameState.Data.RawTerrainTargetingData;
 
                 _core.LogMessage("PATHFINDING: A* terrain data initialized successfully");
+
+                // Count walkable tiles for debugging
+                var walkableCount = 0;
+                foreach (var row in _grid)
+                {
+                    foreach (var cell in row)
+                    {
+                        if (cell) walkableCount++;
+                    }
+                }
+                _core.LogMessage($"PATHFINDING: Found {walkableCount} walkable tiles out of {_dimension1 * _dimension2} total tiles");
             }
             catch (Exception e)
             {
@@ -277,28 +299,66 @@ namespace BetterFollowbotLite.Core.Movement
             var startGrid = WorldToGrid(startWorld);
             var targetGrid = WorldToGrid(targetWorld);
 
-            // Check cache first
-            var cacheKey = new Vector2(startGrid.X, startGrid.Y);
+            _core.LogMessage($"A* DEBUG: Finding path from grid ({startGrid.X}, {startGrid.Y}) to ({targetGrid.X}, {targetGrid.Y})");
+
+            // Check cache first - use both start and target positions as key
+            var cacheKey = $"{startGrid.X},{startGrid.Y}->{targetGrid.X},{targetGrid.Y}";
             if (_pathCache.TryGetValue(cacheKey, out var cachedPath))
             {
+                _core.LogMessage($"A* DEBUG: Using cached path with {cachedPath.Count} waypoints");
                 return cachedPath;
             }
 
+            // Check if start and target are the same
+            if (startGrid == targetGrid)
+            {
+                _core.LogMessage($"A* DEBUG: Start and target are the same, returning empty path");
+                return new List<Vector2i>();
+            }
+
+            // Check if positions are walkable
+            if (!IsTilePathable(startGrid))
+            {
+                _core.LogMessage($"A* DEBUG: Start position ({startGrid.X}, {startGrid.Y}) is not walkable!");
+                return null;
+            }
+
+            if (!IsTilePathable(targetGrid))
+            {
+                _core.LogMessage($"A* DEBUG: Target position ({targetGrid.X}, {targetGrid.Y}) is not walkable!");
+                return null;
+            }
+
+            _core.LogMessage($"A* DEBUG: Both positions are walkable, running first scan...");
+
             // Run first scan if needed
+            var pathFound = false;
             foreach (var path in RunFirstScan(startGrid, targetGrid))
             {
                 if (path != null && path.Count > 0)
                 {
+                    _core.LogMessage($"A* DEBUG: First scan found path with {path.Count} waypoints");
                     _pathCache[cacheKey] = path;
+                    pathFound = true;
                     return path;
                 }
+            }
+
+            if (!pathFound)
+            {
+                _core.LogMessage($"A* DEBUG: First scan found no path, trying direction field...");
             }
 
             // Find path using direction field
             var finalPath = FindPath(startGrid, targetGrid);
             if (finalPath != null)
             {
+                _core.LogMessage($"A* DEBUG: Direction field found path with {finalPath.Count} waypoints");
                 _pathCache[cacheKey] = finalPath;
+            }
+            else
+            {
+                _core.LogMessage($"A* DEBUG: No path found by any method");
             }
 
             return finalPath;

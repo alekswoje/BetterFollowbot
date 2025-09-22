@@ -83,34 +83,36 @@ namespace BetterFollowbotLite.Core.Movement
                     // Check if leader is far away (might have gone through arena portal)
                     var leaderDistance = Vector3.Distance(_core.PlayerPosition, followTarget.Pos);
 
-                    // Find all available portals and check if any are within their appropriate distance threshold
+                    // Check if leader is far enough away to warrant taking a portal
                     var allPortals = GetAllPortals(leaderPartyElement, forceSearch: true);
-                    var portalsWithinRange = allPortals.Where(portal =>
+                    var validPortals = allPortals.Where(portal =>
                     {
                         var portalLabel = portal.Label?.Text ?? "";
-                        var portalDistance = PortalManager.GetPortalDistanceThreshold(portalLabel);
-                        var portalPos = portal.ItemOnGround.Pos;
-                        var distanceToPortal = Vector3.Distance(_core.PlayerPosition, portalPos);
-
-                        _core.LogMessage($"ARENA PORTAL: Checking portal '{portalLabel}' - Distance: {distanceToPortal:F1}, Threshold: {portalDistance:F1}");
-
-                        return distanceToPortal <= portalDistance;
+                        return PortalManager.IsSpecialPortal(portalLabel.ToLower()) ||
+                               PortalManager.GetSpecialPortalType(portalLabel.ToLower()) == "Arena";
                     }).ToList();
 
-                    if (portalsWithinRange.Any())
+                    // Only proceed if leader is far enough away from any valid portal
+                    var shouldTakePortal = false;
+                    LabelOnGround selectedPortal = null;
+
+                    foreach (var portal in validPortals)
                     {
-                        _core.LogMessage($"ARENA PORTAL: Leader is {leaderDistance:F1} units away, found {portalsWithinRange.Count} portals within range");
+                        var portalLabel = portal.Label?.Text ?? "";
+                        var portalDistanceThreshold = PortalManager.GetPortalDistanceThreshold(portalLabel);
 
-                        // Prioritize close arena portals over regular ones
-                        var closeArenaPortals = portalsWithinRange.Where(p =>
-                            PortalManager.IsCloseArenaPortal(p.Label?.Text ?? "")).ToList();
+                        if (leaderDistance > portalDistanceThreshold)
+                        {
+                            shouldTakePortal = true;
+                            selectedPortal = portal;
+                            _core.LogMessage($"ARENA PORTAL: Leader is {leaderDistance:F1} units away (> {portalDistanceThreshold:F1} threshold) - taking portal '{portalLabel}'");
+                            break;
+                        }
+                    }
 
-                        var selectedPortal = closeArenaPortals.Any() ? closeArenaPortals.First() : portalsWithinRange.First();
+                    if (shouldTakePortal && selectedPortal != null)
+                    {
                         var selectedPortalLabel = selectedPortal.Label?.Text ?? "";
-                        var selectedDistance = Vector3.Distance(_core.PlayerPosition, selectedPortal.ItemOnGround.Pos);
-
-                        _core.LogMessage($"ARENA PORTAL: Selected portal '{selectedPortalLabel}' at distance {selectedDistance:F1}");
-
                         var isSpecialPortal = PortalManager.IsSpecialPortal(selectedPortalLabel.ToLower());
                         var isArenaPortal = PortalManager.GetSpecialPortalType(selectedPortalLabel.ToLower()) == "Arena";
 
@@ -125,9 +127,9 @@ namespace BetterFollowbotLite.Core.Movement
                             _core.LogMessage($"ARENA PORTAL: Selected portal '{selectedPortalLabel}' is not special/arena, ignoring");
                         }
                     }
-                    else if (leaderDistance > 100) // Fallback: if leader is far but no portals in range, still log
+                    else if (leaderDistance > 100) // Fallback: if leader is far but no portals should be taken, still log
                     {
-                        _core.LogMessage($"ARENA PORTAL: Leader is {leaderDistance:F1} units away but no portals found within distance thresholds");
+                        _core.LogMessage($"ARENA PORTAL: Leader is {leaderDistance:F1} units away but not far enough for any portal threshold");
                     }
                 }
 

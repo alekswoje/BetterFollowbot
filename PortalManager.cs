@@ -37,7 +37,7 @@ namespace BetterFollowbotLite
         // This is auto-generated from PortalTypeMappings for consistency
         private static readonly string[] SpecialPortalNames = PortalTypeMappings.Keys.SelectMany(keywords => keywords).ToArray();
 
-        // Distance thresholds for portal detection - portals are only taken if leader is MORE than this distance away
+        // Distance thresholds for leader distance - portals are only taken if leader is MORE than this distance away
         private const float CloseArenaPortalDistance = 2500f; // Close portals (Pit, Warden's Quarters, Stairs)
         private const float RegularArenaPortalDistance = 3000f; // Regular arena portals
 
@@ -77,7 +77,7 @@ namespace BetterFollowbotLite
         }
 
         /// <summary>
-        /// Gets the appropriate distance threshold for portal detection based on portal type
+        /// Gets the appropriate distance threshold for leader distance - portals are only taken when leader is farther than this
         /// </summary>
         public static float GetPortalDistanceThreshold(string portalLabel)
         {

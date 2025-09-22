@@ -30,16 +30,16 @@ namespace BetterFollowbotLite
         // Close arena portals - these use a shorter distance threshold (500 units)
         private static readonly string[] CloseArenaPortals = new[]
         {
-            "temp",
+            "stairs", "the pit", "pit portal", "warden's quarters", "wardens quarters"
         };
 
         // Special portal names that should be treated as high-priority interzone portals
         // This is auto-generated from PortalTypeMappings for consistency
         private static readonly string[] SpecialPortalNames = PortalTypeMappings.Keys.SelectMany(keywords => keywords).ToArray();
 
-        // Distance thresholds for portal detection
-        private const float CloseArenaPortalDistance = 500f; // Close portals (Pit, Warden's Quarters)
-        private const float RegularArenaPortalDistance = 2000f; // Regular arena portals
+        // Distance thresholds for portal detection - portals are only taken if leader is MORE than this distance away
+        private const float CloseArenaPortalDistance = 2500f; // Close portals (Pit, Warden's Quarters, Stairs)
+        private const float RegularArenaPortalDistance = 3000f; // Regular arena portals
 
         // Portal transition state
         private Vector3 portalLocation = Vector3.Zero; // Where the portal actually is (leader's position before transition)

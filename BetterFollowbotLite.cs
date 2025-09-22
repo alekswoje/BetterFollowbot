@@ -282,6 +282,11 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     /// </summary>
     public Summons Summons => summons;
 
+    /// <summary>
+    /// Movement executor for handling movement tasks
+    /// </summary>
+    IMovementExecutor IFollowbotCore.MovementExecutor => movementExecutor;
+
     public bool Gcd()
     {
         return (DateTime.Now - LastTimeAny).TotalMilliseconds > Delay;

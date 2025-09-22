@@ -74,6 +74,11 @@ namespace BetterFollowbotLite.Interfaces
         Summons Summons { get; }
 
         /// <summary>
+        /// Movement executor for handling movement tasks
+        /// </summary>
+        IMovementExecutor MovementExecutor { get; }
+
+        /// <summary>
         /// Get monster count within distance by rarity
         /// </summary>
         int GetMonsterWithin(float maxDistance, MonsterRarity rarity);

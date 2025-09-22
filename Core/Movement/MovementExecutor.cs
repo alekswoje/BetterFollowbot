@@ -182,12 +182,13 @@ namespace BetterFollowbotLite.Core.Movement
                     //Click the transition
                     Input.KeyUp(_core.Settings.autoPilotMoveKey);
 
-                    // Get the portal click position with more detailed logging
-                    var portalRect = currentTask.LabelOnGround.Label.GetClientRect();
-                    transitionPos = new Vector2(portalRect.Center.X, portalRect.Center.Y);
+                    // Get the portal world position and convert to screen coordinates
+                    var portalWorldPos = currentTask.LabelOnGround.ItemOnGround.Pos;
+                    var portalScreenPos = _core.GameController.IngameState.Camera.WorldToScreen(portalWorldPos);
+                    transitionPos = new Vector2(portalScreenPos.X, portalScreenPos.Y);
 
-                    _core.LogMessage($"TRANSITION: Portal '{portalLabel}' click position - X: {transitionPos.X:F1}, Y: {transitionPos.Y:F1}");
-                    _core.LogMessage($"TRANSITION: Portal screen rect - Left: {portalRect.Left:F1}, Top: {portalRect.Top:F1}, Width: {portalRect.Width:F1}, Height: {portalRect.Height:F1}");
+                    _core.LogMessage($"TRANSITION: Portal '{portalLabel}' world position: ({portalWorldPos.X:F1}, {portalWorldPos.Y:F1}, {portalWorldPos.Z:F1})");
+                    _core.LogMessage($"TRANSITION: Portal screen position: ({portalScreenPos.X:F1}, {portalScreenPos.Y:F1})");
 
                     // Check if the portal is actually clickable (on screen)
                     var screenBounds = _core.GameController.Window.GetWindowRectangle();

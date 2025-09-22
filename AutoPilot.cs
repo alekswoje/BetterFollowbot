@@ -427,9 +427,13 @@ namespace BetterFollowbotLite;
 
             if (shouldSearchForPortals)
             {
+                // Get all portal-like objects, including arena portals which might not have standard portal metadata
                 var allPortalLabels = BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
                         x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible && x.ItemOnGround != null &&
-                        (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") || x.ItemOnGround.Metadata.ToLower().Contains("portal")))
+                        (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") ||
+                         x.ItemOnGround.Metadata.ToLower().Contains("portal") ||
+                         x.ItemOnGround.Metadata.ToLower().Contains("transition") ||
+                         PortalManager.IsSpecialPortal(x.Label?.Text?.ToLower() ?? ""))) // Include any objects with special portal labels
                     .ToList();
 
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL SEARCH: Found {allPortalLabels.Count} portal objects on ground");
@@ -1139,7 +1143,9 @@ namespace BetterFollowbotLite;
                     x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
                     x.ItemOnGround != null &&
                     (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") ||
-                     x.ItemOnGround.Metadata.ToLower().Contains("portal"))).ToList();
+                     x.ItemOnGround.Metadata.ToLower().Contains("portal") ||
+                     x.ItemOnGround.Metadata.ToLower().Contains("transition") ||
+                     PortalManager.IsSpecialPortal(x.Label?.Text?.ToLower() ?? ""))).ToList();
 
             foreach (var portal in portalLabels)
             {
@@ -1169,6 +1175,23 @@ namespace BetterFollowbotLite;
                     {
                         BetterFollowbotLite.Instance.Graphics.DrawText("PRIORITY", new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 65), Color.Yellow);
                     }
+
+                    // Show where we will actually click (world position converted to screen)
+                    var clickScreenPos = BetterFollowbotLite.Instance.GameController.IngameState.Camera.WorldToScreen(portal.ItemOnGround.Pos);
+                    var clickPos = new System.Numerics.Vector2(clickScreenPos.X, clickScreenPos.Y);
+
+                    // Draw a small cross at the click position
+                    const int crossSize = 5;
+                    BetterFollowbotLite.Instance.Graphics.DrawLine(
+                        clickPos - new System.Numerics.Vector2(crossSize, 0),
+                        clickPos + new System.Numerics.Vector2(crossSize, 0),
+                        2f, Color.Green);
+                    BetterFollowbotLite.Instance.Graphics.DrawLine(
+                        clickPos - new System.Numerics.Vector2(0, crossSize),
+                        clickPos + new System.Numerics.Vector2(0, crossSize),
+                        2f, Color.Green);
+
+                    BetterFollowbotLite.Instance.Graphics.DrawText("CLICK", new System.Numerics.Vector2(clickPos.X + 8, clickPos.Y - 8), Color.Green);
                 }
             }
         }

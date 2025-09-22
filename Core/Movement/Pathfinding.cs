@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using BetterFollowbotLite.Interfaces;
 using ExileCore;
+using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
 using GameOffsets;
 using GameOffsets.Native;
@@ -371,11 +372,37 @@ namespace BetterFollowbotLite.Core.Movement
 
         private Vector2i WorldToGrid(Vector3 worldPos)
         {
-            // Convert world position to grid coordinates (similar to Radar's GridToWorldMultiplier)
-            const float GridToWorldMultiplier = 250f / 23f; // TileToWorldConversion / TileToGridConversion
-            var gridX = (int)(worldPos.X / GridToWorldMultiplier);
-            var gridY = (int)(worldPos.Z / GridToWorldMultiplier); // Z is up in world space, Y in grid
-            return new Vector2i(gridX, gridY);
+            try
+            {
+                // Try to get grid position from the Positioned component first (more accurate)
+                var localPlayer = BetterFollowbotLite.Instance.localPlayer;
+                if (localPlayer != null)
+                {
+                    var positioned = localPlayer.GetComponent<Positioned>();
+                    if (positioned != null)
+                    {
+                        var gridPos = new Vector2i(positioned.GridX, positioned.GridY);
+                        _core.LogMessage($"PATHFINDING: Using Positioned component grid coords: ({gridPos.X}, {gridPos.Y})");
+                        return gridPos;
+                    }
+                }
+
+                // Fallback to manual conversion (similar to Radar's GridToWorldMultiplier)
+                const float GridToWorldMultiplier = 250f / 23f; // TileToWorldConversion / TileToGridConversion
+                var gridX = (int)(worldPos.X / GridToWorldMultiplier);
+                var gridY = (int)(worldPos.Z / GridToWorldMultiplier); // Z is north-south in world space, Y in grid
+                _core.LogMessage($"PATHFINDING: Using manual conversion grid coords: ({gridX}, {gridY}) from world ({worldPos.X:F1}, {worldPos.Y:F1}, {worldPos.Z:F1})");
+                return new Vector2i(gridX, gridY);
+            }
+            catch (Exception e)
+            {
+                _core.LogError($"PATHFINDING: Error in WorldToGrid conversion: {e.Message}");
+                // Emergency fallback
+                const float GridToWorldMultiplier = 250f / 23f;
+                var gridX = (int)(worldPos.X / GridToWorldMultiplier);
+                var gridY = (int)(worldPos.Z / GridToWorldMultiplier);
+                return new Vector2i(gridX, gridY);
+            }
         }
 
         private Vector2i WorldToGrid(Vector2 worldPos)

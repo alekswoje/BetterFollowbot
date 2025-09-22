@@ -27,9 +27,19 @@ namespace BetterFollowbotLite
             }
         };
 
+        // Close arena portals - these use a shorter distance threshold (500 units)
+        private static readonly string[] CloseArenaPortals = new[]
+        {
+            "temp",
+        };
+
         // Special portal names that should be treated as high-priority interzone portals
         // This is auto-generated from PortalTypeMappings for consistency
         private static readonly string[] SpecialPortalNames = PortalTypeMappings.Keys.SelectMany(keywords => keywords).ToArray();
+
+        // Distance thresholds for portal detection
+        private const float CloseArenaPortalDistance = 500f; // Close portals (Pit, Warden's Quarters)
+        private const float RegularArenaPortalDistance = 2000f; // Regular arena portals
 
         // Portal transition state
         private Vector3 portalLocation = Vector3.Zero; // Where the portal actually is (leader's position before transition)
@@ -52,6 +62,26 @@ namespace BetterFollowbotLite
             if (string.IsNullOrEmpty(portalLabel)) return "Unknown";
 
             return GetPortalTypeFromMappings(portalLabel, PortalTypeMappings) ?? "Unknown";
+        }
+
+        /// <summary>
+        /// Checks if a portal is a "close" arena portal that uses shorter distance threshold
+        /// </summary>
+        public static bool IsCloseArenaPortal(string portalLabel)
+        {
+            if (string.IsNullOrEmpty(portalLabel)) return false;
+
+            var labelLower = portalLabel.ToLower();
+            return CloseArenaPortals.Any(closePortal =>
+                labelLower.Contains(closePortal, StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>
+        /// Gets the appropriate distance threshold for portal detection based on portal type
+        /// </summary>
+        public static float GetPortalDistanceThreshold(string portalLabel)
+        {
+            return IsCloseArenaPortal(portalLabel) ? CloseArenaPortalDistance : RegularArenaPortalDistance;
         }
 
 

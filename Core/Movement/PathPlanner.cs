@@ -81,33 +81,52 @@ namespace BetterFollowbotLite.Core.Movement
                 {
                     // Check if leader is far away (might have gone through arena portal)
                     var leaderDistance = Vector3.Distance(_core.PlayerPosition, followTarget.Pos);
-                    if (leaderDistance > 100) // Leader is reasonably far, might need portal
+
+                    // Find all available portals and check if any are within their appropriate distance threshold
+                    var allPortals = GetAllPortals(leaderPartyElement, forceSearch: true);
+                    var portalsWithinRange = allPortals.Where(portal =>
                     {
-                        _core.LogMessage($"ARENA PORTAL: Leader is {leaderDistance:F1} units away, checking for special portals");
-                        var portal = GetBestPortalLabel(leaderPartyElement, forceSearch: true);
-                        if (portal != null)
+                        var portalLabel = portal.Label?.Text ?? "";
+                        var portalDistance = PortalManager.GetPortalDistanceThreshold(portalLabel);
+                        var portalPos = portal.ItemOnGround.Pos;
+                        var distanceToPortal = Vector3.Distance(_core.PlayerPosition, portalPos);
+
+                        _core.LogMessage($"ARENA PORTAL: Checking portal '{portalLabel}' - Distance: {distanceToPortal:F1}, Threshold: {portalDistance:F1}");
+
+                        return distanceToPortal <= portalDistance;
+                    }).ToList();
+
+                    if (portalsWithinRange.Any())
+                    {
+                        _core.LogMessage($"ARENA PORTAL: Leader is {leaderDistance:F1} units away, found {portalsWithinRange.Count} portals within range");
+
+                        // Prioritize close arena portals over regular ones
+                        var closeArenaPortals = portalsWithinRange.Where(p =>
+                            PortalManager.IsCloseArenaPortal(p.Label?.Text ?? "")).ToList();
+
+                        var selectedPortal = closeArenaPortals.Any() ? closeArenaPortals.First() : portalsWithinRange.First();
+                        var selectedPortalLabel = selectedPortal.Label?.Text ?? "";
+                        var selectedDistance = Vector3.Distance(_core.PlayerPosition, selectedPortal.ItemOnGround.Pos);
+
+                        _core.LogMessage($"ARENA PORTAL: Selected portal '{selectedPortalLabel}' at distance {selectedDistance:F1}");
+
+                        var isSpecialPortal = PortalManager.IsSpecialPortal(selectedPortalLabel.ToLower());
+                        var isArenaPortal = PortalManager.GetSpecialPortalType(selectedPortalLabel.ToLower()) == "Arena";
+
+                        if (isSpecialPortal || isArenaPortal)
                         {
-                            var portalLabel = portal.Label?.Text ?? "";
-                            var isSpecialPortal = PortalManager.IsSpecialPortal(portalLabel.ToLower());
-                            var isArenaPortal = PortalManager.GetSpecialPortalType(portalLabel.ToLower()) == "Arena";
-
-                            _core.LogMessage($"ARENA PORTAL: Found portal '{portalLabel}' - Special: {isSpecialPortal}, Arena: {isArenaPortal}");
-
-                            if (isSpecialPortal || isArenaPortal)
-                            {
-                                _core.LogMessage($"ARENA PORTAL: Detected special portal '{portalLabel}' while leader is far away - creating transition task");
-                                _taskManager.AddTask(new TaskNode(portal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
-                                _core.LogMessage($"ARENA PORTAL: Portal transition task created for portal at {portal.ItemOnGround.Pos}");
-                            }
-                            else
-                            {
-                                _core.LogMessage($"ARENA PORTAL: Portal '{portalLabel}' is not special/arena, ignoring");
-                            }
+                            _core.LogMessage($"ARENA PORTAL: Creating transition task for portal '{selectedPortalLabel}'");
+                            _taskManager.AddTask(new TaskNode(selectedPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                            _core.LogMessage($"ARENA PORTAL: Portal transition task created for portal at {selectedPortal.ItemOnGround.Pos}");
                         }
                         else
                         {
-                            _core.LogMessage($"ARENA PORTAL: No portals found despite leader being far away");
+                            _core.LogMessage($"ARENA PORTAL: Selected portal '{selectedPortalLabel}' is not special/arena, ignoring");
                         }
+                    }
+                    else if (leaderDistance > 100) // Fallback: if leader is far but no portals in range, still log
+                    {
+                        _core.LogMessage($"ARENA PORTAL: Leader is {leaderDistance:F1} units away but no portals found within distance thresholds");
                     }
                 }
 
@@ -560,6 +579,34 @@ namespace BetterFollowbotLite.Core.Movement
             catch (Exception e)
             {
                 _core.LogError($"PathPlanner.PlanPath Error: {e}");
+            }
+        }
+
+        private List<LabelOnGround> GetAllPortals(PartyElementWindow leaderPartyElement, bool forceSearch = false)
+        {
+            try
+            {
+                if (leaderPartyElement == null)
+                {
+                    _core.LogMessage("PORTAL DEBUG: GetAllPortals called with null leaderPartyElement");
+                    return new List<LabelOnGround>();
+                }
+
+                var portalLabels = _core.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
+                    x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
+                    x.ItemOnGround != null &&
+                    (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") ||
+                     x.ItemOnGround.Metadata.ToLower().Contains("portal") ||
+                     x.ItemOnGround.Metadata.ToLower().Contains("transition") ||
+                     PortalManager.IsSpecialPortal(x.Label?.Text?.ToLower() ?? "")))
+                    .ToList();
+
+                return portalLabels ?? new List<LabelOnGround>();
+            }
+            catch (Exception ex)
+            {
+                _core.LogMessage($"PORTAL DEBUG: Exception in GetAllPortals: {ex.Message}");
+                return new List<LabelOnGround>();
             }
         }
 

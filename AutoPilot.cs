@@ -1038,10 +1038,13 @@ namespace BetterFollowbotLite;
 
             lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
 
-            _pathPlanner.PlanPath(followTarget, leaderPartyElement, lastTargetPosition, lastPlayerPosition);
-
-            if (followTarget?.Pos != null)
+            // Only plan path if we have a valid follow target
+            if (followTarget != null && followTarget.Pos != null &&
+                !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
+            {
+                _pathPlanner.PlanPath(followTarget, leaderPartyElement, lastTargetPosition, lastPlayerPosition);
                 lastTargetPosition = followTarget.Pos;
+            }
         }
         catch (Exception e)
         {

@@ -25,23 +25,13 @@ namespace BetterFollowbotLite;
 public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSettings>, IFollowbotCore
 {
     private const int Delay = 45;
-
     private const int MouseAutoSnapRange = 250;
     internal static BetterFollowbotLite Instance;
     
-    // Leader detection service
     private ILeaderDetector leaderDetector;
-    
-    // Task management service
     private ITaskManager taskManager;
-
-    // Terrain analyzer service
     private ITerrainAnalyzer terrainAnalyzer;
-
-    // Pathfinding service
     private IPathfinding pathfinding;
-
-    // Movement executor service
     private IMovementExecutor movementExecutor;
 
     internal AutoPilot autoPilot;
@@ -85,25 +75,17 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         if (Instance == null)
             Instance = this;
 
-        // Initialize services with dependency injection
         leaderDetector = new LeaderDetector(this);
         taskManager = new TaskManager(this);
         terrainAnalyzer = new TerrainAnalyzer();
         pathfinding = new Core.Movement.Pathfinding(this, terrainAnalyzer);
 
-        // Create portal manager (needed by path planner)
         var portalManager = new PortalManager();
-
-        // Create path planner
         var pathPlanner = new Core.Movement.PathPlanner(this, leaderDetector, taskManager, portalManager);
 
-        autoPilot = new AutoPilot(leaderDetector, taskManager, pathfinding, null, pathPlanner); // Create AutoPilot with pathPlanner
-        movementExecutor = new MovementExecutor(this, taskManager, pathfinding, autoPilot); // Now create movementExecutor with autoPilot instance
-        // Set movementExecutor in autoPilot (assuming we add a setter method)
+        autoPilot = new AutoPilot(leaderDetector, taskManager, pathfinding, null, pathPlanner);
+        movementExecutor = new MovementExecutor(this, taskManager, pathfinding, autoPilot);
         autoPilot.SetMovementExecutor(movementExecutor);
-
-        // Initialize timestamps
-        // lastAutoJoinPartyAttempt is now managed within PartyJoiner class
 
         GameController.LeftPanel.WantUse(() => Settings.Enable);
         skillCoroutine = new Coroutine(WaitForSkillsAfterAreaChange(), this);
@@ -112,7 +94,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         Settings.autoPilotToggleKey.OnValueChanged += () => { Input.RegisterKey(Settings.autoPilotToggleKey.Value); };
         autoPilot.StartCoroutine();
 
-        // Initialize skill classes
         summonRagingSpirits = new SummonRagingSpirits(this, Settings, autoPilot, summons);
         summonSkeletons = new SummonSkeletons(this, Settings, autoPilot, summons);
         rejuvenationTotem = new RejuvenationTotem(this, Settings);
@@ -122,16 +103,12 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         vaalSkillsAutomation = new VaalSkills(this, Settings);
         mines = new Mines(this, Settings);
 
-        // Initialize automation classes
         respawnHandler = new RespawnHandler(this, Settings);
         gemLeveler = new GemLeveler(this, Settings);
         partyJoiner = new PartyJoiner(this, Settings);
         autoMapTabber = new AutoMapTabber(this, Settings);
 
-        // Initialize automation manager and register all features
         automationManager = new AutomationManager();
-
-        // Register skills
         automationManager.RegisterSkill(summonRagingSpirits);
         automationManager.RegisterSkill(summonSkeletons);
         automationManager.RegisterSkill(rejuvenationTotem);
@@ -141,7 +118,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         automationManager.RegisterSkill(vaalSkillsAutomation);
         automationManager.RegisterSkill(mines);
 
-        // Register automation features
         automationManager.RegisterAutomation(respawnHandler);
         automationManager.RegisterAutomation(gemLeveler);
         automationManager.RegisterAutomation(partyJoiner);
@@ -371,30 +347,13 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         autoPilot.AreaChange();
 
         LogMessage("AREA CHANGE: Area change processing completed");
-
-        // Enhanced leader detection after area change
         LogMessage($"AREA CHANGE: Enhanced leader detection - Leader: '{Settings.autoPilotLeader.Value}'");
 
-        // Debug party information
         var partyMembers = PartyElements.GetPlayerInfoElementList();
         LogMessage($"AREA CHANGE: Party members found: {partyMembers.Count}");
-        foreach (var member in partyMembers)
-        {
-            LogMessage($"AREA CHANGE: Party member - Name: '{member?.PlayerName}'");
-        }
 
         var playerEntities = GameController.Entities.Where(x => x.Type == EntityType.Player).ToList();
         LogMessage($"AREA CHANGE: Found {playerEntities.Count} player entities total");
-
-        // Debug all player entities
-        foreach (var player in playerEntities)
-        {
-            var playerComp = player.GetComponent<Player>();
-            if (playerComp != null)
-            {
-                LogMessage($"AREA CHANGE: Player entity - Name: '{playerComp.PlayerName}', Distance: {Vector3.Distance(playerPosition, player.Pos):F1}");
-            }
-        }
 
         var leaderEntity = playerEntities.FirstOrDefault(x =>
             x.GetComponent<Player>()?.PlayerName?.Equals(Settings.autoPilotLeader.Value, StringComparison.OrdinalIgnoreCase) == true);
@@ -408,21 +367,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         {
             LogMessage($"AREA CHANGE: Leader entity NOT found immediately - will rely on AutoPilot's built-in detection");
 
-            // Additional debugging for leader search
-            LogMessage($"AREA CHANGE: Searching for leader '{Settings.autoPilotLeader.Value}' among {playerEntities.Count} entities");
-
-            foreach (var entity in playerEntities)
-            {
-                var playerComp = entity.GetComponent<Player>();
-                if (playerComp != null)
-                {
-                    LogMessage($"AREA CHANGE: Entity found - Name: '{playerComp.PlayerName}', Match: {string.Equals(playerComp.PlayerName, Settings.autoPilotLeader.Value, StringComparison.OrdinalIgnoreCase)}");
-                }
-            }
-
-            // Try alternative entity sources
             var allEntities = GameController.Entities.Where(x => x.Type == EntityType.Player).ToList();
-            LogMessage($"AREA CHANGE: Alternative search - Found {allEntities.Count} entities total");
 
             var altLeaderEntity = allEntities.FirstOrDefault(x =>
                 x.GetComponent<Player>()?.PlayerName?.Equals(Settings.autoPilotLeader.Value, StringComparison.OrdinalIgnoreCase) == true);
@@ -505,17 +450,12 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                         if (localPlayer != null)
                         {
-                            // Use the same position method as the main render loop for consistency
                             var currentPos = localPlayer.Pos;
-
-                            // Check if we've moved significantly since last check (use same position tracking as render)
                             var distanceMoved = Vector3.Distance(currentPos, playerPosition);
 
-                            // Use a more reasonable threshold and add some tolerance for position updates
                             if (distanceMoved > 10.0f)
                             {
                                 shouldRemoveGrace = false;
-                                // Only log movement detection every 2 seconds to reduce spam
                                 if (timeSinceLastGraceLog > 2.0)
                                 {
                                     LogMessage($"GRACE PERIOD: Player moving ({distanceMoved:F1} units) - waiting to remove grace");
@@ -523,58 +463,49 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                             }
                             else
                             {
-                                // Only log stationary detection when we first become stationary
                                 if (timeSinceLastGraceLog > 2.0)
                                 {
                                     LogMessage($"GRACE PERIOD: Player stationary ({distanceMoved:F1} units moved) - safe to remove grace");
                                 }
                             }
 
-                            // Update stored position for next check (sync with render loop)
                             playerPosition = currentPos;
                         }
 
                         if (shouldRemoveGrace)
                         {
-                            // Check if we've recently pressed a key to avoid spam
                             var timeSinceLastAction = (DateTime.Now - LastTimeAny).TotalSeconds;
 
-                            if (timeSinceLastAction > 0.2) // Very fast cooldown for immediate grace removal
+                            if (timeSinceLastAction > 0.2)
                             {
-                                // Move mouse to random position near center (±35 pixels, excluding -5 to +5 dead zone) before pressing move key
                                 var screenRect = GameController.Window.GetWindowRectangle();
                                 var screenCenterX = screenRect.Width / 2;
                                 var screenCenterY = screenRect.Height / 2;
 
-                                // Add random offset of ±35 pixels (excluding -5 to +5 dead zone)
                                 var random = new Random();
                                 int randomOffsetX, randomOffsetY;
 
-                                // Generate X offset excluding -5 to +5 range
                                 do
                                 {
-                                    randomOffsetX = random.Next(-35, 36); // -35 to +35
+                                    randomOffsetX = random.Next(-35, 36);
                                 }
-                                while (randomOffsetX >= -5 && randomOffsetX <= 5); // Exclude -5 to +5
+                                while (randomOffsetX >= -5 && randomOffsetX <= 5);
 
-                                // Generate Y offset excluding -5 to +5 range
                                 do
                                 {
-                                    randomOffsetY = random.Next(-35, 36); // -35 to +35
+                                    randomOffsetY = random.Next(-35, 36);
                                 }
-                                while (randomOffsetY >= -5 && randomOffsetY <= 5); // Exclude -5 to +5
+                                while (randomOffsetY >= -5 && randomOffsetY <= 5);
 
                                 var targetX = screenCenterX + randomOffsetX;
                                 var targetY = screenCenterY + randomOffsetY;
 
-                                // Ensure mouse position stays within screen bounds
                                 targetX = Math.Max(0, Math.Min(screenRect.Width, targetX));
                                 targetY = Math.Max(0, Math.Min(screenRect.Height, targetY));
 
                                 var randomMousePos = new Vector2(targetX, targetY);
                                 Mouse.SetCursorPos(randomMousePos);
 
-                                // Only log grace removal every 2 seconds to reduce spam
                                 if (timeSinceLastGraceLog > 2.0)
                                 {
                                     LogMessage($"GRACE PERIOD: [{DateTime.Now:HH:mm:ss.fff}] Moving mouse to ({targetX}, {targetY}) and pressing move key to break grace");
@@ -583,12 +514,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                 Keyboard.KeyPress(Settings.autoPilotMoveKey.Value);
                                 LastTimeAny = DateTime.Now;
 
-                                // Log successful grace removal
                                 LogMessage($"GRACE PERIOD: [{DateTime.Now:HH:mm:ss.fff}] Grace period broken successfully after {timeSinceAreaChange:F1}s");
-                            }
-                            else
-                            {
-                                LogMessage("GRACE PERIOD: Waiting for action cooldown before removing grace");
                             }
                         }
                     }
@@ -605,36 +531,29 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 }
                 else
                 {
-                    // Log why grace period removal isn't active
+                    var timeSinceLastGraceCheckLog = (DateTime.Now - lastGraceCheckLogTime).TotalSeconds;
+                    if (timeSinceLastGraceCheckLog > 10.0)
+                    {
                     var autopilotEnabled = Settings.autoPilotEnabled.Value;
                     var graceEnabled = Settings.autoPilotGrace.Value;
                     var hasBuffs = buffs != null;
                     var hasGraceBuff = buffs != null && buffs.Exists(x => x.Name == "grace_period");
-
-                    // Throttle grace check logs to reduce spam (only log every 10 seconds when not in grace period)
-                    var timeSinceLastGraceCheckLog = (DateTime.Now - lastGraceCheckLogTime).TotalSeconds;
-                    if (timeSinceLastGraceCheckLog > 10.0)
-                    {
                         LogMessage($"GRACE CHECK: [{DateTime.Now:HH:mm:ss.fff}] AutoPilot: {autopilotEnabled}, Grace Enabled: {graceEnabled}, Has Buffs: {hasBuffs}, Has Grace Buff: {hasGraceBuff}");
                         lastGraceCheckLogTime = DateTime.Now;
                     }
                 }
 
-                // Manual grace period breaking by pressing move key near screen center
                 if (Settings.autoPilotEnabled.Value && Settings.autoPilotGrace.Value && buffs != null && buffs.Exists(x => x.Name == "grace_period"))
                 {
                     try
                     {
-                        // Get screen dimensions and center
                         var screenWidth = GameController.Game.IngameState.Camera.Width;
                         var screenHeight = GameController.Game.IngameState.Camera.Height;
                         var screenCenterX = screenWidth / 2;
                         var screenCenterY = screenHeight / 2;
 
-                        // Get current mouse position
                         var mousePos = new Vector2(GameController.IngameState.MousePosX, GameController.IngameState.MousePosY);
 
-                        // Check if mouse is within 100 pixels of screen center
                         var distanceFromCenter = Math.Sqrt(
                             Math.Pow(mousePos.X - screenCenterX, 2) +
                             Math.Pow(mousePos.Y - screenCenterY, 2)
@@ -642,22 +561,18 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                         if (distanceFromCenter <= 100.0)
                         {
-                            // Check if move key is being pressed
                             if (Keyboard.IsKeyDown((int)Settings.autoPilotMoveKey.Value))
                             {
-                                // Check cooldown to prevent spam
                                 var timeSinceLastAction = (DateTime.Now - LastTimeAny).TotalSeconds;
-                                if (timeSinceLastAction > 0.5) // 500ms cooldown
+                                if (timeSinceLastAction > 0.5)
                                 {
-                                    // Log manual grace breaking
                                     var timeSinceLastGraceLog = (DateTime.Now - lastGraceLogTime).TotalSeconds;
-                                    if (timeSinceLastGraceLog > 2.0) // Log every 2 seconds
+                                    if (timeSinceLastGraceLog > 2.0)
                                     {
                                         LogMessage($"GRACE PERIOD: Manual break - mouse at center ({distanceFromCenter:F1}px from center)");
                                         lastGraceLogTime = DateTime.Now;
                                     }
 
-                                    // Press move key to break grace period
                                     Keyboard.KeyPress(Settings.autoPilotMoveKey);
                                     LastTimeAny = DateTime.Now;
                                 }
@@ -670,7 +585,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     }
                 }
 
-                // Debug AutoPilot status (only log significant changes or errors)
                 if (autoPilot != null && Settings.debugMode.Value)
                 {
                     var followTarget = autoPilot.FollowTarget;
@@ -683,7 +597,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         LogMessage($"AUTOPILOT: Acquired follow target: {followTarget.GetComponent<Player>()?.PlayerName ?? "Unknown"}");
                     }
 
-                    // Debug grace period status only when relevant
                     var hasGrace = buffs != null && buffs.Exists(x => x.Name == "grace_period");
                     if (!hasGrace && lastHadGrace)
                     {
@@ -693,18 +606,12 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     lastFollowTarget = followTarget;
                     lastHadGrace = hasGrace;
                 }
-                else
-                {
-                    LogMessage("AUTOPILOT: AutoPilot instance is null!");
-                }
 
-                // Check if AutoPilot has a follow target before updating
                 if (autoPilot != null && autoPilot.FollowTarget == null)
                 {
                     var leaderDetectionTime = DateTime.Now;
                     LogMessage($"AUTOPILOT: [{leaderDetectionTime:HH:mm:ss.fff}] No follow target set - attempting to find leader '{Settings.autoPilotLeader.Value}'");
 
-                    // Try to find leader manually
                     var playerEntities = GameController.Entities.Where(x => x.Type == EntityType.Player).ToList();
                     LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Found {playerEntities.Count} player entities to search");
 
@@ -732,20 +639,14 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     }
                 }
 
-                // CRITICAL: Update follow target position BEFORE AutoPilot logic
-                // This prevents stale position data from causing incorrect movement
                 autoPilot.UpdateFollowTargetPosition();
-
-                // CRITICAL: Update AutoPilot logic BEFORE grace period check
-                // AutoPilot should be able to create tasks even when grace period is active
                 autoPilot.UpdateAutoPilotLogic();
                 autoPilot.Render();
 
-                // Debug AutoPilot tasks after update (throttled to reduce spam)
                 if (autoPilot != null)
                 {
                     var timeSinceLastAutoPilotLog = (DateTime.Now - lastAutoPilotUpdateLogTime).TotalSeconds;
-                    if (timeSinceLastAutoPilotLog > 5.0) // Log every 5 seconds
+                    if (timeSinceLastAutoPilotLog > 5.0)
                     {
                         var followTarget = autoPilot.FollowTarget;
                         LogMessage($"AUTOPILOT: After update - Task count: {autoPilot.Tasks.Count}, FollowTarget: {(followTarget != null ? followTarget.GetComponent<Player>()?.PlayerName ?? "Unknown" : "null")}");
@@ -801,18 +702,18 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
             {
                 Graphics.DrawText("Enemys: " + enemys.Count, new System.Numerics.Vector2(100, 120), Color.White);
             }
-          
+                
             if (buffs.Exists(x => x.Name == "grace_period") ||
                 !GameController.IsForeGroundCache)
                 return;
                 
-        }
-        catch (Exception e)
-        {
-            // Error handling without logging
-        }
+                    }
+                    catch (Exception e)
+                    {
+                        // Error handling without logging
+                    }
     }
-
+        
     // Wont work when Private, No Touchy Touchy !!!
     // ReSharper disable once MemberCanBePrivate.Global
     [SuppressMessage("ReSharper", "FieldCanBeMadeReadOnly.Global")]

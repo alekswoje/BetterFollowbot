@@ -58,8 +58,6 @@ namespace BetterFollowbotLite.Core.Movement
             bool keyUpError = false;
             bool taskExecutionError = false;
 
-            // Action flags for different task types
-            bool shouldLootAndContinue = false;
             bool shouldTransitionAndContinue = false;
             bool shouldClaimWaypointAndContinue = false;
             bool shouldDashAndContinue = false;
@@ -67,9 +65,6 @@ namespace BetterFollowbotLite.Core.Movement
             bool shouldTeleportButtonAndContinue = false;
             bool shouldMovementContinue = false;
 
-            // Loot-related variables
-            Entity questLoot = null;
-            Targetable targetInfo = null;
 
             // Transition-related variables
             Vector2 transitionPos = Vector2.Zero;
@@ -181,43 +176,6 @@ namespace BetterFollowbotLite.Core.Movement
                         }
                     }
                     break;
-                case TaskNodeType.Loot:
-                {
-                    currentTask.AttemptCount++;
-                    try
-                    {
-                        questLoot = _core.GameController.EntityListWrapper.Entities
-                            .Where(e => e?.Type == EntityType.WorldItem && e.IsTargetable && e.HasComponent<WorldItem>())
-                            .FirstOrDefault(e =>
-                            {
-                                var itemEntity = e.GetComponent<WorldItem>().ItemEntity;
-                                return _core.GameController.Files.BaseItemTypes.Translate(itemEntity.Path).ClassName ==
-                                       "QuestItem";
-                            });
-                    }
-                    catch
-                    {
-                        questLoot = null;
-                    }
-                    if (questLoot == null
-                        || currentTask.AttemptCount > 2
-                        || Vector3.Distance(_core.PlayerPosition, questLoot.Pos) >=
-                        _core.Settings.autoPilotClearPathDistance.Value)
-                    {
-                        _taskManager.RemoveTask(currentTask);
-                        shouldLootAndContinue = true;
-                    }
-                    else
-                    {
-                        Input.KeyUp(_core.Settings.autoPilotMoveKey);
-                        if (questLoot != null)
-                        {
-                            targetInfo = questLoot.GetComponent<Targetable>();
-                        }
-                        shouldLootAndContinue = true; // Set flag to execute loot logic outside try-catch
-                    }
-                    break;
-                }
                 case TaskNodeType.Transition:
                 {
                     _core.LogMessage($"TRANSITION: Executing transition task - Attempt {currentTask.AttemptCount + 1}/6");
@@ -383,7 +341,6 @@ namespace BetterFollowbotLite.Core.Movement
             // Set result flags
             result.ShouldDashToLeader = shouldDashToLeader;
             result.ShouldTerrainDash = shouldTerrainDash;
-            result.ShouldLootAndContinue = shouldLootAndContinue;
             result.ShouldTransitionAndContinue = shouldTransitionAndContinue;
             result.ShouldClaimWaypointAndContinue = shouldClaimWaypointAndContinue;
             result.ShouldDashAndContinue = shouldDashAndContinue;

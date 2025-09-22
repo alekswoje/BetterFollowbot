@@ -48,7 +48,6 @@ public enum TaskNodeType
 {
     Movement,
     Transition,
-    Loot,
     ClaimWaypoint,
     Dash,
     TeleportConfirm,

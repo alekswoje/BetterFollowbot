@@ -415,27 +415,6 @@ namespace BetterFollowbotLite.Core.Movement
                             _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                     }
 
-                    //Check if we should add quest loot logic. We're close to leader already
-                    Entity questLoot = null;
-                    try
-                    {
-                        questLoot = _core.GameController.EntityListWrapper.Entities
-                            .Where(e => e?.Type == EntityType.WorldItem && e.IsTargetable && e.HasComponent<WorldItem>())
-                            .FirstOrDefault(e =>
-                            {
-                                var itemEntity = e.GetComponent<WorldItem>().ItemEntity;
-                                return _core.GameController.Files.BaseItemTypes.Translate(itemEntity.Path).ClassName ==
-                                       "QuestItem";
-                            });
-                    }
-                    catch
-                    {
-                        questLoot = null;
-                    }
-                    if (questLoot != null &&
-                        Vector3.Distance(_core.PlayerPosition, questLoot.Pos) < _core.Settings.autoPilotClearPathDistance.Value &&
-                        _taskManager.Tasks.FirstOrDefault(I => I.Type == TaskNodeType.Loot) == null)
-                        _taskManager.AddTask(new TaskNode(questLoot.Pos, _core.Settings.autoPilotClearPathDistance, TaskNodeType.Loot));
 
                 }
             }

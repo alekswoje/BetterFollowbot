@@ -45,7 +45,6 @@ namespace BetterFollowbotLite.Interfaces
         public bool ShouldContinue { get; set; }
         public bool ShouldDashToLeader { get; set; }
         public bool ShouldTerrainDash { get; set; }
-        public bool ShouldLootAndContinue { get; set; }
         public bool ShouldTransitionAndContinue { get; set; }
         public bool ShouldClaimWaypointAndContinue { get; set; }
         public bool ShouldDashAndContinue { get; set; }

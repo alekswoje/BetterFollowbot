@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using BetterFollowbotLite.Interfaces;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -9,7 +10,7 @@ using SharpDX;
 
 namespace BetterFollowbotLite.Automation
 {
-    internal class GemLeveler
+    internal class GemLeveler : IAutomation
     {
         private readonly BetterFollowbotLite _instance;
         private readonly BetterFollowbotLiteSettings _settings;
@@ -19,6 +20,10 @@ namespace BetterFollowbotLite.Automation
             _instance = instance;
             _settings = settings;
         }
+
+        public bool IsEnabled => _settings.autoLevelGemsEnabled;
+
+        public string AutomationName => "Auto Level Gems";
 
         public void Execute()
         {

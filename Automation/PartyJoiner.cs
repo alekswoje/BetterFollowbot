@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using BetterFollowbotLite.Interfaces;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -9,7 +10,7 @@ using SharpDX;
 
 namespace BetterFollowbotLite.Automation
 {
-    internal class PartyJoiner
+    internal class PartyJoiner : IAutomation
     {
         private readonly BetterFollowbotLite _instance;
         private readonly BetterFollowbotLiteSettings _settings;
@@ -21,6 +22,10 @@ namespace BetterFollowbotLite.Automation
             _settings = settings;
             _lastAutoJoinPartyAttempt = DateTime.Now.AddSeconds(-1); // Initialize to 1 second ago to allow immediate execution
         }
+
+        public bool IsEnabled => _settings.autoJoinPartyEnabled.Value;
+
+        public string AutomationName => "Auto Join Party & Trade";
 
         // Method to get trade panel (used internally by this class)
         private dynamic GetTradePanel()

@@ -13,11 +13,10 @@ using ExileCore.Shared.Enums;
 using SharpDX;
 using BetterFollowbotLite.Skills;
 using BetterFollowbotLite.Automation;
-using BetterFollowbotLite.Interfaces;
-using BetterFollowbotLite.Core.LeaderDetection;
 using BetterFollowbotLite.Core.TaskManagement;
 using BetterFollowbotLite.Core.Movement;
-using BetterFollowbotLite.Core.Portal;
+using BetterFollowbotLite.Interfaces;
+using BetterFollowbotLite.Core.LeaderDetection;
 
 namespace BetterFollowbotLite;
 
@@ -43,18 +42,15 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     // Movement executor service
     private IMovementExecutor movementExecutor;
 
-    // Portal detector service
-    private IPortalDetector portalDetector;
-
-    // Portal manager (shared between AutoPilot and PortalDetector)
-    private PortalManager portalManager;
-
     internal AutoPilot autoPilot;
     private readonly Summons summons = new Summons();
     private SummonRagingSpirits summonRagingSpirits;
+    private SummonSkeletons summonSkeletons;
     private RespawnHandler respawnHandler;
     private GemLeveler gemLeveler;
     private PartyJoiner partyJoiner;
+    private AutoMapTabber autoMapTabber;
+    private AutomationManager automationManager;
 
     private List<Buff> buffs;
     private List<Entity> enemys = new List<Entity>();
@@ -84,12 +80,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         taskManager = new TaskManager(this);
         terrainAnalyzer = new TerrainAnalyzer();
         pathfinding = new Core.Movement.Pathfinding(this, terrainAnalyzer);
-
-        // Initialize portal services
-        portalManager = new PortalManager();
-        portalDetector = new PortalDetector(this, portalManager);
-
-        autoPilot = new AutoPilot(leaderDetector, taskManager, pathfinding, portalManager, null); // Create AutoPilot first with null movementExecutor
+        autoPilot = new AutoPilot(leaderDetector, taskManager, pathfinding, null); // Create AutoPilot first with null movementExecutor
         movementExecutor = new MovementExecutor(this, taskManager, pathfinding, autoPilot); // Now create movementExecutor with autoPilot instance
         // Set movementExecutor in autoPilot (assuming we add a setter method)
         autoPilot.SetMovementExecutor(movementExecutor);
@@ -106,11 +97,26 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
         // Initialize skill classes
         summonRagingSpirits = new SummonRagingSpirits(this, Settings, autoPilot, summons);
+        summonSkeletons = new SummonSkeletons(this, Settings, autoPilot, summons);
 
         // Initialize automation classes
         respawnHandler = new RespawnHandler(this, Settings);
         gemLeveler = new GemLeveler(this, Settings);
         partyJoiner = new PartyJoiner(this, Settings);
+        autoMapTabber = new AutoMapTabber(this, Settings);
+
+        // Initialize automation manager and register all features
+        automationManager = new AutomationManager();
+
+        // Register skills
+        automationManager.RegisterSkill(summonRagingSpirits);
+        automationManager.RegisterSkill(summonSkeletons);
+
+        // Register automation features
+        automationManager.RegisterAutomation(respawnHandler);
+        automationManager.RegisterAutomation(gemLeveler);
+        automationManager.RegisterAutomation(partyJoiner);
+        automationManager.RegisterAutomation(autoMapTabber);
 
         return true;
     }
@@ -120,6 +126,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     // Settings property is already inherited from BaseSettingsPlugin<BetterFollowbotLiteSettings>
     public Vector3 PlayerPosition => playerPosition;
     public Entity LocalPlayer => localPlayer;
+    GameController IFollowbotCore.GameController => GameController;
     public DateTime LastTimeAny { get; set; } = DateTime.MinValue;
     
     public void LogMessage(string message)
@@ -668,161 +675,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
             vaalSkills = localPlayer.GetComponent<Actor>().ActorVaalSkills;
             playerPosition = localPlayer.Pos;
 
-            #region Auto Respawn
+            #region Automation Execution
 
-            respawnHandler?.Execute();
-
-            #endregion
-
-            #region Summon Skeletons
-
-            if (Settings.summonSkeletonsEnabled && Gcd())
-            {
-                try
-                {
-                    // Check if we have a party leader to follow
-                    var partyMembers = PartyElements.GetPlayerInfoElementList();
-                    LogMessage($"PARTY: Checking for leader '{Settings.autoPilotLeader.Value}', Party members: {partyMembers.Count}");
-
-                    var leaderPartyElement = partyMembers
-                        .FirstOrDefault(x => string.Equals(x?.PlayerName?.ToLower(),
-                            Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
-
-                    if (leaderPartyElement != null)
-                    {
-                        LogMessage($"PARTY: Found leader in party - Name: '{leaderPartyElement.PlayerName}'");
-                    }
-                    else
-                    {
-                        LogMessage("PARTY: Leader NOT found in party list");
-                        // Debug all party members
-                        foreach (var member in partyMembers)
-                        {
-                            LogMessage($"PARTY: Member - Name: '{member?.PlayerName}'");
-                        }
-                    }
-
-                    if (leaderPartyElement != null)
-                    {
-                        // Find the actual leader entity
-                        var playerEntities = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
-                            .Where(x => x != null && x.IsValid && !x.IsHostile);
-
-                        var leaderEntity = playerEntities
-                            .FirstOrDefault(x => string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
-                                Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
-
-                        if (leaderEntity != null)
-                        {
-                            // Check distance to leader
-                            var distanceToLeader = Vector3.Distance(playerPosition, leaderEntity.Pos);
-
-                            // Only summon if within range
-                            if (distanceToLeader <= Settings.summonSkeletonsRange.Value)
-                            {
-                                // Count current skeletons
-                                var skeletonCount = Summons.GetSkeletonCount();
-
-                                // Summon if we have less than the minimum required
-                                if (skeletonCount < Settings.summonSkeletonsMinCount.Value)
-                                {
-                                    // Find the summon skeletons skill
-                                    var summonSkeletonsSkill = skills.FirstOrDefault(s =>
-                                        s.Name.Contains("Summon Skeletons") ||
-                                        s.Name.Contains("summon") && s.Name.Contains("skeleton"));
-
-                                    if (summonSkeletonsSkill != null && summonSkeletonsSkill.IsOnSkillBar && summonSkeletonsSkill.CanBeUsed)
-                                    {
-                                        BetterFollowbotLite.Instance.LogMessage($"SUMMON SKELETONS: Current: {skeletonCount}, Required: {Settings.summonSkeletonsMinCount.Value}, Distance to leader: {distanceToLeader:F1}");
-
-                                        // Use the summon skeletons skill
-                                        Keyboard.KeyPress(GetSkillInputKey(summonSkeletonsSkill.SkillSlotIndex));
-                                        LastTimeAny = DateTime.Now; // Update global cooldown
-
-                                        BetterFollowbotLite.Instance.LogMessage("SUMMON SKELETONS: Summoned skeletons successfully");
-                                    }
-                                    else if (summonSkeletonsSkill == null)
-                                    {
-                                        BetterFollowbotLite.Instance.LogMessage("SUMMON SKELETONS: Summon Skeletons skill not found in skill bar");
-                                    }
-                                    else if (!summonSkeletonsSkill.CanBeUsed)
-                                    {
-                                        BetterFollowbotLite.Instance.LogMessage("SUMMON SKELETONS: Summon Skeletons skill is on cooldown or unavailable");
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    BetterFollowbotLite.Instance.LogMessage($"SUMMON SKELETONS: Exception occurred - {e.Message}");
-                }
-
-                // SRS (Summon Raging Spirits) logic
-                summonRagingSpirits?.Execute();
-            }
-
-            #endregion
-
-            #region Auto Level Gems
-
-            gemLeveler?.Execute();
-
-            #endregion
-
-            #region Auto Join Party & Accept Trade
-
-            partyJoiner?.Execute();
-
-            #endregion
-
-            #region Auto Map Tabber
-
-            try
-            {
-                if (Settings.autoMapTabber && !Keyboard.IsKeyDown((int)Settings.inputKeyPickIt.Value))
-                    if (SkillInfo.ManageCooldown(SkillInfo.autoMapTabber))
-                    {
-                        bool shouldBeClosed = GameController.IngameState.IngameUi.Atlas.IsVisible ||
-                                              GameController.IngameState.IngameUi.AtlasTreePanel.IsVisible ||
-                                              GameController.IngameState.IngameUi.StashElement.IsVisible ||
-                                              GameController.IngameState.IngameUi.TradeWindow.IsVisible || 
-                                              GameController.IngameState.IngameUi.ChallengesPanel.IsVisible ||
-                                              GameController.IngameState.IngameUi.CraftBench.IsVisible ||
-                                              GameController.IngameState.IngameUi.DelveWindow.IsVisible ||
-                                              GameController.IngameState.IngameUi.ExpeditionWindow.IsVisible || 
-                                              GameController.IngameState.IngameUi.BanditDialog.IsVisible ||
-                                              GameController.IngameState.IngameUi.MetamorphWindow.IsVisible ||
-                                              GameController.IngameState.IngameUi.SyndicatePanel.IsVisible || 
-                                              GameController.IngameState.IngameUi.SyndicateTree.IsVisible ||
-                                              GameController.IngameState.IngameUi.QuestRewardWindow.IsVisible ||
-                                              GameController.IngameState.IngameUi.SynthesisWindow.IsVisible ||
-                                              //GameController.IngameState.IngameUi.UltimatumPanel.IsVisible || 
-                                              GameController.IngameState.IngameUi.MapDeviceWindow.IsVisible ||
-                                              GameController.IngameState.IngameUi.SellWindow.IsVisible ||
-                                              GameController.IngameState.IngameUi.SettingsPanel.IsVisible ||
-                                              GameController.IngameState.IngameUi.InventoryPanel.IsVisible || 
-                                              //GameController.IngameState.IngameUi.NpcDialog.IsVisible ||
-                                              GameController.IngameState.IngameUi.TreePanel.IsVisible;
-                           
-                            
-                        if (!GameController.IngameState.IngameUi.Map.SmallMiniMap.IsVisibleLocal && shouldBeClosed)
-                        {
-                            Keyboard.KeyPress(Keys.Tab);
-                            SkillInfo.autoMapTabber.Cooldown = 250;
-                        }
-                        else if (GameController.IngameState.IngameUi.Map.SmallMiniMap.IsVisibleLocal && !shouldBeClosed)
-                        {
-                            Keyboard.KeyPress(Keys.Tab);
-                            SkillInfo.autoMapTabber.Cooldown = 250;
-                        }
-                    } 
-            }
-            catch (Exception e)
-            {
-                // Error handling without logging
-            }
+            // Execute all registered automation features through the automation manager
+            automationManager?.ExecuteAll();
 
             #endregion
             if (GameController.Area.CurrentArea.IsHideout || GameController.Area.CurrentArea.IsTown ||

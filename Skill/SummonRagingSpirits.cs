@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using BetterFollowbotLite.Interfaces;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -11,7 +12,7 @@ using System.Windows.Forms;
 
 namespace BetterFollowbotLite.Skills
 {
-    internal class SummonRagingSpirits
+    internal class SummonRagingSpirits : ISkill
     {
         private readonly BetterFollowbotLite _instance;
         private readonly BetterFollowbotLiteSettings _settings;
@@ -41,6 +42,10 @@ namespace BetterFollowbotLite.Skills
                 return new List<Entity>();
             }
         }
+
+        public bool IsEnabled => _settings.summonRagingSpiritsEnabled.Value;
+
+        public string SkillName => "Summon Raging Spirits";
 
         public void Execute()
         {

@@ -35,6 +35,30 @@ namespace BetterFollowbotLite.Skill
         }
 
         /// <summary>
+        /// Executes mines logic by processing all mine skills
+        /// </summary>
+        public void Execute()
+        {
+            if (!_settings.minesEnabled)
+                return;
+
+            try
+            {
+                _instance.LogMessage($"MINES: Execute called, processing {(_instance.skills?.Count ?? 0)} skills");
+
+                // Loop through all skills to find mine skills
+                foreach (var skill in _instance.skills)
+                {
+                    ProcessMineSkill(skill);
+                }
+            }
+            catch (Exception e)
+            {
+                _instance.LogError($"Mines Execute Error: {e}");
+            }
+        }
+
+        /// <summary>
         /// Processes mines logic for a specific skill
         /// </summary>
         public bool ProcessMineSkill(ActorSkill skill)
@@ -50,6 +74,8 @@ namespace BetterFollowbotLite.Skill
 
                 if (hasStormblastMine || hasPyroclastMine)
                 {
+                    _instance.LogMessage($"MINES: Found {(hasStormblastMine ? "Stormblast" : "Pyroclast")} mine skill (ID: {skill.Id})");
+
                     // Check cooldown
                     var mineSkill = hasStormblastMine ? SkillInfo.stormblastMine : SkillInfo.pyroclastMine;
                     if (SkillInfo.ManageCooldown(mineSkill, skill))
@@ -75,6 +101,8 @@ namespace BetterFollowbotLite.Skill
                                 return distanceToMonster <= minesRange;
                             })
                             .ToList();
+
+                        _instance.LogMessage($"MINES: Found {nearbyRareUniqueEnemies.Count} rare/unique enemies within range");
 
                         if (nearbyRareUniqueEnemies.Any())
                         {
@@ -159,12 +187,9 @@ namespace BetterFollowbotLite.Skill
                                     mineSkill.Cooldown = 100; // Set cooldown to prevent spam
                                     _instance.LastTimeAny = DateTime.Now;
 
-                                    if (_settings.debugMode)
-                                    {
-                                        var rarityComponent = bestTarget.GetComponent<ObjectMagicProperties>();
-                                        var rarity = rarityComponent?.Rarity.ToString() ?? "Unknown";
-                                        _instance.LogMessage($"MINES: Threw {(hasStormblastMine ? "Stormblast" : "Pyroclast")} mine at {bestTarget.Path} (Rarity: {rarity})");
-                                    }
+                                    var rarityComponent = bestTarget.GetComponent<ObjectMagicProperties>();
+                                    var rarity = rarityComponent?.Rarity.ToString() ?? "Unknown";
+                                    _instance.LogMessage($"MINES: Threw {(hasStormblastMine ? "Stormblast" : "Pyroclast")} mine at {bestTarget.Path} (Rarity: {rarity})");
 
                                     return true; // Skill was executed
                                 }

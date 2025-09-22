@@ -48,6 +48,7 @@ namespace BetterFollowbotLite;
         _movementExecutor = movementExecutor ?? throw new ArgumentNullException(nameof(movementExecutor));
     }
 
+
         private Vector3 lastTargetPosition;
         private Vector3 lastPlayerPosition;
         private Entity followTarget;
@@ -1000,7 +1001,6 @@ namespace BetterFollowbotLite;
             }
 
             lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
-            yield return new WaitTime(50);
         }
         // ReSharper disable once IteratorNeverReturns
     }

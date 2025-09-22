@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
@@ -88,8 +89,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         autoPilot.SetMovementExecutor(movementExecutor);
 
         GameController.LeftPanel.WantUse(() => Settings.Enable);
-        skillCoroutine = new Coroutine(WaitForSkillsAfterAreaChange(), this);
-        ExileCore.Core.ParallelRunner.Run(skillCoroutine);
+        Task.Run(() => WaitForSkillsAfterAreaChange());
         Input.RegisterKey(Settings.autoPilotToggleKey.Value);
         Settings.autoPilotToggleKey.OnValueChanged += () => { Input.RegisterKey(Settings.autoPilotToggleKey.Value); };
         autoPilot.StartCoroutine();

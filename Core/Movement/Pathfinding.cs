@@ -23,11 +23,12 @@ namespace BetterFollowbotLite.Core.Movement
         private readonly IFollowbotCore _core;
         private readonly ITerrainAnalyzer _terrainAnalyzer;
         private bool[][] _grid;
-        private TerrainData _terrainMetadata;
-        private int[][] _processedTerrainData;
-        private int[][] _processedTerrainTargetingData;
-        private int _dimension2;
-        private int _dimension1;
+    private TerrainData _terrainMetadata;
+    private int[][] _processedTerrainData;
+    private int[][] _processedTerrainTargetingData;
+    private float[][] _heightData; // Height data like in Radar
+    private int _dimension2;
+    private int _dimension1;
 
         // A* pathfinding data structures
         private ConcurrentDictionary<Vector2i, Dictionary<Vector2i, float>> _exactDistanceField = new();
@@ -46,11 +47,17 @@ namespace BetterFollowbotLite.Core.Movement
         public int TerrainRows => _dimension1;
         public bool IsTerrainLoaded => _grid != null;
 
+        public float[][] GetHeightData()
+        {
+            return _heightData;
+        }
+
         public void InitializeTerrain()
         {
             try
             {
                 _terrainMetadata = BetterFollowbotLite.Instance.GameController.IngameState.Data.DataStruct.Terrain;
+                _heightData = BetterFollowbotLite.Instance.GameController.IngameState.Data.RawTerrainHeightData;
                 var terrainBytes = BetterFollowbotLite.Instance.GameController.Memory.ReadBytes(_terrainMetadata.LayerMelee.First, _terrainMetadata.LayerMelee.Size);
 
                 var numCols = (int)(_terrainMetadata.NumCols - 1) * 23;

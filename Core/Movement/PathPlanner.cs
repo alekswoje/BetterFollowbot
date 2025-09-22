@@ -430,13 +430,18 @@ namespace BetterFollowbotLite.Core.Movement
                                         // Create movement tasks along the A* path waypoints
                                         // Skip the first waypoint (current position) and create tasks for the rest
                                         var gridToWorldMultiplier = 250f / 23f; // Same conversion as in Pathfinding.cs
+                                        var heightData = _core.Pathfinding.GetHeightData(); // Get height data like Radar
                                         var waypointsAdded = 0;
                                         for (int i = 1; i < pathWaypoints.Count; i++) // Start from index 1 to skip current position
                                         {
                                             var waypoint = pathWaypoints[i];
+                                            var height = heightData != null && waypoint.Y < heightData.Length && waypoint.X < heightData[waypoint.Y].Length
+                                                ? heightData[waypoint.Y][waypoint.X]
+                                                : followTarget.Pos.Y; // Fallback to target height
+
                                             var worldPos = new Vector3(
                                                 waypoint.X * gridToWorldMultiplier,
-                                                followTarget.Pos.Y, // Keep same height
+                                                height, // Use terrain height like Radar
                                                 waypoint.Y * gridToWorldMultiplier
                                             );
                                             _core.LogMessage($"A* PATH: Adding waypoint {i}/{pathWaypoints.Count}: grid({waypoint.X},{waypoint.Y}) -> world({worldPos.X:F1},{worldPos.Y:F1},{worldPos.Z:F1})");
@@ -522,13 +527,18 @@ namespace BetterFollowbotLite.Core.Movement
                                         // Convert grid waypoints back to world positions and add as tasks
                                         // Skip the first waypoint (current path end position)
                                         var gridToWorldMultiplier = 250f / 23f; // Same conversion as in Pathfinding.cs
+                                        var heightData = _core.Pathfinding.GetHeightData(); // Get height data like Radar
                                         var waypointsAdded = 0;
                                         for (int i = 1; i < extensionWaypoints.Count; i++) // Start from index 1 to skip current position
                                         {
                                             var waypoint = extensionWaypoints[i];
+                                            var height = heightData != null && waypoint.Y < heightData.Length && waypoint.X < heightData[waypoint.Y].Length
+                                                ? heightData[waypoint.Y][waypoint.X]
+                                                : followTarget.Pos.Y; // Fallback to target height
+
                                             var worldPos = new Vector3(
                                                 waypoint.X * gridToWorldMultiplier,
-                                                followTarget.Pos.Y, // Keep same height
+                                                height, // Use terrain height like Radar
                                                 waypoint.Y * gridToWorldMultiplier
                                             );
                                             _taskManager.AddTask(new TaskNode(worldPos, _core.Settings.autoPilotPathfindingNodeDistance));

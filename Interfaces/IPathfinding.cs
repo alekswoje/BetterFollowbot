@@ -45,6 +45,12 @@ namespace BetterFollowbotLite.Interfaces
         bool IsTerrainLoaded { get; }
 
         /// <summary>
+        /// Get terrain height data for grid-to-world conversion
+        /// </summary>
+        /// <returns>Height data array or null if not available</returns>
+        float[][] GetHeightData();
+
+        /// <summary>
         /// Get A* path from start to target world positions
         /// </summary>
         /// <param name="startWorld">Start position in world coordinates</param>

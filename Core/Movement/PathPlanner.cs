@@ -169,9 +169,18 @@ namespace BetterFollowbotLite.Core.Movement
                             // Prioritize party teleport over portal clicking
                             if (!HasConflictingTransitionTasks())
                             {
-                                _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
-                                _taskManager.AddTask(new TaskNode("TeleportButton", 0, TaskNodeType.TeleportButton));
-                                _core.LogMessage("ZONE TRANSITION: Party teleport task added to queue");
+                                var tpButton = GetTpButton(leaderPartyElement);
+                                if (!tpButton.Equals(Vector2.Zero))
+                                {
+                                    _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
+                                    AutoPilot.IsTeleportInProgress = true;
+                                    _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
+                                    _core.LogMessage("ZONE TRANSITION: Party teleport task added to queue");
+                                }
+                                else
+                                {
+                                    _core.LogMessage("ZONE TRANSITION: Party teleport button not available for null entity transition");
+                                }
                             }
                         }
                     }

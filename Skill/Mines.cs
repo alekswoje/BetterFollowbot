@@ -27,13 +27,6 @@ namespace BetterFollowbotLite.Skill
 
         public string SkillName => "Mines";
 
-        public void Execute()
-        {
-            // Mines logic is handled in the main skill processing loop
-            // This method is called but the actual logic is in the main loop
-            // to handle both Stormblast and Pyroclast mines
-        }
-
         /// <summary>
         /// Executes mines logic by processing all mine skills
         /// </summary>

@@ -169,9 +169,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     }
     
     #endregion
-        
-
-
     public int GetMonsterWithin(float maxDistance, MonsterRarity rarity = MonsterRarity.White)
     {
         return (from monster in enemys where monster.Rarity >= rarity select Vector2.Distance(new Vector2(monster.PosNum.X, monster.PosNum.Y), new Vector2(playerPosition.X, playerPosition.Y))).Count(distance => distance <= maxDistance);
@@ -251,13 +248,47 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
             return null;
         }
     }
-
-        
-
-
     public Vector2 GetMousePosition()
     {
         return new Vector2(GameController.IngameState.MousePosX, GameController.IngameState.MousePosY);
+    }
+
+    /// <summary>
+    /// Dash to leader when no suitable smite targets are found nearby
+    /// </summary>
+    public void DashToLeaderForSmite()
+    {
+        if (Settings.autoPilotDashEnabled &&
+            (DateTime.Now - movementExecutor.LastDashTime).TotalMilliseconds >= 3000 &&
+            autoPilot.FollowTarget != null)
+        {
+            var leaderPos = autoPilot.FollowTarget.Pos;
+            var distanceToLeader = Vector3.Distance(playerPosition, leaderPos);
+
+            // CRITICAL: Don't dash if teleport is in progress
+            if (!AutoPilot.IsTeleportInProgress)
+            {
+                // Check for transition tasks
+                var hasTransitionTask = autoPilot.Tasks.Any(t =>
+                    t.Type == TaskNodeType.Transition ||
+                    t.Type == TaskNodeType.TeleportConfirm ||
+                    t.Type == TaskNodeType.TeleportButton);
+
+                if (!hasTransitionTask && distanceToLeader > Settings.autoPilotDashDistance)
+                {
+                    // Position mouse towards leader
+                    var leaderScreenPos = GameController.IngameState.Camera.WorldToScreen(leaderPos);
+                    Mouse.SetCursorPos(leaderScreenPos);
+
+                    // Small delay to ensure mouse movement is registered
+                    System.Threading.Thread.Sleep(50);
+
+                    // Execute dash
+                    Keyboard.KeyPress(Settings.autoPilotDashKey);
+                    movementExecutor.UpdateLastDashTime(DateTime.Now);
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -420,7 +451,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         if (Settings.Enable)
             ImGuiDrawSettings.DrawImGuiSettings();
     }
-
 
     public override void Render()
     {
@@ -733,7 +763,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 // Error handling without logging
             }
 
-
             if (GameController?.Game?.IngameState?.Data?.LocalPlayer == null || GameController?.IngameState?.IngameUi == null )
                 return;
             var chatField = GameController?.IngameState?.IngameUi?.ChatPanel?.ChatInputElement?.IsVisible;
@@ -772,27 +801,11 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
             {
                 Graphics.DrawText("Enemys: " + enemys.Count, new System.Numerics.Vector2(100, 120), Color.White);
             }
-                
-            // Corpses collection removed since no longer needed
-
-
-
-                
-
+          
             if (buffs.Exists(x => x.Name == "grace_period") ||
                 !GameController.IsForeGroundCache)
                 return;
                 
-            // Skill processing is now handled by the AutomationManager.ExecuteAll() method
-            // Individual skill classes (SmiteBuff, VaalSkills, SummonSkeletons, etc.) contain their own Execute() logic
-                    
-
-
-
-
-
-
-
         }
         catch (Exception e)
         {

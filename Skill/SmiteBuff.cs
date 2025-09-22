@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using BetterFollowbotLite.Interfaces;
 using BetterFollowbotLite.Core.Skills;
+using BetterFollowbotLite.Core.TaskManagement;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -90,37 +91,7 @@ namespace BetterFollowbotLite.Skills
                                 else
                                 {
                                     // No suitable targets found - dash to leader to get near monsters
-                                    if (_instance.Settings.autoPilotDashEnabled &&
-                                        (DateTime.Now - _instance.movementExecutor.LastDashTime).TotalMilliseconds >= 3000 &&
-                                        _instance.autoPilot.FollowTarget != null)
-                                    {
-                                        var leaderPos = _instance.autoPilot.FollowTarget.Pos;
-                                        var distanceToLeader = Vector3.Distance(_instance.playerPosition, leaderPos);
-
-                                        // CRITICAL: Don't dash if teleport is in progress
-                                        if (!AutoPilot.IsTeleportInProgress)
-                                        {
-                                            // Check for transition tasks
-                                            var hasTransitionTask = _instance.autoPilot.Tasks.Any(t =>
-                                                t.Type == TaskNodeType.Transition ||
-                                                t.Type == TaskNodeType.TeleportConfirm ||
-                                                t.Type == TaskNodeType.TeleportButton);
-
-                                            if (!hasTransitionTask && distanceToLeader > _instance.Settings.autoPilotDashDistance)
-                                            {
-                                                // Position mouse towards leader
-                                                var leaderScreenPos = _instance.GameController.IngameState.Camera.WorldToScreen(leaderPos);
-                                                Mouse.SetCursorPos(leaderScreenPos);
-
-                                                // Small delay to ensure mouse movement is registered
-                                                System.Threading.Thread.Sleep(50);
-
-                                                // Execute dash
-                                                Keyboard.KeyPress(_instance.Settings.autoPilotDashKey);
-                                                _instance.movementExecutor.UpdateLastDashTime(DateTime.Now);
-                                            }
-                                        }
-                                    }
+                                    _instance.DashToLeaderForSmite();
                                 }
                             }
                         }

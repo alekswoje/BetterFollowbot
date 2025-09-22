@@ -32,6 +32,11 @@ namespace BetterFollowbotLite.Interfaces
         /// Game controller
         /// </summary>
         GameController GameController { get; }
+
+        /// <summary>
+        /// Pathfinding system
+        /// </summary>
+        IPathfinding Pathfinding { get; }
         
         /// <summary>
         /// Check if global cooldown allows action

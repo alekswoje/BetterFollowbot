@@ -70,10 +70,14 @@ namespace BetterFollowbotLite;
         if (target != null)
         {
             lastTargetPosition = target.Pos;
+            // Clear path cache when switching targets
+            _pathfinding.ClearPathCache();
             BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Set follow target '{target.GetComponent<Player>()?.PlayerName ?? "Unknown"}' at position: {target.Pos}");
         }
         else
         {
+            // Clear path cache when clearing target
+            _pathfinding.ClearPathCache();
             BetterFollowbotLite.Instance.LogMessage("AUTOPILOT: Cleared follow target");
         }
     }
@@ -528,6 +532,9 @@ namespace BetterFollowbotLite;
     public void AreaChange()
     {
         ResetPathing();
+
+        // Clear A* path cache on area change
+        _pathfinding.ClearPathCache();
 
         // Initialize terrain data through the pathfinding service
         var terrainInitStart = DateTime.Now;

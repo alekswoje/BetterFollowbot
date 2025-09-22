@@ -132,6 +132,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     public Vector3 PlayerPosition => playerPosition;
     public Entity LocalPlayer => localPlayer;
     GameController IFollowbotCore.GameController => GameController;
+    public IPathfinding Pathfinding => pathfinding;
     public DateTime LastTimeAny { get; set; } = DateTime.MinValue;
     
     public void LogMessage(string message)

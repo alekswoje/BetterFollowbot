@@ -1,5 +1,6 @@
-using System.Drawing;
+using System.Collections.Generic;
 using SharpDX;
+using GameOffsets.Native;
 
 namespace BetterFollowbotLite.Interfaces
 {
@@ -42,5 +43,18 @@ namespace BetterFollowbotLite.Interfaces
         /// Check if terrain data is loaded
         /// </summary>
         bool IsTerrainLoaded { get; }
+
+        /// <summary>
+        /// Get A* path from start to target world positions
+        /// </summary>
+        /// <param name="startWorld">Start position in world coordinates</param>
+        /// <param name="targetWorld">Target position in world coordinates</param>
+        /// <returns>List of grid waypoints or null if no path found</returns>
+        List<Vector2i> GetPath(Vector3 startWorld, Vector3 targetWorld);
+
+        /// <summary>
+        /// Clear the path cache
+        /// </summary>
+        void ClearPathCache();
     }
 }

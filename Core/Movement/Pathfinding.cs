@@ -107,7 +107,7 @@ namespace BetterFollowbotLite.Core.Movement
                 return false;
 
             // Convert world position to grid coordinates
-            var gridPos = WorldToGrid(targetPosition);
+            var gridPos = WorldToGrid(targetPosition); // Target position (defaults to false for isPlayerPosition)
 
             // Delegate terrain analysis to the specialized analyzer
             var shouldDash = _terrainAnalyzer.AnalyzeTerrainForDashing(targetPosition, GetTerrainTileFromGrid);
@@ -297,8 +297,8 @@ namespace BetterFollowbotLite.Core.Movement
 
         public List<Vector2i> GetPath(Vector3 startWorld, Vector3 targetWorld)
         {
-            var startGrid = WorldToGrid(startWorld);
-            var targetGrid = WorldToGrid(targetWorld);
+            var startGrid = WorldToGrid(startWorld, true);  // Player position
+            var targetGrid = WorldToGrid(targetWorld, false); // Target position
 
             _core.LogMessage($"A* DEBUG: Finding path from grid ({startGrid.X}, {startGrid.Y}) to ({targetGrid.X}, {targetGrid.Y})");
 
@@ -370,24 +370,27 @@ namespace BetterFollowbotLite.Core.Movement
             _pathCache.Clear();
         }
 
-        private Vector2i WorldToGrid(Vector3 worldPos)
+        private Vector2i WorldToGrid(Vector3 worldPos, bool isPlayerPosition = false)
         {
             try
             {
-                // Try to get grid position from the Positioned component first (more accurate)
-                var localPlayer = BetterFollowbotLite.Instance.localPlayer;
-                if (localPlayer != null)
+                // For player position, try to get grid position from the Positioned component first (more accurate)
+                if (isPlayerPosition)
                 {
-                    var positioned = localPlayer.GetComponent<Positioned>();
-                    if (positioned != null)
+                    var localPlayer = BetterFollowbotLite.Instance.localPlayer;
+                    if (localPlayer != null)
                     {
-                        var gridPos = new Vector2i(positioned.GridX, positioned.GridY);
-                        _core.LogMessage($"PATHFINDING: Using Positioned component grid coords: ({gridPos.X}, {gridPos.Y})");
-                        return gridPos;
+                        var positioned = localPlayer.GetComponent<Positioned>();
+                        if (positioned != null)
+                        {
+                            var gridPos = new Vector2i(positioned.GridX, positioned.GridY);
+                            _core.LogMessage($"PATHFINDING: Using Positioned component grid coords: ({gridPos.X}, {gridPos.Y})");
+                            return gridPos;
+                        }
                     }
                 }
 
-                // Fallback to manual conversion (similar to Radar's GridToWorldMultiplier)
+                // For any position (player or target), use manual conversion (similar to Radar's GridToWorldMultiplier)
                 const float GridToWorldMultiplier = 250f / 23f; // TileToWorldConversion / TileToGridConversion
                 var gridX = (int)(worldPos.X / GridToWorldMultiplier);
                 var gridY = (int)(worldPos.Z / GridToWorldMultiplier); // Z is north-south in world space, Y in grid
@@ -405,9 +408,9 @@ namespace BetterFollowbotLite.Core.Movement
             }
         }
 
-        private Vector2i WorldToGrid(Vector2 worldPos)
+        private Vector2i WorldToGrid(Vector2 worldPos, bool isPlayerPosition = false)
         {
-            return WorldToGrid(new Vector3(worldPos.X, 0, worldPos.Y));
+            return WorldToGrid(new Vector3(worldPos.X, 0, worldPos.Y), isPlayerPosition);
         }
 
         private byte GetTerrainTileFromGrid(int x, int y)

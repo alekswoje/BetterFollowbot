@@ -601,7 +601,7 @@ namespace BetterFollowbotLite;
                     instantPathOptimization = true; // Enable instant mode for immediate response
                     _taskManager.ClearTasksPreservingTransitions(); // Clear all tasks and reset related state
                     hasUsedWp = false; // Allow waypoint usage again
-                    
+
                     // FORCE IMMEDIATE PATH CREATION - Don't wait for UpdateAutoPilotLogic
                     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
@@ -611,12 +611,18 @@ namespace BetterFollowbotLite;
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
-                            if (!hasConflictingTasks)
+                            // ADDITIONAL CHECK: Don't create dash task if dash is on cooldown
+                            var dashCooldownRemaining = (DateTime.Now - _movementExecutor.LastDashTime).TotalMilliseconds;
+                            var dashAvailable = dashCooldownRemaining >= 3000;
+
+                            if (!hasConflictingTasks && dashAvailable)
                             {
                                 _taskManager.AddTask(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
                             }
-                            else
+                            else if (!dashAvailable)
                             {
+                                // Dash on cooldown, create movement task instead
+                                _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                             }
                         }
                         else
@@ -635,7 +641,7 @@ namespace BetterFollowbotLite;
                     instantPathOptimization = true; // Enable instant mode for immediate response
                     _taskManager.ClearTasksPreservingTransitions(); // Clear all tasks and reset related state
                     hasUsedWp = false; // Allow waypoint usage again
-                    
+
                     // FORCE IMMEDIATE PATH CREATION - Don't wait for UpdateAutoPilotLogic
                     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
@@ -645,12 +651,18 @@ namespace BetterFollowbotLite;
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
-                            if (!hasConflictingTasks)
+                            // ADDITIONAL CHECK: Don't create dash task if dash is on cooldown
+                            var dashCooldownRemaining = (DateTime.Now - _movementExecutor.LastDashTime).TotalMilliseconds;
+                            var dashAvailable = dashCooldownRemaining >= 3000;
+
+                            if (!hasConflictingTasks && dashAvailable)
                             {
                                 _taskManager.AddTask(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
                             }
-                            else
+                            else if (!dashAvailable)
                             {
+                                // Dash on cooldown, create movement task instead
+                                _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                             }
                         }
                         else

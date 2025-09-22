@@ -356,9 +356,20 @@ namespace BetterFollowbotLite.Core.Movement
                                     t.Type == TaskNodeType.TeleportButton ||
                                     t.Type == TaskNodeType.Dash);
 
+                                // ADDITIONAL CHECK: Don't create dash task if dash is on cooldown
+                                var dashCooldownRemaining = (DateTime.Now - _core.MovementExecutor.LastDashTime).TotalMilliseconds;
+                                var dashAvailable = dashCooldownRemaining >= 3000;
+
                                 if (shouldSkipDashTasks || AutoPilot.IsTeleportInProgress)
                                 {
                                     _core.LogMessage($"ZONE TRANSITION: Skipping dash task creation - conflicting tasks active ({_taskManager.CountTasks(t => t.Type == TaskNodeType.Dash)} dash tasks, {_taskManager.CountTasks(t => t.Type == TaskNodeType.Transition)} transition tasks, teleport={AutoPilot.IsTeleportInProgress})");
+                                }
+                                else if (!dashAvailable)
+                                {
+                                    _core.LogMessage($"ZONE TRANSITION: Skipping dash task creation - dash on cooldown ({dashCooldownRemaining:F0}ms remaining)");
+                                    // Fall through to movement task creation
+                                    _core.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}, Dash threshold: 3000 (dash on cooldown)");
+                                    _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                                 }
                                 else
                                 {

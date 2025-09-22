@@ -80,32 +80,7 @@ namespace BetterFollowbotLite;
     }
 
     /// <summary>
-    /// Attempts to find and set the leader as follow target
-    /// </summary>
-    private void TryFindLeader()
-    {
-        try
-        {
-            var leaderEntity = _leaderDetector.FindLeaderEntity();
-            if (leaderEntity != null && leaderEntity.IsValid)
-            {
-                SetFollowTarget(leaderEntity);
-                // CRITICAL FIX: Reset lastTargetPosition when re-finding leader after invalidation
-                // This prevents huge distanceMoved calculations that trigger false zone transition detection
-                lastTargetPosition = leaderEntity.Pos;
-                BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Re-found leader after invalid target: '{BetterFollowbotLite.Instance.Settings.autoPilotLeader.Value}' at distance {Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, leaderEntity.Pos):F1}");
-            }
-            else
-            {
-                BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Could not re-find leader after invalid target - leader entity not found or invalid");
-            }
-        }
-        catch (Exception e)
-        {
-            BetterFollowbotLite.Instance.LogError($"AUTOPILOT: Error trying to re-find leader: {e.Message}");
-        }
-    }
-
+    /// Updates the follow target's position if it exists
     /// This is crucial for zone transitions where the entity's position changes
     /// </summary>
     public void UpdateFollowTargetPosition()
@@ -142,13 +117,9 @@ namespace BetterFollowbotLite;
         }
         else if (followTarget != null && !followTarget.IsValid)
         {
-            BetterFollowbotLite.Instance.LogMessage("AUTOPILOT: Follow target became invalid, clearing and attempting to re-find leader");
+            BetterFollowbotLite.Instance.LogMessage("AUTOPILOT: Follow target became invalid, clearing");
             followTarget = null;
             lastTargetPosition = Vector3.Zero;
-
-            // After clearing invalid follow target, immediately try to find the leader again
-            // This is especially important after zone transitions/teleports
-            TryFindLeader();
         }
     }
 
@@ -630,7 +601,7 @@ namespace BetterFollowbotLite;
                     instantPathOptimization = true; // Enable instant mode for immediate response
                     _taskManager.ClearTasksPreservingTransitions(); // Clear all tasks and reset related state
                     hasUsedWp = false; // Allow waypoint usage again
-
+                    
                     // FORCE IMMEDIATE PATH CREATION - Don't wait for UpdateAutoPilotLogic
                     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
@@ -640,18 +611,12 @@ namespace BetterFollowbotLite;
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
-                            // ADDITIONAL CHECK: Don't create dash task if dash is on cooldown
-                            var dashCooldownRemaining = (DateTime.Now - _movementExecutor.LastDashTime).TotalMilliseconds;
-                            var dashAvailable = dashCooldownRemaining >= 3000;
-
-                            if (!hasConflictingTasks && dashAvailable)
+                            if (!hasConflictingTasks)
                             {
                                 _taskManager.AddTask(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
                             }
-                            else if (!dashAvailable)
+                            else
                             {
-                                // Dash on cooldown, create movement task instead
-                                _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                             }
                         }
                         else
@@ -670,7 +635,7 @@ namespace BetterFollowbotLite;
                     instantPathOptimization = true; // Enable instant mode for immediate response
                     _taskManager.ClearTasksPreservingTransitions(); // Clear all tasks and reset related state
                     hasUsedWp = false; // Allow waypoint usage again
-
+                    
                     // FORCE IMMEDIATE PATH CREATION - Don't wait for UpdateAutoPilotLogic
                     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
@@ -680,18 +645,12 @@ namespace BetterFollowbotLite;
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
-                            // ADDITIONAL CHECK: Don't create dash task if dash is on cooldown
-                            var dashCooldownRemaining = (DateTime.Now - _movementExecutor.LastDashTime).TotalMilliseconds;
-                            var dashAvailable = dashCooldownRemaining >= 3000;
-
-                            if (!hasConflictingTasks && dashAvailable)
+                            if (!hasConflictingTasks)
                             {
                                 _taskManager.AddTask(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
                             }
-                            else if (!dashAvailable)
+                            else
                             {
-                                // Dash on cooldown, create movement task instead
-                                _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                             }
                         }
                         else

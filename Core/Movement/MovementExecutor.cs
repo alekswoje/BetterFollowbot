@@ -243,25 +243,43 @@ namespace BetterFollowbotLite.Core.Movement
                              _core.LogMessage("Dash task completed successfully");
                              shouldDashAndContinue = true;
                          }
-                         else
-                         {
-                             _core.LogMessage("Dash task: Cursor not pointing towards target, positioning cursor");
+                        else
+                        {
+                            _core.LogMessage("Dash task: Cursor not pointing towards target, positioning cursor");
 
-                             var targetScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
+                            var targetScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
 
-                             if (targetScreenPos.X < 0 || targetScreenPos.Y < 0 ||
-                                 targetScreenPos.X > _core.GameController.Window.GetWindowRectangle().Width ||
-                                 targetScreenPos.Y > _core.GameController.Window.GetWindowRectangle().Height)
-                             {
-                                 var playerPos = _core.PlayerPosition;
-                                 var directionToTarget = currentTask.WorldPosition - playerPos;
-                                 directionToTarget.Normalize();
+                            if (targetScreenPos.X >= 0 && targetScreenPos.Y >= 0 &&
+                                targetScreenPos.X <= _core.GameController.Window.GetWindowRectangle().Width &&
+                                targetScreenPos.Y <= _core.GameController.Window.GetWindowRectangle().Height)
+                            {
+                                // Position cursor and immediately execute dash
+                                Mouse.SetCursorPos(targetScreenPos);
+                                System.Threading.Thread.Sleep(25); // Small delay for cursor to settle
 
-                                 var screenCenter = new Vector2(
-                                     _core.GameController.Window.GetWindowRectangle().Width / 2,
-                                     _core.GameController.Window.GetWindowRectangle().Height / 2);
-                             }
-                         }
+                                _core.LogMessage("Dash task: Cursor positioned, executing dash");
+
+                                Keyboard.KeyPress(_core.Settings.autoPilotDashKey);
+                                _lastDashTime = DateTime.Now;
+                                _lastPlayerPosition = _core.PlayerPosition;
+
+                                _taskManager.RemoveTask(currentTask);
+                                _core.LogMessage("Dash task completed successfully");
+                                shouldDashAndContinue = true;
+                            }
+                            else
+                            {
+                                // Target is off-screen, convert to movement task
+                                _core.LogMessage("Dash task: Target off-screen, converting to movement task");
+                                _taskManager.RemoveTask(currentTask);
+
+                                if (_autoPilot.FollowTarget != null)
+                                {
+                                    _taskManager.AddTask(new TaskNode(currentTask.WorldPosition, _core.Settings.autoPilotPathfindingNodeDistance));
+                                    _core.LogMessage("Dash task converted to movement task (off-screen target)");
+                                }
+                            }
+                        }
                      }
                      else
                      {

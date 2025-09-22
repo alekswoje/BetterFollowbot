@@ -59,7 +59,8 @@ namespace BetterFollowbotLite.Skill
                             .Where(monster =>
                             {
                                 // Check if monster is rare or unique
-                                if (monster.Rarity != MonsterRarity.Rare && monster.Rarity != MonsterRarity.Unique)
+                                var rarityComponent = monster.GetComponent<ObjectMagicProperties>();
+                                if (rarityComponent == null || (rarityComponent.Rarity != MonsterRarity.Rare && rarityComponent.Rarity != MonsterRarity.Unique))
                                     return false;
 
                                 // Check distance from player to monster
@@ -160,7 +161,9 @@ namespace BetterFollowbotLite.Skill
 
                                     if (_settings.debugMode)
                                     {
-                                        _instance.LogMessage($"MINES: Threw {(hasStormblastMine ? "Stormblast" : "Pyroclast")} mine at {bestTarget.Path} (Rarity: {bestTarget.Rarity})");
+                                        var rarityComponent = bestTarget.GetComponent<ObjectMagicProperties>();
+                                        var rarity = rarityComponent?.Rarity.ToString() ?? "Unknown";
+                                        _instance.LogMessage($"MINES: Threw {(hasStormblastMine ? "Stormblast" : "Pyroclast")} mine at {bestTarget.Path} (Rarity: {rarity})");
                                     }
 
                                     return true; // Skill was executed

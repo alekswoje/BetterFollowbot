@@ -18,7 +18,7 @@ namespace BetterFollowbotLite
         // Using exact phrases to avoid false matches
         private static readonly Dictionary<string[], string> PortalTypeMappings = new()
         {
-            { new[] { "arena", "pit", "combat", "warden's quarters", "portal", "merveil's lair" }, "Arena" }
+            { new[] { "arena", "pit", "combat", "warden's quarters", "portal", "merveil's lair", "the weaver's nest" }, "Arena" }
         };
 
         // Special portal names that should be treated as high-priority interzone portals

@@ -184,10 +184,12 @@ namespace BetterFollowbotLite.Core.Movement
 
                     // Get the portal click position with more detailed logging
                     var portalRect = currentTask.LabelOnGround.Label.GetClientRect();
-                    transitionPos = new Vector2(portalRect.Center.X, portalRect.Center.Y);
+                    var windowOffset = _core.GameController.Window.GetWindowRectangle().TopLeft;
+                    transitionPos = new Vector2(portalRect.Center.X + windowOffset.X, portalRect.Center.Y + windowOffset.Y);
 
-                    _core.LogMessage($"TRANSITION: Portal click position - X: {transitionPos.X:F1}, Y: {transitionPos.Y:F1}");
-                    _core.LogMessage($"TRANSITION: Portal screen rect - Left: {portalRect.Left:F1}, Top: {portalRect.Top:F1}, Width: {portalRect.Width:F1}, Height: {portalRect.Height:F1}");
+                    _core.LogMessage($"TRANSITION: Portal click position - X: {transitionPos.X:F1}, Y: {transitionPos.Y:F1} (screen coords)");
+                    _core.LogMessage($"TRANSITION: Portal screen rect - Left: {portalRect.Left:F1}, Top: {portalRect.Top:F1}, Width: {portalRect.Width:F1}, Height: {portalRect.Height:F1} (client coords)");
+                    _core.LogMessage($"TRANSITION: Window offset - X: {windowOffset.X}, Y: {windowOffset.Y}");
 
                     currentTask.AttemptCount++;
                     if (currentTask.AttemptCount > 6)

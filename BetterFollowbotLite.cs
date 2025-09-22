@@ -407,6 +407,47 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 
             try
             {
+                // CRITICAL FIX: Move AutoPilot logic BEFORE all checks so it works even when game is not in focus
+                // Leader detection and task management must work in background
+                if (autoPilot != null && autoPilot.FollowTarget == null)
+                {
+                    var leaderDetectionTime = DateTime.Now;
+                    var timeSinceZoneLoad = (DateTime.Now - lastAreaChangeTime).TotalSeconds;
+
+                    var playerEntities = GameController.Entities.Where(x => x.Type == EntityType.Player).ToList();
+
+                    var manualLeaderEntity = playerEntities.FirstOrDefault(x =>
+                        x.GetComponent<Player>()?.PlayerName?.Equals(Settings.autoPilotLeader.Value, StringComparison.OrdinalIgnoreCase) == true);
+
+                    if (manualLeaderEntity != null)
+                    {
+                        var detectionDuration = DateTime.Now - leaderDetectionTime;
+                        LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] ✓ Found leader '{Settings.autoPilotLeader.Value}' in {detectionDuration.TotalSeconds:F2}s ({timeSinceZoneLoad:F1}s since zone load) - distance: {Vector3.Distance(playerPosition, manualLeaderEntity.Pos):F1}");
+                        autoPilot.SetFollowTarget(manualLeaderEntity);
+                    }
+                }
+
+                // CRITICAL: AutoPilot task management must work in background
+                autoPilot.UpdateFollowTargetPosition();
+                autoPilot.UpdateAutoPilotLogic();
+                autoPilot.Render();
+
+                if (autoPilot != null)
+                {
+                    var timeSinceLastAutoPilotLog = (DateTime.Now - lastAutoPilotUpdateLogTime).TotalSeconds;
+                    if (timeSinceLastAutoPilotLog > 5.0)
+                {
+                    var followTarget = autoPilot.FollowTarget;
+                    LogMessage($"AUTOPILOT: After update - Task count: {autoPilot.Tasks.Count}, FollowTarget: {(followTarget != null ? followTarget.GetComponent<Player>()?.PlayerName ?? "Unknown" : "null")}");
+
+                    if (followTarget != null && autoPilot.Tasks.Count == 0)
+                    {
+                        LogMessage("AUTOPILOT: Has follow target but no tasks - AutoPilot may not be moving the bot");
+                        }
+                        lastAutoPilotUpdateLogTime = DateTime.Now;
+                    }
+                }
+
                 // Grace period removal with movement safeguards
                 if (Settings.autoPilotEnabled.Value && Settings.autoPilotGrace.Value && buffs != null && buffs.Exists(x => x.Name == "grace_period"))
                 {
@@ -608,43 +649,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     lastHadGrace = hasGrace;
                 }
 
-                if (autoPilot != null && autoPilot.FollowTarget == null)
-                {
-                    var leaderDetectionTime = DateTime.Now;
-                    var timeSinceZoneLoad = (DateTime.Now - lastAreaChangeTime).TotalSeconds;
-
-                    var playerEntities = GameController.Entities.Where(x => x.Type == EntityType.Player).ToList();
-
-                    var manualLeaderEntity = playerEntities.FirstOrDefault(x =>
-                        x.GetComponent<Player>()?.PlayerName?.Equals(Settings.autoPilotLeader.Value, StringComparison.OrdinalIgnoreCase) == true);
-
-                    if (manualLeaderEntity != null)
-                    {
-                        var detectionDuration = DateTime.Now - leaderDetectionTime;
-                        LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] ✓ Found leader '{Settings.autoPilotLeader.Value}' in {detectionDuration.TotalSeconds:F2}s ({timeSinceZoneLoad:F1}s since zone load) - distance: {Vector3.Distance(playerPosition, manualLeaderEntity.Pos):F1}");
-                        autoPilot.SetFollowTarget(manualLeaderEntity);
-                    }
-                }
-
-                autoPilot.UpdateFollowTargetPosition();
-                autoPilot.UpdateAutoPilotLogic();
-                autoPilot.Render();
-
-                if (autoPilot != null)
-                {
-                    var timeSinceLastAutoPilotLog = (DateTime.Now - lastAutoPilotUpdateLogTime).TotalSeconds;
-                    if (timeSinceLastAutoPilotLog > 5.0)
-                {
-                    var followTarget = autoPilot.FollowTarget;
-                    LogMessage($"AUTOPILOT: After update - Task count: {autoPilot.Tasks.Count}, FollowTarget: {(followTarget != null ? followTarget.GetComponent<Player>()?.PlayerName ?? "Unknown" : "null")}");
-
-                    if (followTarget != null && autoPilot.Tasks.Count == 0)
-                    {
-                        LogMessage("AUTOPILOT: Has follow target but no tasks - AutoPilot may not be moving the bot");
-                        }
-                        lastAutoPilotUpdateLogTime = DateTime.Now;
-                    }
-                }
             }
             catch (Exception e)
             {
@@ -690,11 +694,12 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 Graphics.DrawText("Enemys: " + enemys.Count, new System.Numerics.Vector2(100, 120), Color.White);
             }
                 
-            // Removed grace period blocking - movement already breaks grace naturally
-            // Keeping foreground check as it may still cause delays
+            // MODIFIED: Only block UI interactions when game is not in foreground, but allow AutoPilot to work
+            // AutoPilot logic runs before this check, so it continues working in background
             if (!GameController.IsForeGroundCache)
             {
-                LogMessage("FOREGROUND CHECK: Game not in foreground - blocking Render() execution");
+                LogMessage("FOREGROUND CHECK: Game not in foreground - blocking UI interactions but AutoPilot continues");
+                // Don't return here - let AutoPilot work but skip UI-dependent operations
                 return;
             }
                 

@@ -89,7 +89,7 @@ namespace BetterFollowbotLite.Core.LeaderDetection
             // Sometimes we can get "Collection was modified; enumeration operation may not execute" exception
             catch (Exception ex)
             {
-                _core.LogMessage($"FindLeaderEntity exception: {ex.Message}");
+                _core.LogMessage($"LEADER DETECTION: Entity collection exception during leader search: {ex.Message} - this may cause detection delays");
                 return null;
             }
         }

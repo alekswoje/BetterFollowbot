@@ -515,7 +515,10 @@ namespace BetterFollowbotLite;
         ResetPathing();
 
         // Initialize terrain data through the pathfinding service
+        var terrainInitStart = DateTime.Now;
         _pathfinding.InitializeTerrain();
+        var terrainInitTime = DateTime.Now - terrainInitStart;
+        BetterFollowbotLite.Instance.LogMessage($"TERRAIN INIT: Terrain initialization completed in {terrainInitTime.TotalMilliseconds:F2}ms");
     }
 
     public void StartCoroutine()
@@ -529,6 +532,15 @@ namespace BetterFollowbotLite;
             if (!BetterFollowbotLite.Instance.Settings.Enable.Value || !BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value || BetterFollowbotLite.Instance.localPlayer == null || !BetterFollowbotLite.Instance.localPlayer.IsAlive ||
                 !BetterFollowbotLite.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || BetterFollowbotLite.Instance.GameController.IsLoading || !BetterFollowbotLite.Instance.GameController.InGame)
             {
+                // Log check failures that might cause delays
+                if (!BetterFollowbotLite.Instance.GameController.IsForeGroundCache)
+                {
+                    BetterFollowbotLite.Instance.LogMessage("FOREGROUND CHECK: Game not in foreground - blocking task execution");
+                }
+                if (MenuWindow.IsOpened)
+                {
+                    BetterFollowbotLite.Instance.LogMessage("MENU CHECK: Menu window is open - blocking task execution");
+                }
                 await Task.Delay(100);
                 continue;
             }
@@ -589,6 +601,9 @@ namespace BetterFollowbotLite;
                     await Task.Delay(50);
                     continue;
                 }
+
+                // Log task execution start
+                BetterFollowbotLite.Instance.LogMessage($"TASK EXECUTION: Starting {currentTask.Type} task at {currentTask.WorldPosition} (Queue size: {_taskManager.TaskCount})");
 
                 var taskDistance = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, currentTask.WorldPosition);
                 var playerDistanceMoved = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, lastPlayerPosition);

@@ -28,6 +28,7 @@ namespace BetterFollowbotLite.Core.TaskManagement
             if (task != null)
             {
                 _tasks.Add(task);
+                _core.LogMessage($"TASK CREATION: Added {task.Type} task at {task.WorldPosition} (Total tasks: {_tasks.Count})");
             }
         }
 

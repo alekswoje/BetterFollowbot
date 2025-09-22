@@ -334,8 +334,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         // Reset player position to prevent large distance calculations in grace period logic
         if (GameController?.Game?.IngameState?.Data?.LocalPlayer != null)
         {
+            var oldPosition = playerPosition;
             playerPosition = GameController.Game.IngameState.Data.LocalPlayer.Pos;
-            LogMessage($"AREA CHANGE: Reset player position to ({playerPosition.X:F1}, {playerPosition.Y:F1})");
+            var positionChange = Vector3.Distance(oldPosition, playerPosition);
+            LogMessage($"AREA CHANGE: Reset player position from ({oldPosition.X:F1}, {oldPosition.Y:F1}) to ({playerPosition.X:F1}, {playerPosition.Y:F1}) - Change: {positionChange:F1} units");
         }
 
         SkillInfo.ResetSkills();
@@ -688,9 +690,13 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 Graphics.DrawText("Enemys: " + enemys.Count, new System.Numerics.Vector2(100, 120), Color.White);
             }
                 
-            if (buffs.Exists(x => x.Name == "grace_period") ||
-                !GameController.IsForeGroundCache)
+            // Removed grace period blocking - movement already breaks grace naturally
+            // Keeping foreground check as it may still cause delays
+            if (!GameController.IsForeGroundCache)
+            {
+                LogMessage("FOREGROUND CHECK: Game not in foreground - blocking Render() execution");
                 return;
+            }
                 
                     }
                     catch (Exception e)

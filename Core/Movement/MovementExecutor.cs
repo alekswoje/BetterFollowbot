@@ -135,7 +135,7 @@ namespace BetterFollowbotLite.Core.Movement
                             //Note: Was getting stuck on close objects... testing hacky fix.
                             if (taskDistance <= _core.Settings.autoPilotPathfindingNodeDistance.Value * 1.5)
                             {
-                                // Removed excessive movement completion logging
+                                _core.LogMessage($"TASK COMPLETION: Movement task completed at distance {taskDistance:F1} (Attempts: {currentTask.AttemptCount})");
                                 _taskManager.RemoveTask(currentTask);
                                 _lastPlayerPosition = _core.PlayerPosition;
                             }

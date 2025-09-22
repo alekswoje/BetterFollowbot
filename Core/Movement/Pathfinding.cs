@@ -89,7 +89,7 @@ namespace BetterFollowbotLite.Core.Movement
 
         public bool CheckDashTerrain(Vector2 targetPosition)
         {
-            if (_grid == null)
+            if (_pathFinder == null)
                 return false;
 
             // Convert world position to grid coordinates
@@ -205,7 +205,8 @@ namespace BetterFollowbotLite.Core.Movement
 
         public void ClearPathCache()
         {
-            _pathCache.Clear();
+            // PathFinder handles its own internal caching - no external clear method available
+            // This is a no-op to satisfy the interface
         }
 
         private Vector2i WorldToGrid(Vector3 worldPos, bool isPlayerPosition = false, ExileCore.PoEMemory.MemoryObjects.Entity targetEntity = null)

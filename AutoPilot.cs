@@ -40,16 +40,16 @@ namespace BetterFollowbotLite;
         private Coroutine autoPilotCoroutine;
         private readonly Random random = new Random();
 
-    /// <summary>
-    /// Constructor for AutoPilot
-    /// </summary>
+        /// <summary>
+        /// Constructor for AutoPilot
+        /// </summary>
     public AutoPilot(ILeaderDetector leaderDetector, ITaskManager taskManager, IPathfinding pathfinding, IMovementExecutor movementExecutor)
-    {
+        {
         _leaderDetector = leaderDetector ?? throw new ArgumentNullException(nameof(leaderDetector));
         _taskManager = taskManager ?? throw new ArgumentNullException(nameof(taskManager));
         _pathfinding = pathfinding ?? throw new ArgumentNullException(nameof(pathfinding));
         _movementExecutor = movementExecutor; // Allow null for circular dependency resolution
-        portalManager = new PortalManager();
+            portalManager = new PortalManager();
         _movementLogic = new MovementLogic(BetterFollowbotLite.Instance, leaderDetector, taskManager, pathfinding, movementExecutor, portalManager);
     }
 
@@ -60,7 +60,7 @@ namespace BetterFollowbotLite;
     {
         _movementExecutor = movementExecutor ?? throw new ArgumentNullException(nameof(movementExecutor));
         _movementLogic?.SetMovementExecutor(movementExecutor);
-    }
+        }
 
         private Vector3 lastTargetPosition;
         private Vector3 lastPlayerPosition;
@@ -812,13 +812,13 @@ namespace BetterFollowbotLite;
                 TaskNode currentTask = null;
                 bool taskAccessError = false;
 
-                try
-                {
+                    try
+                    {
                     currentTask = _movementLogic.SelectNextTask();
-                }
-                catch (Exception e)
-                {
-                    taskAccessError = true;
+                    }
+                    catch (Exception e)
+                    {
+                        taskAccessError = true;
                     BetterFollowbotLite.Instance.LogMessage($"Error selecting next task: {e.Message}");
                 }
 
@@ -854,7 +854,7 @@ namespace BetterFollowbotLite;
             _movementLogic.HandlePortalTransitions();
 
             // Update last player position and wait
-            lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
+                    lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
             yield return new WaitTime(50);
         }
         // ReSharper disable once IteratorNeverReturns
@@ -862,9 +862,9 @@ namespace BetterFollowbotLite;
 
     // New method for decision making that runs every game tick
     public void UpdateAutoPilotLogic()
-    {
-        try
-        {
+                            {
+                                try
+                                {
             BetterFollowbotLite.Instance.LogMessage($"DEBUG: UpdateAutoPilotLogic called - followTarget: {(followTarget != null ? "SET" : "NULL")}, Tasks: {_taskManager.TaskCount}");
 
             // CRITICAL: Update leader position tracking
@@ -875,9 +875,9 @@ namespace BetterFollowbotLite;
             {
                 var playerName = followTarget.GetComponent<Player>()?.PlayerName ?? "Unknown";
                 BetterFollowbotLite.Instance.LogMessage($"DEBUG: Current follow target '{playerName}' at {followTarget.Pos}, Valid: {followTarget.IsValid}");
-            }
-            else
-            {
+                                    }
+                                    else
+                                    {
                 BetterFollowbotLite.Instance.LogMessage("DEBUG: No follow target set");
             }
 
@@ -887,22 +887,46 @@ namespace BetterFollowbotLite;
             {
                 BetterFollowbotLite.Instance.LogMessage("DEBUG: Follow target is invalid/null - checking for nearby players");
 
-                // Look for the closest player within 300 units to automatically follow
-                var closestPlayer = BetterFollowbotLite.Instance.GameController?.EntityListWrapper?.ValidEntitiesByType[EntityType.Player]
-                    ?.Where(p => p.IsValid && p.Pos != null && !float.IsNaN(p.Pos.X) && !float.IsNaN(p.Pos.Y) && !float.IsNaN(p.Pos.Z))
-                    ?.OrderBy(p => Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, p.Pos))
-                    ?.FirstOrDefault(p => Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, p.Pos) < 300f);
-
-                if (closestPlayer != null)
+                // First, try to find the original leader by name if they exist
+                var playerEntities = BetterFollowbotLite.Instance.GameController?.Entities?.Where(x => x.Type == EntityType.Player).ToList();
+                if (playerEntities != null && playerEntities.Count > 0)
                 {
-                    var playerName = closestPlayer.GetComponent<Player>()?.PlayerName ?? "Unknown";
-                    var distance = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, closestPlayer.Pos);
-                    BetterFollowbotLite.Instance.LogMessage($"PROXIMITY LEADER: Auto-detected nearby player '{playerName}' at distance {distance:F1} - setting as follow target");
-                    SetFollowTarget(closestPlayer);
+                    // Try to find the leader by the configured name first
+                    var originalLeader = playerEntities.FirstOrDefault(x =>
+                        x.GetComponent<Player>()?.PlayerName?.Equals(BetterFollowbotLite.Instance.Settings.autoPilotLeader.Value, StringComparison.OrdinalIgnoreCase) == true);
+
+                    if (originalLeader != null && originalLeader.IsValid)
+                    {
+                        var playerName = originalLeader.GetComponent<Player>()?.PlayerName ?? "Unknown";
+                        BetterFollowbotLite.Instance.LogMessage($"PROXIMITY LEADER: Re-found original leader '{playerName}' - setting as follow target");
+                        SetFollowTarget(originalLeader);
+                    }
+                    else
+                    {
+                        // If original leader not found, look for any nearby player (but not the bot itself)
+                        var closestPlayer = playerEntities
+                            .Where(p => p.IsValid && p.Pos != null && !float.IsNaN(p.Pos.X) && !float.IsNaN(p.Pos.Y) && !float.IsNaN(p.Pos.Z))
+                            .Where(p => p.Address != BetterFollowbotLite.Instance.localPlayer.Address) // Exclude the bot itself
+                            .OrderBy(p => Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, p.Pos))
+                            .FirstOrDefault(p => Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, p.Pos) < 300f &&
+                                                 p.Address != BetterFollowbotLite.Instance.localPlayer.Address); // Double-check exclusion
+
+                        if (closestPlayer != null)
+                        {
+                            var playerName = closestPlayer.GetComponent<Player>()?.PlayerName ?? "Unknown";
+                            var distance = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, closestPlayer.Pos);
+                            BetterFollowbotLite.Instance.LogMessage($"PROXIMITY LEADER: Auto-detected nearby player '{playerName}' at distance {distance:F1} - setting as follow target");
+                            SetFollowTarget(closestPlayer);
+                        }
+                        else
+                        {
+                            BetterFollowbotLite.Instance.LogMessage("DEBUG: No nearby players found within 300 units");
+                        }
+                    }
                 }
                 else
                 {
-                    BetterFollowbotLite.Instance.LogMessage("DEBUG: No nearby players found within 300 units");
+                    BetterFollowbotLite.Instance.LogMessage("DEBUG: No player entities found in entity list");
                 }
             }
 
@@ -972,25 +996,25 @@ namespace BetterFollowbotLite;
                     // Check if we should create a dash task instead
                     if (distanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotDashDistance &&
                         BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled)
-                    {
-                        // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
-                        var hasConflictingTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
-                        if (!hasConflictingTasks)
                         {
+                            // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
+                        var hasConflictingTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
+                            if (!hasConflictingTasks)
+                            {
                             _taskManager.AddTask(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
                             BetterFollowbotLite.Instance.LogMessage($"Created dash task to leader (distance: {distanceToLeader:F1})");
+                            }
                         }
-                    }
-                    else
-                    {
+                        else
+                        {
                         // Create movement task
                         _taskManager.AddTask(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                         BetterFollowbotLite.Instance.LogMessage($"Created movement task to leader (distance: {distanceToLeader:F1})");
                     }
                 }
-            }
-            else
-            {
+                            }
+                            else
+                            {
                 BetterFollowbotLite.Instance.LogMessage("No valid follow target - cannot create movement tasks");
             }
 
@@ -1032,9 +1056,9 @@ namespace BetterFollowbotLite;
             if (leaderEntity != null)
             {
                 BetterFollowbotLite.Instance.Graphics.DrawText($"Leader: DETECTED", new System.Numerics.Vector2(10, 160), Color.Green);
-            }
-            else
-            {
+                    }
+                    else
+                    {
                 BetterFollowbotLite.Instance.Graphics.DrawText("Leader: NOT FOUND", new System.Numerics.Vector2(10, 160), Color.Red);
             }
         }

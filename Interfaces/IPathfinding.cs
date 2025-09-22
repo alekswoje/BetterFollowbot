@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using SharpDX;
 using GameOffsets.Native;
-using Vector2i = GameOffsets.Native.Vector2i;
 
 namespace BetterFollowbotLite.Interfaces
 {
@@ -46,19 +45,12 @@ namespace BetterFollowbotLite.Interfaces
         bool IsTerrainLoaded { get; }
 
         /// <summary>
-        /// Get terrain height data for grid-to-world conversion
-        /// </summary>
-        /// <returns>Height data array or null if not available</returns>
-        float[][] GetHeightData();
-
-        /// <summary>
         /// Get A* path from start to target world positions
         /// </summary>
         /// <param name="startWorld">Start position in world coordinates</param>
         /// <param name="targetWorld">Target position in world coordinates</param>
-        /// <param name="targetEntity">Optional target entity for accurate grid positioning</param>
         /// <returns>List of grid waypoints or null if no path found</returns>
-        List<Vector2i> GetPath(Vector3 startWorld, Vector3 targetWorld, ExileCore.PoEMemory.MemoryObjects.Entity targetEntity = null);
+        List<Vector2i> GetPath(Vector3 startWorld, Vector3 targetWorld);
 
         /// <summary>
         /// Clear the path cache

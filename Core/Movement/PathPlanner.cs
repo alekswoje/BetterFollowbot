@@ -37,14 +37,6 @@ namespace BetterFollowbotLite.Core.Movement
         {
             try
             {
-                // Only plan paths when we have few or no movement tasks (avoid continuous path planning)
-                var movementTaskCount = _taskManager.CountTasks(t => t.Type == TaskNodeType.Movement);
-                if (movementTaskCount > 3) // Allow up to 3 movement tasks before planning new paths
-                {
-                    _core.LogMessage($"PATH PLANNER: Already have {movementTaskCount} movement tasks, skipping path planning");
-                    return;
-                }
-
                 if (AutoPilot.IsTeleportInProgress)
                 {
                     _core.LogMessage($"TELEPORT: Blocking all task creation - teleport in progress ({_taskManager.TaskCount} tasks)");
@@ -409,7 +401,7 @@ namespace BetterFollowbotLite.Core.Movement
                             {
                                 // Use A* pathfinding to create waypoint tasks instead of straight line
                                 _core.LogMessage($"A* PATH: Attempting to find path - Player: {_core.PlayerPosition}, Leader: {followTarget.Pos}");
-                                var pathWaypoints = _core.Pathfinding.GetPath(_core.PlayerPosition, followTarget.Pos, followTarget);
+                                var pathWaypoints = _core.Pathfinding.GetPath(_core.PlayerPosition, followTarget.Pos);
 
                                 if (pathWaypoints != null && pathWaypoints.Count > 1) // Need more than just start position
                                 {
@@ -438,28 +430,16 @@ namespace BetterFollowbotLite.Core.Movement
                                         // Create movement tasks along the A* path waypoints
                                         // Skip the first waypoint (current position) and create tasks for the rest
                                         var gridToWorldMultiplier = 250f / 23f; // Same conversion as in Pathfinding.cs
-                                        var heightData = _core.Pathfinding.GetHeightData(); // Get height data like Radar
-                                        _core.LogMessage($"PATH: Height data available: {heightData != null}, Length: {heightData?.Length ?? 0}");
                                         var waypointsAdded = 0;
                                         for (int i = 1; i < pathWaypoints.Count; i++) // Start from index 1 to skip current position
                                         {
                                             var waypoint = pathWaypoints[i];
-                                            var height = heightData != null && waypoint.Y < heightData.Length && waypoint.X < heightData[waypoint.Y].Length
-                                                ? heightData[waypoint.Y][waypoint.X]
-                                                : followTarget.Pos.Y; // Fallback to target height
-
                                             var worldPos = new Vector3(
                                                 waypoint.X * gridToWorldMultiplier,
-                                                height, // Use terrain height like Radar
+                                                followTarget.Pos.Y, // Keep same height
                                                 waypoint.Y * gridToWorldMultiplier
                                             );
-
-                                            // Only log first few waypoints to avoid spam
-                                            if (i <= 3)
-                                            {
-                                                _core.LogMessage($"A* PATH: Waypoint {i}: grid({waypoint.X},{waypoint.Y}) -> height: {height:F1}, world({worldPos.X:F1},{worldPos.Y:F1},{worldPos.Z:F1})");
-                                            }
-
+                                            _core.LogMessage($"A* PATH: Adding waypoint {i}/{pathWaypoints.Count}: grid({waypoint.X},{waypoint.Y}) -> world({worldPos.X:F1},{worldPos.Y:F1},{worldPos.Z:F1})");
                                             _taskManager.AddTask(new TaskNode(worldPos, _core.Settings.autoPilotPathfindingNodeDistance));
                                             waypointsAdded++;
                                         }
@@ -472,7 +452,7 @@ namespace BetterFollowbotLite.Core.Movement
                                         }
                                         else
                                         {
-                                            _core.LogMessage($"A* PATH: Created {waypointsAdded} movement tasks along path (total path: {pathWaypoints.Count} waypoints)");
+                                            _core.LogMessage($"A* PATH: Created {waypointsAdded} movement tasks along path");
                                         }
                                     }
                                 }
@@ -512,9 +492,73 @@ namespace BetterFollowbotLite.Core.Movement
                             _core.LogError($"Invalid followTarget position: {followTarget?.Pos}, skipping task creation");
                         }
                     }
-                    // DISABLED: Path extension feature that was causing continuous task creation
-                    // The bot should complete current paths before planning new ones
-                    // else if (_taskManager.TaskCount > 0) { ... path extension logic ... }
+                    //We have a path. Check if the last task is far enough away from current one to add a new task node using A*.
+                    else if (_taskManager.TaskCount > 0)
+                    {
+                        // ADDITIONAL NULL CHECK: Ensure followTarget is still valid before extending path
+                        if (followTarget != null && followTarget.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
+                        {
+                            var distanceFromLastTask = Vector3.Distance(_taskManager.Tasks.Last().WorldPosition, followTarget.Pos);
+                            // More responsive: reduce threshold by half for more frequent path updates
+                            var responsiveThreshold = _core.Settings.autoPilotPathfindingNodeDistance.Value / 2;
+                            if (distanceFromLastTask >= responsiveThreshold)
+                            {
+                                _core.LogMessage($"RESPONSIVENESS: Extending path with A* - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
+
+                                // Use A* to find additional waypoints from current path end to target
+                                var currentPathEnd = _taskManager.Tasks.Last().WorldPosition;
+
+                                if (!_core.Pathfinding.IsTerrainLoaded)
+                                {
+                                    _core.LogMessage($"A* PATH EXTENSION: Terrain not loaded, falling back to direct extension");
+                                    _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                }
+                                else
+                                {
+                                    var extensionWaypoints = _core.Pathfinding.GetPath(currentPathEnd, followTarget.Pos);
+
+                                    if (extensionWaypoints != null && extensionWaypoints.Count > 1)
+                                    {
+                                        // Convert grid waypoints back to world positions and add as tasks
+                                        // Skip the first waypoint (current path end position)
+                                        var gridToWorldMultiplier = 250f / 23f; // Same conversion as in Pathfinding.cs
+                                        var waypointsAdded = 0;
+                                        for (int i = 1; i < extensionWaypoints.Count; i++) // Start from index 1 to skip current position
+                                        {
+                                            var waypoint = extensionWaypoints[i];
+                                            var worldPos = new Vector3(
+                                                waypoint.X * gridToWorldMultiplier,
+                                                followTarget.Pos.Y, // Keep same height
+                                                waypoint.Y * gridToWorldMultiplier
+                                            );
+                                            _taskManager.AddTask(new TaskNode(worldPos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                            waypointsAdded++;
+                                        }
+
+                                        if (waypointsAdded == 0)
+                                        {
+                                            _core.LogMessage($"A* PATH EXTENSION: No valid waypoints found, falling back to direct extension");
+                                            _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                        }
+                                        else
+                                        {
+                                            _core.LogMessage($"A* PATH EXTENSION: Added {waypointsAdded} additional waypoints");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // A* failed or returned insufficient waypoints, fall back to direct extension
+                                        _core.LogMessage($"A* PATH EXTENSION: Pathfinding failed (got {extensionWaypoints?.Count ?? 0} waypoints), falling back to direct extension");
+                                        _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            _core.LogMessage("PATH EXTENSION: followTarget became null during path extension, skipping task creation");
+                        }
+                    }
                 }
                 else
                 {

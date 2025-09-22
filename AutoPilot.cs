@@ -799,6 +799,16 @@ namespace BetterFollowbotLite;
                 {
                     if (shouldDashToLeader)
                     {
+                        // Release move key before dashing
+                        try
+                        {
+                            Keyboard.KeyUp(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
+                        }
+                        catch (Exception e)
+                        {
+                            // Ignore key release errors
+                        }
+
                         yield return Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(FollowTargetPosition));
                         BetterFollowbotLite.Instance.LogMessage("Movement task: Dash mouse positioned, pressing key");
                         if (instantPathOptimization)
@@ -850,6 +860,7 @@ namespace BetterFollowbotLite;
                         BetterFollowbotLite.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
                         BetterFollowbotLite.Instance.LogMessage($"Movement task: Move key: {BetterFollowbotLite.Instance.Settings.autoPilotMoveKey}");
                         yield return Mouse.SetCursorPosHuman(movementScreenPos);
+                        Keyboard.KeyDown(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
                         
                         if (instantPathOptimization)
                         {
@@ -1003,6 +1014,19 @@ namespace BetterFollowbotLite;
                         yield return null;
                         continue;
                     }
+                }
+            }
+
+            // Release move key if no tasks to execute
+            if (_taskManager.TaskCount == 0)
+            {
+                try
+                {
+                    Keyboard.KeyUp(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
+                }
+                catch (Exception e)
+                {
+                    // Ignore key release errors
                 }
             }
 

@@ -127,31 +127,8 @@ namespace BetterFollowbotLite.Core.Movement
                             screenPosError = true;
                         }
 
-
                         if (!screenPosError)
                         {
-
-                            try
-                            {
-                                Input.KeyDown(_core.Settings.autoPilotMoveKey);
-                                _core.LogMessage("Movement task: Move key down pressed, waiting");
-                            }
-                            catch (Exception e)
-                            {
-                                _core.LogError($"Movement task: KeyDown error: {e}");
-                                keyDownError = true;
-                            }
-
-                            try
-                            {
-                                Input.KeyUp(_core.Settings.autoPilotMoveKey);
-                                _core.LogMessage("Movement task: Move key released");
-                            }
-                            catch (Exception e)
-                            {
-                                _core.LogError($"Movement task: KeyUp error: {e}");
-                                keyUpError = true;
-                            }
 
                             //Within bounding range. Task is complete
                             //Note: Was getting stuck on close objects... testing hacky fix.

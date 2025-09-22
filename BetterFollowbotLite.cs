@@ -17,6 +17,7 @@ using BetterFollowbotLite.Core.TaskManagement;
 using BetterFollowbotLite.Core.Movement;
 using BetterFollowbotLite.Interfaces;
 using BetterFollowbotLite.Core.LeaderDetection;
+using BetterFollowbotLite.Core.Skills;
 
 namespace BetterFollowbotLite;
 
@@ -46,6 +47,11 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     private readonly Summons summons = new Summons();
     private SummonRagingSpirits summonRagingSpirits;
     private SummonSkeletons summonSkeletons;
+    private RejuvenationTotem rejuvenationTotem;
+    private AuraBlessing auraBlessing;
+    private FlameLink flameLink;
+    private SmiteBuff smiteBuff;
+    private VaalSkills vaalSkills;
     private RespawnHandler respawnHandler;
     private GemLeveler gemLeveler;
     private PartyJoiner partyJoiner;
@@ -98,6 +104,11 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         // Initialize skill classes
         summonRagingSpirits = new SummonRagingSpirits(this, Settings, autoPilot, summons);
         summonSkeletons = new SummonSkeletons(this, Settings, autoPilot, summons);
+        rejuvenationTotem = new RejuvenationTotem(this, Settings);
+        auraBlessing = new AuraBlessing(this, Settings);
+        flameLink = new FlameLink(this, Settings);
+        smiteBuff = new SmiteBuff(this, Settings);
+        vaalSkills = new VaalSkills(this, Settings);
 
         // Initialize automation classes
         respawnHandler = new RespawnHandler(this, Settings);
@@ -111,6 +122,11 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         // Register skills
         automationManager.RegisterSkill(summonRagingSpirits);
         automationManager.RegisterSkill(summonSkeletons);
+        automationManager.RegisterSkill(rejuvenationTotem);
+        automationManager.RegisterSkill(auraBlessing);
+        automationManager.RegisterSkill(flameLink);
+        automationManager.RegisterSkill(smiteBuff);
+        automationManager.RegisterSkill(vaalSkills);
 
         // Register automation features
         automationManager.RegisterAutomation(respawnHandler);
@@ -120,7 +136,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
         return true;
     }
-
+        
     #region IFollowbotCore Implementation
     
     // Settings property is already inherited from BaseSettingsPlugin<BetterFollowbotLiteSettings>
@@ -714,157 +730,9 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
             {
                     
 
-                #region Aura Blessing
-
-                if (Settings.auraBlessingEnabled)
-                {
-                    try
-                    {
-                        // Holy Relic summoning logic
-                        if (skill.Id == SkillInfo.holyRelict.Id)
-                        {
-                            // Check cooldown to prevent double-spawning
-                            if (SkillInfo.ManageCooldown(SkillInfo.holyRelict, skill))
-                            {
-                                var lowestMinionHp = Summons.GetLowestMinionHpp();
-                                // Convert HP percentage from 0-1 range to 0-100 range for comparison
-                                var lowestMinionHpPercent = lowestMinionHp * 100f;
-                                // Check for Holy Relic minion presence
-                                // Prioritize ReAgent buff names, then check for other indicators
-                                // Note: Avoid "guardian_life_regen" as it's just the life regen effect, not minion presence
-                                var hasGuardianBlessingMinion = buffs.Exists(x =>
-                                    x.Name == "has_guardians_blessing_minion" ||
-                                    (x.Name.Contains("holy") && x.Name.Contains("relic") && !x.Name.Contains("life")) ||
-                                    x.Name.Contains("guardian_blessing_minion"));
-
-                                // Check conditions
-                                var healthLow = lowestMinionHpPercent < Settings.holyRelicHealthThreshold;
-                                var missingBuff = !hasGuardianBlessingMinion;
-
-                                // If Holy Relic health is below threshold OR we don't have any minion buff, summon new Holy Relic
-                                if (healthLow || missingBuff)
-                                {
-                                    Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                    SkillInfo.holyRelict.Cooldown = 200; // 2 second cooldown to prevent double-spawning
-                                }
-                            }
-                        }
-
-                        // Zealotry casting logic
-                        else if (skill.Id == SkillInfo.auraZealotry.Id)
-                        {
-                            // Check for Zealotry aura buff
-                            // Prioritize ReAgent buff names, then check for aura effects
-                            var hasGuardianBlessingAura = buffs.Exists(x =>
-                                x.Name == "has_guardians_blessing_aura" ||
-                                x.Name == "zealotry" ||
-                                x.Name == "player_aura_spell_damage" ||
-                                (x.Name.Contains("blessing") && x.Name.Contains("aura")));
-
-                            // Check for Holy Relic minion presence (same logic as Holy Relic section)
-                            var hasGuardianBlessingMinion = buffs.Exists(x =>
-                                x.Name == "has_guardians_blessing_minion" ||
-                                (x.Name.Contains("holy") && x.Name.Contains("relic") && !x.Name.Contains("life")) ||
-                                x.Name.Contains("guardian_blessing_minion"));
-
-                            // Check conditions
-                            var missingAura = !hasGuardianBlessingAura;
-                            var hasMinion = hasGuardianBlessingMinion;
-
-                            // If we have the minion but don't have the aura buff, cast Zealotry
-                            if (missingAura && hasMinion)
-                            {
-                                Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                            }
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        // Error handling without logging
-                    }
-                }
-
-                #endregion
 
 
-                #region Link Skills
 
-                if (Settings.flameLinkEnabled)
-                    try
-                    {
-                        if (skill.Id == SkillInfo.flameLink.Id)
-                        {
-                            var linkSkill = SkillInfo.flameLink;
-                            var targetBuffName = "flame_link_target";
-
-                            if (SkillInfo.ManageCooldown(linkSkill, skill))
-                            {
-                                // Get party leader
-                                var partyElements = PartyElements.GetPlayerInfoElementList();
-
-                                var leaderPartyElement = partyElements
-                                    .FirstOrDefault(x => string.Equals(x?.PlayerName?.ToLower(),
-                                        Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
-
-                                if (leaderPartyElement != null)
-                                {
-                                    // Find the actual player entity by name
-                                    var playerEntities = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
-                                        .Where(x => x != null && x.IsValid && !x.IsHostile);
-
-                                    var leaderEntity = playerEntities
-                                        .FirstOrDefault(x => string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
-                                            Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
-
-                                    if (leaderEntity != null)
-                                    {
-                                        // Set the player entity
-                                        leaderPartyElement.Data.PlayerEntity = leaderEntity;
-
-                                        var leader = leaderPartyElement.Data.PlayerEntity;
-                                        var leaderBuffs = leader.GetComponent<Buffs>().BuffsList;
-
-                                        // Check if leader has the target buff
-                                        var hasLinkTarget = leaderBuffs.Exists(x => x.Name == targetBuffName);
-
-                                        // Check if we have the source buff and its timer
-                                        var linkSourceBuff = buffs.FirstOrDefault(x => x.Name == linkSkill.BuffName);
-                                        var linkSourceTimeLeft = linkSourceBuff?.Timer ?? 0;
-
-                                        // Check distance from leader to mouse cursor in screen space
-                                        var mouseScreenPos = GetMousePosition();
-                                        var leaderScreenPos = Helper.WorldToValidScreenPosition(leader.Pos);
-                                        var distanceToCursor = Vector2.Distance(mouseScreenPos, leaderScreenPos);
-
-                                        // Logic: Aggressive flame link maintenance - refresh much earlier and with larger distance tolerance
-                                        // Emergency linking (no source buff): ignore distance
-                                        // Normal linking: use distance check
-                                        var shouldActivate = (!hasLinkTarget || linkSourceTimeLeft < 8 || linkSourceBuff == null) &&
-                                                             (linkSourceBuff == null || distanceToCursor < 100);
-
-                                        if (shouldActivate)
-                                        {
-                                            // Move mouse to leader position
-                                            var leaderScreenPosForMouse = GameController.IngameState.Camera.WorldToScreen(leader.Pos);
-                                            Mouse.SetCursorPos(leaderScreenPosForMouse);
-
-                                            // Activate the skill
-                                            Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                            linkSkill.Cooldown = 100;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        // Error handling without logging
-                    }
-
-                #endregion
-
-                #region Smite Buff
 
                 if (Settings.smiteEnabled)
                     try
@@ -1021,245 +889,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     BetterFollowbotLite.Instance.LogMessage("SMITE: Smite is not enabled");
                 }
 
-                #endregion
-
-                #region Rejuvenation Totem
-
-                if (Settings.rejuvenationTotemEnabled)
-                {
-                    try
-                    {
-                        if (skill.Id == SkillInfo.rejuvenationTotem.Id)
-                        {
-                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: 🔍 Skill detected - ID: {skill.Id}, SlotIndex: {skill.SkillSlotIndex}, RemainingUses: {skill.RemainingUses}, IsOnCooldown: {skill.IsOnCooldown}, SkillCooldown: {SkillInfo.rejuvenationTotem.Cooldown:F0}ms");
-
-                            if (SkillInfo.ManageCooldown(SkillInfo.rejuvenationTotem, skill))
-                            {
-                                BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ✅ Cooldown check passed, processing totem logic");
-
-                                // Check if we already have the totem buff
-                                var hasTotemBuff = buffs.Exists(x => x.Name == "totem_aura_life_regen");
-                                if (!hasTotemBuff)
-                                {
-                                    // Check for unique/rare monsters within range
-                                    var monsterCount = GetMonsterWithin(Settings.rejuvenationTotemRange, MonsterRarity.Rare);
-                                    var uniqueMonsterCount = GetMonsterWithin(Settings.rejuvenationTotemRange, MonsterRarity.Unique);
-                                    var hasRareOrUniqueNearby = monsterCount > 0 || uniqueMonsterCount > 0;
-
-                                    // Check if any party member total pool (Life + ES) is below threshold
-                                    var partyMembersLowHp = false;
-                                    var partyElements = PartyElements.GetPlayerInfoElementList();
-
-                                    foreach (var partyMember in partyElements)
-                                    {
-                                        if (partyMember != null)
-                                        {
-                                            // Get the actual player entity for detailed Life/ES info
-                                            var playerEntity = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
-                                                .FirstOrDefault(x => x != null && x.IsValid && !x.IsHostile &&
-                                                                   string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
-                                                                   partyMember.PlayerName?.ToLower(), StringComparison.CurrentCultureIgnoreCase));
-
-                                            if (playerEntity != null)
-                                            {
-                                                // Get Life component for detailed health info
-                                                var lifeComponent = playerEntity.GetComponent<Life>();
-                                                if (lifeComponent != null)
-                                                {
-                                                    // Get actual values for total pool calculation
-                                                    var currentLife = lifeComponent.Health.Current;
-                                                    var maxLife = lifeComponent.Health.Unreserved; // Unreserved life only
-                                                    var currentES = lifeComponent.EnergyShield.Current;
-                                                    var maxES = lifeComponent.EnergyShield.Unreserved;
-
-                                                    // Debug raw values
-                                                    BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Raw values for {partyMember.PlayerName} - Life Current: {currentLife}, Life Max: {maxLife}, ES Current: {currentES}, ES Max: {maxES}");
-
-                                                    // Calculate meaningful thresholds - only consider ES if they have a meaningful amount
-                                                    var hasMeaningfulES = maxES >= 500; // Only consider ES if they have 500+ max ES
-                                                    var effectiveCurrentES = hasMeaningfulES ? currentES : 0;
-                                                    var effectiveMaxES = hasMeaningfulES ? maxES : 0;
-
-                                                    // Calculate total pool percentage using unreserved life + meaningful ES
-                                                    var totalCurrent = currentLife + effectiveCurrentES;
-                                                    var totalMax = maxLife + effectiveMaxES;
-                                                    var totalPoolPercentage = totalMax > 0 ? ((double)totalCurrent / (double)totalMax) * 100 : 100;
-
-                                                    // Debug calculation
-                                                    BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Calculation for {partyMember.PlayerName} - Total Current: {totalCurrent}, Total Max: {totalMax}, Percentage: {totalPoolPercentage:F2}%");
-
-                                                    BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Party member {partyMember.PlayerName} - Life: {currentLife:F0}/{maxLife:F0}, ES: {currentES:F0}/{maxES:F0} ({(hasMeaningfulES ? "meaningful" : "negligible")}), Total Pool: {totalPoolPercentage:F1}%");
-
-                                                    if (totalPoolPercentage < Settings.rejuvenationTotemHpThreshold.Value)
-                                                    {
-                                                        partyMembersLowHp = true;
-                                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Party member {partyMember.PlayerName} total pool below threshold ({totalPoolPercentage:F1}% < {Settings.rejuvenationTotemHpThreshold.Value}%) - placing totem");
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                            else
-                                            {
-                                                // Fallback: Skip this party member if we can't get entity info
-                                                BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Could not get entity info for party member {partyMember.PlayerName}, skipping");
-                                            }
-                                        }
-                                    }
-
-                                    // Check if we're within following distance of the leader
-                                    var withinFollowingDistance = true;
-                                    var leaderName = Settings.autoPilotLeader.Value;
-                                    BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Checking leader distance - Leader: '{leaderName}'");
-
-                                    if (!string.IsNullOrWhiteSpace(leaderName))
-                                    {
-                                        var leaderPartyElement = partyElements
-                                            .FirstOrDefault(x => string.Equals(x?.PlayerName?.ToLower(),
-                                                leaderName.ToLower(), StringComparison.CurrentCultureIgnoreCase));
-
-                                        if (leaderPartyElement != null)
-                                        {
-                                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Found leader in party: {leaderPartyElement.PlayerName}");
-
-                                            // Get distance to leader
-                                            var leaderEntity = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
-                                                .FirstOrDefault(x => x != null && x.IsValid && !x.IsHostile &&
-                                                                   string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
-                                                                   leaderName.ToLower(), StringComparison.CurrentCultureIgnoreCase));
-
-                                            if (leaderEntity != null)
-                                            {
-                                                var distanceToLeader = Vector2.Distance(
-                                                    new Vector2(playerPosition.X, playerPosition.Y),
-                                                    new Vector2(leaderEntity.PosNum.X, leaderEntity.PosNum.Y));
-
-                                                // Use the following distance setting
-                                                withinFollowingDistance = distanceToLeader <= Settings.autoPilotPathfindingNodeDistance.Value;
-                                                BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Distance to leader: {distanceToLeader:F1}, Max allowed: {Settings.autoPilotPathfindingNodeDistance.Value}, Within range: {withinFollowingDistance}");
-                                            }
-                                            else
-                                            {
-                                                BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: Could not find leader entity");
-                                            }
-                                        }
-                                        else
-                                        {
-                                            BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: Leader not found in party list");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: No leader set, allowing totem placement");
-                                    }
-
-                                    // Debug logging for placement conditions
-                                    BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Placement check - Rare/Unique: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
-
-                                    // Place totem if conditions are met
-                                    if ((hasRareOrUniqueNearby || partyMembersLowHp) && withinFollowingDistance)
-                                    {
-                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: 🔥 CONDITIONS MET - Rare/Unique: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
-
-                                        // Check UI menu status
-                                        var stashOpen = GameController.IngameState.IngameUi.StashElement.IsVisibleLocal;
-                                        var npcDialogOpen = GameController.IngameState.IngameUi.NpcDialog.IsVisible;
-                                        var sellWindowOpen = GameController.IngameState.IngameUi.SellWindow.IsVisible;
-                                        var purchaseWindowOpen = GameController.IngameState.IngameUi.PurchaseWindow.IsVisible;
-                                        var mapOpen = GameController.IngameState.IngameUi.Map.IsVisible;
-                                        var menuWindowOpen = MenuWindow.IsOpened;
-
-                                        // Additional potential blocking elements
-                                        var inventoryOpen = GameController.IngameState.IngameUi.InventoryPanel.IsVisible;
-                                        var skillTreeOpen = GameController.IngameState.IngameUi.TreePanel.IsVisible;
-
-                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: UI Status - Stash: {stashOpen}, NPC: {npcDialogOpen}, Sell: {sellWindowOpen}, Purchase: {purchaseWindowOpen}, Map: {mapOpen}, Menu: {menuWindowOpen}, Inv: {inventoryOpen}, Tree: {skillTreeOpen}");
-
-                                        // Check for blocking UI elements (map is non-obstructing in PoE)
-                                        if (stashOpen || npcDialogOpen || sellWindowOpen || purchaseWindowOpen || menuWindowOpen || inventoryOpen || skillTreeOpen)
-                                        {
-                                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ❌ Skipping totem placement - blocking UI menu is open");
-                                            return;
-                                        }
-
-                                        // Log if map is detected as open (for debugging) but don't block on it
-                                        if (mapOpen)
-                                        {
-                                            BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ℹ️ Map detected as open but proceeding (non-obstructing in PoE)");
-                                        }
-
-                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ✅ No UI menus detected, proceeding with placement");
-
-                                        // Move cursor to screen center before placing totem
-                                        var screenRect = GameController.Window.GetWindowRectangle();
-                                        var screenCenter = new Vector2(screenRect.Width / 2, screenRect.Height / 2);
-                                        Mouse.SetCursorPos(screenCenter);
-                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: 🎯 Moved cursor to screen center: {screenCenter}");
-
-                                        // Small delay to ensure mouse movement is registered
-                                        System.Threading.Thread.Sleep(50);
-
-                                        // Check if the skill is available and can be used
-                                        if (skill.SkillSlotIndex < 0 || skill.SkillSlotIndex >= 12)
-                                        {
-                                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ❌ Invalid skill slot index: {skill.SkillSlotIndex}");
-                                            return;
-                                        }
-
-                                        // Get the skill slot for the totem
-                                        var skillSlot = GetSkillInputKey(skill.SkillSlotIndex);
-                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: 🎮 Using skill slot: {skillSlot}, SkillSlotIndex: {skill.SkillSlotIndex}");
-
-                                        // Check if skill has charges available
-                                        if (skill.RemainingUses <= 0 && skill.IsOnCooldown)
-                                        {
-                                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ❌ Skill unavailable - RemainingUses: {skill.RemainingUses}, IsOnCooldown: {skill.IsOnCooldown}");
-                                            return;
-                                        }
-
-                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ✅ Skill is available, sending key press");
-
-                                        // Place the totem
-                                        Keyboard.KeyPress(skillSlot);
-                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: 🎉 Key press sent to place totem using key: {skillSlot}");
-
-                                        // Set cooldown to prevent spamming (2 seconds as requested)
-                                        SkillInfo.rejuvenationTotem.Cooldown = 2000;
-                                        LastTimeAny = DateTime.Now; // Update global cooldown like other skills
-                                        BetterFollowbotLite.Instance.LogMessage("REJUVENATION TOTEM: ⏰ Cooldown set to 2000ms (2 seconds) and global cooldown updated");
-
-                                        BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ✨ TOTEM PLACED SUCCESSFULLY - Rare/Unique nearby: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
-                                    }
-                                    else
-                                    {
-                                        if (!(hasRareOrUniqueNearby || partyMembersLowHp))
-                                        {
-                                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Conditions not met - No rare/unique enemies AND no party members need healing");
-                                        }
-                                        else if (!withinFollowingDistance)
-                                        {
-                                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Conditions not met - Too far from leader");
-                                        }
-                                        else
-                                        {
-                                            BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: Conditions not met - Rare/Unique: {hasRareOrUniqueNearby}, Party low HP: {partyMembersLowHp}, Within distance: {withinFollowingDistance}");
-                                        }
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                BetterFollowbotLite.Instance.LogMessage($"REJUVENATION TOTEM: ❌ Cooldown check FAILED (remaining: {SkillInfo.rejuvenationTotem.Cooldown:F0}ms), skipping totem");
-                                return; // Exit early if on cooldown
-                            }
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        // Error handling without logging
-                    }
-                }
-
-                #endregion
 
                 #region Vaal Skills
 

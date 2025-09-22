@@ -1,0 +1,93 @@
+using System;
+using System.Linq;
+using BetterFollowbotLite.Interfaces;
+using ExileCore;
+using ExileCore.PoEMemory.Components;
+using ExileCore.PoEMemory.MemoryObjects;
+using ExileCore.Shared;
+using ExileCore.Shared.Enums;
+using SharpDX;
+
+namespace BetterFollowbotLite.Skills
+{
+    internal class AuraBlessing : ISkill
+    {
+        private readonly BetterFollowbotLite _instance;
+        private readonly BetterFollowbotLiteSettings _settings;
+
+        public AuraBlessing(BetterFollowbotLite instance, BetterFollowbotLiteSettings settings)
+        {
+            _instance = instance;
+            _settings = settings;
+        }
+
+        public bool IsEnabled => _settings.auraBlessingEnabled;
+
+        public string SkillName => "Aura Blessing";
+
+        public void Execute()
+        {
+            // Loop through all skills to find Holy Relic and Zealotry skills
+            foreach (var skill in _instance.skills)
+            {
+                // Holy Relic summoning logic
+                if (skill.Id == SkillInfo.holyRelict.Id)
+                {
+                    // Check cooldown to prevent double-spawning
+                    if (SkillInfo.ManageCooldown(SkillInfo.holyRelict, skill))
+                    {
+                        var lowestMinionHp = _instance.Summons.GetLowestMinionHpp();
+                        // Convert HP percentage from 0-1 range to 0-100 range for comparison
+                        var lowestMinionHpPercent = lowestMinionHp * 100f;
+                        // Check for Holy Relic minion presence
+                        // Prioritize ReAgent buff names, then check for other indicators
+                        // Note: Avoid "guardian_life_regen" as it's just the life regen effect, not minion presence
+                        var hasGuardianBlessingMinion = _instance.buffs.Exists(x =>
+                            x.Name == "has_guardians_blessing_minion" ||
+                            (x.Name.Contains("holy") && x.Name.Contains("relic") && !x.Name.Contains("life")) ||
+                            x.Name.Contains("guardian_blessing_minion"));
+
+                        // Check conditions
+                        var healthLow = lowestMinionHpPercent < _settings.holyRelicHealthThreshold;
+                        var missingBuff = !hasGuardianBlessingMinion;
+
+                        // If Holy Relic health is below threshold OR we don't have any minion buff, summon new Holy Relic
+                        if (healthLow || missingBuff)
+                        {
+                            Keyboard.KeyPress(_instance.GetSkillInputKey(skill.SkillSlotIndex));
+                            SkillInfo.holyRelict.Cooldown = 200; // 2 second cooldown to prevent double-spawning
+                        }
+                    }
+                }
+
+                // Zealotry casting logic
+                else if (skill.Id == SkillInfo.auraZealotry.Id)
+                {
+                    // Check for Zealotry aura buff
+                    // Prioritize ReAgent buff names, then check for aura effects
+                    var hasGuardianBlessingAura = _instance.buffs.Exists(x =>
+                        x.Name == "has_guardians_blessing_aura" ||
+                        x.Name == "zealotry" ||
+                        x.Name == "player_aura_spell_damage" ||
+                        (x.Name.Contains("blessing") && x.Name.Contains("aura")));
+
+                    // Check for Holy Relic minion presence (same logic as Holy Relic section)
+                    var hasGuardianBlessingMinion = _instance.buffs.Exists(x =>
+                        x.Name == "has_guardians_blessing_minion" ||
+                        (x.Name.Contains("holy") && x.Name.Contains("relic") && !x.Name.Contains("life")) ||
+                        x.Name.Contains("guardian_blessing_minion"));
+
+                    // Check conditions
+                    var missingAura = !hasGuardianBlessingAura;
+                    var hasMinion = hasGuardianBlessingMinion;
+
+                    // If we have the minion but don't have the aura buff, cast Zealotry
+                    if (missingAura && hasMinion)
+                    {
+                        Keyboard.KeyPress(_instance.GetSkillInputKey(skill.SkillSlotIndex));
+                    }
+                }
+            }
+        }
+    }
+}

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
 
-namespace BetterFollowbotLite;
+namespace BetterFollowbotLite.Core.Skills;
 
 internal static class SkillInfo
 {

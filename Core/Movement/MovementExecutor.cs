@@ -186,8 +186,23 @@ namespace BetterFollowbotLite.Core.Movement
                     var portalRect = currentTask.LabelOnGround.Label.GetClientRect();
                     transitionPos = new Vector2(portalRect.Center.X, portalRect.Center.Y);
 
-                    _core.LogMessage($"TRANSITION: Portal click position - X: {transitionPos.X:F1}, Y: {transitionPos.Y:F1}");
+                    _core.LogMessage($"TRANSITION: Portal '{portalLabel}' click position - X: {transitionPos.X:F1}, Y: {transitionPos.Y:F1}");
                     _core.LogMessage($"TRANSITION: Portal screen rect - Left: {portalRect.Left:F1}, Top: {portalRect.Top:F1}, Width: {portalRect.Width:F1}, Height: {portalRect.Height:F1}");
+
+                    // Check if the portal is actually clickable (on screen)
+                    var screenBounds = _core.GameController.Window.GetWindowRectangle();
+                    var isOnScreen = transitionPos.X >= 0 && transitionPos.X <= screenBounds.Width &&
+                                   transitionPos.Y >= 0 && transitionPos.Y <= screenBounds.Height;
+
+                    _core.LogMessage($"TRANSITION: Portal on screen: {isOnScreen}, Screen bounds: {screenBounds.Width}x{screenBounds.Height}");
+
+                    if (!isOnScreen)
+                    {
+                        _core.LogMessage("TRANSITION: Portal is not on screen, cannot click it!");
+                        _taskManager.RemoveTask(currentTask);
+                        shouldTransitionAndContinue = false;
+                        break;
+                    }
 
                     currentTask.AttemptCount++;
                     if (currentTask.AttemptCount > 6)

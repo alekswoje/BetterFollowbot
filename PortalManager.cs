@@ -15,10 +15,18 @@ namespace BetterFollowbotLite
     public class PortalManager
     {
         // Portal type mappings - maps keywords to display names
-        // Using exact phrases to avoid false matches
+        // Using comprehensive patterns to match various arena portal labels
         private static readonly Dictionary<string[], string> PortalTypeMappings = new()
         {
-            { new[] { "arena", "pit", "combat", "warden's quarters", "portal", "merveil's lair", "the weaver's nest" }, "Arena" }
+            {
+                new[]
+                {
+                    "enter the arena", "arena portal", "the pit", "pit portal", "warden's quarters", "wardens quarters",
+                    "combat", "merveil's lair", "merveils lair", "the weaver's nest", "weavers nest", "weaver's nest",
+                    "arena", "pit", "wardens", "warden", "combat arena", "pit of fire", "flames of defiance",
+                    "frozen trials", "temple of decay", "temple of decay ii", "temple of decay iii"
+                }, "Arena"
+            }
         };
 
         // Special portal names that should be treated as high-priority interzone portals
@@ -123,6 +131,7 @@ namespace BetterFollowbotLite
                     // Don't set portalLocation to leader's old position - the portal object stays in the same world location
                     // Instead, mark that we're in a portal transition state so the bot will look for portals to follow
                     portalLocation = Vector3.One; // Use as a flag to indicate portal transition mode is active
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Portal transition mode activated - IsInPortalTransition: {IsInPortalTransition}");
                 }
             }
         }

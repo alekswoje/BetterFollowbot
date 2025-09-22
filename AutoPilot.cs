@@ -402,12 +402,42 @@ namespace BetterFollowbotLite;
             var realLevel = BetterFollowbotLite.Instance.GameController?.Area?.CurrentArea?.RealLevel ?? 0;
             var zonesAreDifferent = !leaderPartyElement.ZoneName.Equals(currentZoneName);
 
-            if (forceSearch || zonesAreDifferent || isHideout || (realLevel >= 68 && zonesAreDifferent))
+            // Search for portals in various conditions:
+            // 1. Force search (portal transition mode)
+            // 2. Different zones
+            // 3. Hideout
+            // 4. High level different zones
+            var shouldSearchForPortals = forceSearch || zonesAreDifferent || isHideout || (realLevel >= 68 && zonesAreDifferent);
+
+            // Additionally, always check for special portals (arena portals) that might need clicking
+            // even when zones are the same (arena portals don't change zones)
+            if (!shouldSearchForPortals && !zonesAreDifferent && leaderPartyElement != null)
+            {
+                // Check if there are any special portals visible that we should prioritize
+                var visiblePortals = BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
+                    x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
+                    PortalManager.IsSpecialPortal(x.Label?.Text?.ToLower() ?? "")).ToList();
+
+                if (visiblePortals != null && visiblePortals.Count > 0)
+                {
+                    shouldSearchForPortals = true;
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL SEARCH: Found {visiblePortals.Count} special portals, enabling portal search");
+                }
+            }
+
+            if (shouldSearchForPortals)
             {
                 var allPortalLabels = BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
                         x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible && x.ItemOnGround != null &&
                         (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") || x.ItemOnGround.Metadata.ToLower().Contains("portal")))
                     .ToList();
+
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL SEARCH: Found {allPortalLabels.Count} portal objects on ground");
+                foreach (var portal in allPortalLabels.Take(5)) // Log first 5 to avoid spam
+                {
+                    var label = portal.Label?.Text ?? "NULL";
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL SEARCH: Portal label '{label}' at {portal.ItemOnGround.Pos}");
+                }
 
                 if (allPortalLabels == null || allPortalLabels.Count == 0)
                     return null;
@@ -422,18 +452,46 @@ namespace BetterFollowbotLite;
 
                         var matchesLeaderZone = MatchesPortalToZone(labelText, leaderZone, x.Label?.Text ?? "");
                         var isSpecialPortal = PortalManager.IsSpecialPortal(labelText);
+                        var isArenaPortal = PortalManager.GetSpecialPortalType(labelText) == "Arena";
 
-                        return matchesLeaderZone || isSpecialPortal;
+                        // Debug logging for portal detection
+                        if (isArenaPortal || isSpecialPortal)
+                        {
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL DETECT: '{x.Label?.Text}' - Arena: {isArenaPortal}, Special: {isSpecialPortal}, ZoneMatch: {matchesLeaderZone}, ZonesDifferent: {zonesAreDifferent}");
+                        }
+
+                        // Prioritize arena portals for inter-zone transitions, otherwise use normal logic
+                        return (zonesAreDifferent && isArenaPortal) || matchesLeaderZone || isSpecialPortal;
                     }
                     catch (Exception ex)
                     {
                         return false;
                     }
-                }).OrderBy(x => Vector3.Distance(lastTargetPosition, x.ItemOnGround.Pos)).ToList();
+                }).OrderByDescending(x =>
+                {
+                    // Sort by priority: Arena portals first, then zone-matching portals, then other special portals
+                    var labelText = x.Label?.Text?.ToLower() ?? "";
+                    var isArenaPortal = PortalManager.GetSpecialPortalType(labelText) == "Arena";
+                    var matchesLeaderZone = MatchesPortalToZone(labelText, leaderPartyElement.ZoneName?.ToLower() ?? "", x.Label?.Text ?? "");
+                    var isSpecialPortal = PortalManager.IsSpecialPortal(labelText);
+
+                    if (zonesAreDifferent && isArenaPortal) return 3; // Highest priority for arena portals in different zones
+                    if (matchesLeaderZone) return 2; // Zone matching portals
+                    if (isSpecialPortal) return 1; // Other special portals
+                    return 0; // Shouldn't happen due to filtering above
+                }).ThenBy(x => Vector3.Distance(lastTargetPosition, x.ItemOnGround.Pos)).ToList();
 
                 if (matchingPortals.Count > 0)
                 {
-                    return matchingPortals.First();
+                    var selectedPortal = matchingPortals.First();
+                    var selectedLabel = selectedPortal.Label?.Text ?? "Unknown";
+                    var portalType = PortalManager.GetSpecialPortalType(selectedLabel.ToLower());
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL SELECT: Chose '{selectedLabel}' (Type: {portalType}) from {matchingPortals.Count} matching portals");
+                    return selectedPortal;
+                }
+                else
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL SELECT: No matching portals found (checked {allPortalLabels.Count} total portals)");
                 }
 
                 return null;
@@ -913,6 +971,12 @@ namespace BetterFollowbotLite;
                         await Task.Delay(300);
 
                         BetterFollowbotLite.Instance.LogMessage("TRANSITION: Portal click sequence completed");
+
+                        // Reset portal transition mode after clicking a portal
+                        // This prevents the bot from getting stuck in portal transition mode
+                        portalManager.SetPortalTransitionMode(false);
+                        BetterFollowbotLite.Instance.LogMessage("TRANSITION: Portal transition mode reset after portal click");
+
                         continue;
                     }
 
@@ -1097,7 +1161,14 @@ namespace BetterFollowbotLite;
                 if (PortalManager.IsSpecialPortal(portalLabel))
                 {
                     var portalType = PortalManager.GetSpecialPortalType(portalLabel);
-                    BetterFollowbotLite.Instance.Graphics.DrawText(portalType, new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 50), Color.OrangeRed);
+                    var color = portalType == "Arena" ? Color.Red : Color.OrangeRed;
+                    BetterFollowbotLite.Instance.Graphics.DrawText(portalType, new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 50), color);
+
+                    // Add extra highlighting for arena portals
+                    if (portalType == "Arena")
+                    {
+                        BetterFollowbotLite.Instance.Graphics.DrawText("PRIORITY", new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 65), Color.Yellow);
+                    }
                 }
             }
         }

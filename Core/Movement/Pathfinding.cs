@@ -58,6 +58,13 @@ namespace BetterFollowbotLite.Core.Movement
             {
                 _terrainMetadata = BetterFollowbotLite.Instance.GameController.IngameState.Data.DataStruct.Terrain;
                 _heightData = BetterFollowbotLite.Instance.GameController.IngameState.Data.RawTerrainHeightData;
+                _core.LogMessage($"PATHFINDING: Height data loaded: {_heightData != null}, Dimensions: {_heightData?.Length ?? 0}x{_heightData?.FirstOrDefault()?.Length ?? 0}");
+
+                // Sample some height values
+                if (_heightData != null && _heightData.Length > 0 && _heightData[0].Length > 0)
+                {
+                    _core.LogMessage($"PATHFINDING: Sample height values: [0][0]={_heightData[0][0]}, [10][10]={_heightData[Math.Min(10, _heightData.Length-1)][Math.Min(10, _heightData[0].Length-1)]}, [100][100]={_heightData[Math.Min(100, _heightData.Length-1)][Math.Min(100, _heightData[0].Length-1)]}");
+                }
                 var terrainBytes = BetterFollowbotLite.Instance.GameController.Memory.ReadBytes(_terrainMetadata.LayerMelee.First, _terrainMetadata.LayerMelee.Size);
 
                 var numCols = (int)(_terrainMetadata.NumCols - 1) * 23;
@@ -317,6 +324,23 @@ namespace BetterFollowbotLite.Core.Movement
                 return cachedPath;
             }
 
+            // Check if target position is walkable - if not, find nearest walkable tile
+            if (!IsTilePathable(targetGrid))
+            {
+                _core.LogMessage($"A* DEBUG: Target position ({targetGrid.X}, {targetGrid.Y}) is not walkable, finding nearest walkable tile...");
+                var nearestWalkable = FindNearestWalkableTile(targetGrid);
+                if (nearestWalkable != null)
+                {
+                    targetGrid = nearestWalkable.Value;
+                    _core.LogMessage($"A* DEBUG: Using nearest walkable tile ({targetGrid.X}, {targetGrid.Y}) instead of target");
+                }
+                else
+                {
+                    _core.LogMessage($"A* DEBUG: No walkable tile found near target position!");
+                    return new List<Vector2i>();
+                }
+            }
+
             // Check if start and target are the same
             if (startGrid == targetGrid)
             {
@@ -403,9 +427,22 @@ namespace BetterFollowbotLite.Core.Movement
                     var positioned = targetEntity.GetComponent<Positioned>();
                     if (positioned != null)
                     {
-                        var gridPos = new Vector2i(positioned.GridX, positioned.GridY);
-                        _core.LogMessage($"PATHFINDING: Using target entity Positioned component grid coords: ({gridPos.X}, {gridPos.Y})");
-                        return gridPos;
+                            var gridPos = new Vector2i(positioned.GridX, positioned.GridY);
+                            _core.LogMessage($"PATHFINDING: Using target entity Positioned component grid coords: ({gridPos.X}, {gridPos.Y})");
+
+                            // Check if this position is within terrain bounds and walkable
+                            if (gridPos.X >= 0 && gridPos.X < _dimension2 && gridPos.Y >= 0 && gridPos.Y < _dimension1)
+                            {
+                                var terrainValue = _processedTerrainData[gridPos.Y][gridPos.X];
+                                var isWalkable = terrainValue is 5 or 4;
+                                _core.LogMessage($"PATHFINDING: Target position terrain check: coords({gridPos.X},{gridPos.Y}) terrain={terrainValue}, walkable={isWalkable}");
+                            }
+                            else
+                            {
+                                _core.LogMessage($"PATHFINDING: Target position OUT OF BOUNDS: coords({gridPos.X},{gridPos.Y}) vs terrain({_dimension2}x{_dimension1})");
+                            }
+
+                            return gridPos;
                     }
                 }
 
@@ -430,6 +467,35 @@ namespace BetterFollowbotLite.Core.Movement
         private Vector2i WorldToGrid(Vector2 worldPos, bool isPlayerPosition = false, ExileCore.PoEMemory.MemoryObjects.Entity targetEntity = null)
         {
             return WorldToGrid(new Vector3(worldPos.X, 0, worldPos.Y), isPlayerPosition, targetEntity);
+        }
+
+        private Vector2i? FindNearestWalkableTile(Vector2i center)
+        {
+            // Search in expanding squares around the center
+            for (int radius = 1; radius <= 20; radius++) // Search up to 20 tiles away
+            {
+                // Check all tiles at this radius
+                for (int dx = -radius; dx <= radius; dx++)
+                {
+                    for (int dy = -radius; dy <= radius; dy++)
+                    {
+                        // Only check perimeter (corners and edges)
+                        if (Math.Abs(dx) != radius && Math.Abs(dy) != radius) continue;
+
+                        var testPos = new Vector2i(center.X + dx, center.Y + dy);
+
+                        // Check bounds
+                        if (testPos.X >= 0 && testPos.X < _dimension2 &&
+                            testPos.Y >= 0 && testPos.Y < _dimension1 &&
+                            IsTilePathable(testPos))
+                        {
+                            return testPos;
+                        }
+                    }
+                }
+            }
+
+            return null; // No walkable tile found
         }
 
         private byte GetTerrainTileFromGrid(int x, int y)

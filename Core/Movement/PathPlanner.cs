@@ -431,6 +431,7 @@ namespace BetterFollowbotLite.Core.Movement
                                         // Skip the first waypoint (current position) and create tasks for the rest
                                         var gridToWorldMultiplier = 250f / 23f; // Same conversion as in Pathfinding.cs
                                         var heightData = _core.Pathfinding.GetHeightData(); // Get height data like Radar
+                                        _core.LogMessage($"PATH: Height data available: {heightData != null}, Length: {heightData?.Length ?? 0}");
                                         var waypointsAdded = 0;
                                         for (int i = 1; i < pathWaypoints.Count; i++) // Start from index 1 to skip current position
                                         {
@@ -438,6 +439,9 @@ namespace BetterFollowbotLite.Core.Movement
                                             var height = heightData != null && waypoint.Y < heightData.Length && waypoint.X < heightData[waypoint.Y].Length
                                                 ? heightData[waypoint.Y][waypoint.X]
                                                 : followTarget.Pos.Y; // Fallback to target height
+
+                                            if (i <= 5) // Log first few waypoints
+                                                _core.LogMessage($"PATH: Waypoint {i}: grid({waypoint.X},{waypoint.Y}) -> height data: {heightData?[waypoint.Y]?[waypoint.X] ?? -999}, using height: {height}");
 
                                             var worldPos = new Vector3(
                                                 waypoint.X * gridToWorldMultiplier,
@@ -528,6 +532,7 @@ namespace BetterFollowbotLite.Core.Movement
                                         // Skip the first waypoint (current path end position)
                                         var gridToWorldMultiplier = 250f / 23f; // Same conversion as in Pathfinding.cs
                                         var heightData = _core.Pathfinding.GetHeightData(); // Get height data like Radar
+                                        _core.LogMessage($"PATH: Height data available: {heightData != null}, Length: {heightData?.Length ?? 0}");
                                         var waypointsAdded = 0;
                                         for (int i = 1; i < extensionWaypoints.Count; i++) // Start from index 1 to skip current position
                                         {
@@ -535,6 +540,9 @@ namespace BetterFollowbotLite.Core.Movement
                                             var height = heightData != null && waypoint.Y < heightData.Length && waypoint.X < heightData[waypoint.Y].Length
                                                 ? heightData[waypoint.Y][waypoint.X]
                                                 : followTarget.Pos.Y; // Fallback to target height
+
+                                            if (i <= 5) // Log first few waypoints
+                                                _core.LogMessage($"PATH: Waypoint {i}: grid({waypoint.X},{waypoint.Y}) -> height data: {heightData?[waypoint.Y]?[waypoint.X] ?? -999}, using height: {height}");
 
                                             var worldPos = new Vector3(
                                                 waypoint.X * gridToWorldMultiplier,

@@ -756,6 +756,13 @@ namespace BetterFollowbotLite;
                     }
                 }
 
+                // Position cursor for dash tasks before executing
+                if (currentTask.Type == TaskNodeType.Dash)
+                {
+                    yield return Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(currentTask.WorldPosition));
+                    BetterFollowbotLite.Instance.LogMessage("Dash task: Cursor positioned before execution check");
+                }
+
                 // Execute task through the movement executor
                 var executionResult = _movementExecutor.ExecuteTask(currentTask, taskDistance, playerDistanceMoved);
 
@@ -797,40 +804,6 @@ namespace BetterFollowbotLite;
                 // Execute actions outside try-catch blocks
                 else
                 {
-                    if (shouldDashToLeader)
-                    {
-                        // Release move key before dashing
-                        try
-                        {
-                            Keyboard.KeyUp(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
-                        }
-                        catch (Exception e)
-                        {
-                            // Ignore key release errors
-                        }
-
-                        yield return Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(FollowTargetPosition));
-                        BetterFollowbotLite.Instance.LogMessage("Movement task: Dash mouse positioned, pressing key");
-                        if (instantPathOptimization)
-                        {
-                            // INSTANT MODE: Skip delays for immediate path correction
-                            // Removed excessive INSTANT PATH OPTIMIZATION logging
-                            Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
-                            _movementExecutor.UpdateLastDashTime(DateTime.Now); // Record dash time for cooldown
-                            instantPathOptimization = false; // Reset flag after use
-                        }
-                        else
-                        {
-                            // Normal delays
-                            yield return new WaitTime(random.Next(25) + 30);
-                            Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
-                            _movementExecutor.UpdateLastDashTime(DateTime.Now); // Record dash time for cooldown
-                            yield return new WaitTime(random.Next(25) + 30);
-                        }
-                        yield return null;
-                        continue;
-                    }
-
                     if (shouldTerrainDash)
                     {
                         _movementExecutor.UpdateLastDashTime(DateTime.Now); // Record dash time for cooldown (CheckDashTerrain already performed the dash)

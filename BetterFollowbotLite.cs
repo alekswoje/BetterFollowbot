@@ -419,6 +419,28 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         lastGraceLogTime = DateTime.Now;
                     }
 
+                    // CRITICAL FIX: Try to find leader immediately if AutoPilot doesn't have a follow target
+                    // This prevents the 15-second delay by ensuring we have a follow target for ultra-fast stabilization
+                    if (autoPilot != null && autoPilot.FollowTarget == null)
+                    {
+                        try
+                        {
+                            var playerEntities = GameController.Entities.Where(x => x.Type == EntityType.Player).ToList();
+                            var leaderEntity = playerEntities.FirstOrDefault(x =>
+                                x.GetComponent<Player>()?.PlayerName?.Equals(Settings.autoPilotLeader.Value, StringComparison.OrdinalIgnoreCase) == true);
+
+                            if (leaderEntity != null)
+                            {
+                                LogMessage($"GRACE PERIOD: [{DateTime.Now:HH:mm:ss.fff}] Emergency leader detection succeeded - setting follow target for ultra-fast stabilization");
+                                autoPilot.SetFollowTarget(leaderEntity);
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            LogMessage($"GRACE PERIOD: Emergency leader detection failed: {e.Message}");
+                        }
+                    }
+
                     // Check if leader is available and AutoPilot can work - if so, reduce stabilization time
                     var leaderAvailable = false;
                     try

@@ -974,27 +974,29 @@ namespace BetterFollowbotLite;
 
                     if (shouldTeleportConfirmAndContinue)
                     {
-                        Mouse.SetCursorPosHuman(new Vector2(currentTask.WorldPosition.X, currentTask.WorldPosition.Y));
-                        await Task.Delay(200);
+                        // FAST TELEPORT CONFIRM: Direct mouse movement for speed
+                        Mouse.SetCursorPos(new Vector2(currentTask.WorldPosition.X, currentTask.WorldPosition.Y));
+                        await Task.Delay(50); // Reduced from 200ms
                         Mouse.LeftClick();
-                        await Task.Delay(200);
+                        await Task.Delay(100); // Reduced from 200ms, need some time for dialog
                         // CRITICAL: Move mouse to center of screen after teleport confirm to prevent unwanted movement
                         var screenCenter = new Vector2(BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width / 2, BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height / 2);
                         Mouse.SetCursorPos(screenCenter);
-                        await Task.Delay(1000);
+                        await Task.Delay(200); // Reduced from 1000ms, still need time for teleport
                         continue;
                     }
 
                     if (shouldTeleportButtonAndContinue)
                     {
-                        Mouse.SetCursorPosHuman(new Vector2(currentTask.WorldPosition.X, currentTask.WorldPosition.Y), false);
-                        await Task.Delay(200);
+                        // FAST TELEPORT: Direct mouse movement for speed
+                        Mouse.SetCursorPos(new Vector2(currentTask.WorldPosition.X, currentTask.WorldPosition.Y));
+                        await Task.Delay(50); // Reduced from 200ms
                         Mouse.LeftClick();
-                        await Task.Delay(200);
+                        await Task.Delay(50); // Reduced from 200ms
                         // CRITICAL: Move mouse to center of screen after teleport button to prevent unwanted movement
                         var screenCenter = new Vector2(BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width / 2, BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height / 2);
                         Mouse.SetCursorPos(screenCenter);
-                        await Task.Delay(200);
+                        await Task.Delay(100); // Reduced from 200ms
                         continue;
                     }
                 }

@@ -49,7 +49,6 @@ namespace BetterFollowbotLite.Core.Movement
         {
             var result = new TaskExecutionResult();
 
-            // Variables to track state outside try-catch blocks
             bool shouldDashToLeader = false;
             bool shouldTerrainDash = false;
             Vector2 movementScreenPos = Vector2.Zero;
@@ -65,57 +64,38 @@ namespace BetterFollowbotLite.Core.Movement
             bool shouldTeleportButtonAndContinue = false;
             bool shouldMovementContinue = false;
 
-
-            // Transition-related variables
             Vector2 transitionPos = Vector2.Zero;
-
-            // Waypoint-related variables
             Vector2 waypointScreenPos = Vector2.Zero;
 
             switch (currentTask.Type)
             {
                 case TaskNodeType.Movement:
-                    // Check for distance-based dashing to keep up with leader
                     if (_core.Settings.autoPilotDashEnabled && _autoPilot.FollowTarget != null && _autoPilot.FollowTarget.Pos != null && (DateTime.Now - _lastDashTime).TotalMilliseconds >= 3000)
                     {
                         try
                         {
                             var distanceToLeader = Vector3.Distance(_core.PlayerPosition, _autoPilot.FollowTargetPosition);
-                            if (distanceToLeader > _core.Settings.autoPilotDashDistance && IsCursorPointingTowardsTarget(_autoPilot.FollowTarget.Pos)) // Dash if more than configured distance away and cursor is pointing towards leader
+                            if (distanceToLeader > _core.Settings.autoPilotDashDistance && IsCursorPointingTowardsTarget(_autoPilot.FollowTarget.Pos))
                             {
                                 shouldDashToLeader = true;
                             }
                         }
                         catch (Exception e)
                         {
-                            // Error handling without logging
                         }
-                    }
-                    else
-                    {
-                        // Dash check skipped
                     }
 
-                    // Check for terrain-based dashing
                     if (_core.Settings.autoPilotDashEnabled && (DateTime.Now - _lastDashTime).TotalMilliseconds >= 3000)
                     {
-                        // Terrain dash check
                         if (_pathfinding.CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()) && IsCursorPointingTowardsTarget(currentTask.WorldPosition))
                         {
-                            // Terrain dash executed
                             shouldTerrainDash = true;
-                        }
-                        else if (_pathfinding.CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()) && !IsCursorPointingTowardsTarget(currentTask.WorldPosition))
-                        {
-                            // Terrain dash blocked - cursor not pointing towards target
                         }
                         else
                         {
-                            // No terrain dash needed
                         }
                     }
 
-                    // Skip movement logic if dashing
                     if (!shouldDashToLeader && !shouldTerrainDash)
                     {
                         try
@@ -127,10 +107,8 @@ namespace BetterFollowbotLite.Core.Movement
                             screenPosError = true;
                         }
 
-
                         if (!screenPosError)
                         {
-
                             try
                             {
                                 Input.KeyDown(_core.Settings.autoPilotMoveKey);
@@ -180,17 +158,14 @@ namespace BetterFollowbotLite.Core.Movement
                 {
                     _core.LogMessage($"TRANSITION: Executing transition task - Attempt {currentTask.AttemptCount + 1}/6");
 
-                    // Initialize flag to true - will be set to false if portal is invalid
                     shouldTransitionAndContinue = true;
 
-                    // Log portal information
                     var portalLabel = currentTask.LabelOnGround?.Label?.Text ?? "NULL";
                     var portalPos = currentTask.LabelOnGround?.ItemOnGround?.Pos ?? Vector3.Zero;
                     var distanceToPortal = Vector3.Distance(_core.PlayerPosition, portalPos);
 
                     _core.LogMessage($"TRANSITION: Portal '{portalLabel}' at distance {distanceToPortal:F1}");
 
-                    // Check if portal is still visible and valid
                     var isPortalVisible = currentTask.LabelOnGround?.Label?.IsVisible ?? false;
                     var isPortalValid = currentTask.LabelOnGround?.Label?.IsValid ?? false;
 
@@ -246,9 +221,8 @@ namespace BetterFollowbotLite.Core.Movement
                  {
                      _core.LogMessage($"Executing Dash task - Target: {currentTask.WorldPosition}, Distance: {Vector3.Distance(_core.PlayerPosition, currentTask.WorldPosition):F1}, Attempts: {currentTask.AttemptCount}");
 
-                     // TIMEOUT MECHANISM: If dash task has been tried too many times, give up
                      currentTask.AttemptCount++;
-                     if (currentTask.AttemptCount > 15) // Allow more attempts for dash tasks
+                     if (currentTask.AttemptCount > 15)
                      {
                          _core.LogMessage($"Dash task timeout - Too many attempts ({currentTask.AttemptCount}), removing task");
                          _taskManager.RemoveTask(currentTask);
@@ -257,27 +231,14 @@ namespace BetterFollowbotLite.Core.Movement
 
                      if ((DateTime.Now - _lastDashTime).TotalMilliseconds >= 3000)
                      {
-                         // Check if cursor is pointing towards target
                          if (IsCursorPointingTowardsTarget(currentTask.WorldPosition))
                          {
                              _core.LogMessage("Dash task: Cursor direction valid, executing dash");
 
-                             // Position mouse towards target if needed
-                             var targetScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
-                             if (targetScreenPos.X >= 0 && targetScreenPos.Y >= 0 &&
-                                 targetScreenPos.X <= _core.GameController.Window.GetWindowRectangle().Width &&
-                                 targetScreenPos.Y <= _core.GameController.Window.GetWindowRectangle().Height)
-                             {
-                                 // Target is on-screen, position mouse
-                                 // Note: This will need to be handled as a coroutine yield in the calling code
-                             }
-
-                             // Execute the dash
                              Keyboard.KeyPress(_core.Settings.autoPilotDashKey);
-                             _lastDashTime = DateTime.Now; // Record dash time for cooldown
+                             _lastDashTime = DateTime.Now;
                              _lastPlayerPosition = _core.PlayerPosition;
 
-                             // Remove the task since dash was executed
                              _taskManager.RemoveTask(currentTask);
                              _core.LogMessage("Dash task completed successfully");
                              shouldDashAndContinue = true;
@@ -286,32 +247,25 @@ namespace BetterFollowbotLite.Core.Movement
                          {
                              _core.LogMessage("Dash task: Cursor not pointing towards target, positioning cursor");
 
-                             // Try to position cursor towards the target
                              var targetScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
 
-                             // If target is off-screen, position towards the edge of screen in the target's direction
                              if (targetScreenPos.X < 0 || targetScreenPos.Y < 0 ||
                                  targetScreenPos.X > _core.GameController.Window.GetWindowRectangle().Width ||
                                  targetScreenPos.Y > _core.GameController.Window.GetWindowRectangle().Height)
                              {
-                                 // Calculate direction to target and position mouse at screen edge
                                  var playerPos = _core.PlayerPosition;
                                  var directionToTarget = currentTask.WorldPosition - playerPos;
                                  directionToTarget.Normalize();
 
-                                 // Position mouse at screen center (simplified approach)
                                  var screenCenter = new Vector2(
                                      _core.GameController.Window.GetWindowRectangle().Width / 2,
                                      _core.GameController.Window.GetWindowRectangle().Height / 2);
-
-                                 // Note: This will need to be handled as a coroutine yield in the calling code
                              }
                          }
                      }
                      else
                      {
                          _core.LogMessage($"Dash task: Cooldown active - {((DateTime.Now - _lastDashTime).TotalMilliseconds):F0}ms remaining");
-                         // Don't remove task, just wait for cooldown
                      }
                      break;
                  }

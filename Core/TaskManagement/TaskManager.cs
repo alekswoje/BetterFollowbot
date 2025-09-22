@@ -58,8 +58,6 @@ namespace BetterFollowbotLite.Core.TaskManagement
 
         public void ClearTasksPreservingTransitions()
         {
-            // CRITICAL: Preserve ALL transition-related tasks during efficiency clears
-            // This includes portal transitions, teleport confirmations, and teleport buttons
             var transitionTasks = _tasks.Where(t =>
                 t.Type == TaskNodeType.Transition ||
                 t.Type == TaskNodeType.TeleportConfirm ||
@@ -67,7 +65,6 @@ namespace BetterFollowbotLite.Core.TaskManagement
 
             _tasks.Clear();
 
-            // Re-add transition tasks to preserve zone transition functionality
             foreach (var transitionTask in transitionTasks)
             {
                 _tasks.Add(transitionTask);
@@ -85,8 +82,6 @@ namespace BetterFollowbotLite.Core.TaskManagement
 
         public bool ExecuteNextTask()
         {
-            // This method is for interface compliance but task execution 
-            // remains in the original location to preserve exact behavior
             return false;
         }
 

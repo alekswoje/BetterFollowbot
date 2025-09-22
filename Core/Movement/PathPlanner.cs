@@ -36,23 +36,18 @@ namespace BetterFollowbotLite.Core.Movement
         {
             try
             {
-                // GLOBAL TELEPORT PROTECTION: Block ALL task creation and responsiveness during teleport
                 if (AutoPilot.IsTeleportInProgress)
                 {
                     _core.LogMessage($"TELEPORT: Blocking all task creation - teleport in progress ({_taskManager.TaskCount} tasks)");
-                    return; // Exit immediately to prevent any interference
+                    return;
                 }
 
-                // PORTAL TRANSITION HANDLING: Actively search for portals during portal transition mode
-                // TODO: Add logic to check how close the leader was to this portal before teleporting
-                // This would help determine if we should click this portal or if there might be a closer one
                 if (_portalManager.IsInPortalTransition)
                 {
                     _core.LogMessage($"PORTAL: In portal transition mode - actively searching for portals to follow leader");
 
                     if (leaderPartyElement != null)
                     {
-                        // Force portal search during portal transition
                         var portal = GetBestPortalLabel(leaderPartyElement, forceSearch: true);
                         if (portal != null)
                         {
@@ -71,15 +66,13 @@ namespace BetterFollowbotLite.Core.Movement
                     }
                 }
 
-                // PORTAL TRANSITION RESET: Clear portal transition mode when bot successfully reaches leader
                 if (_portalManager.IsInPortalTransition && followTarget != null)
                 {
                     var portalTransitionDistance = Vector3.Distance(_core.PlayerPosition, followTarget.Pos);
-                    // If bot is now close to leader after being far away, portal transition was successful
-                    if (portalTransitionDistance < 1000) // Increased from 300 to 1000 for portal transitions
+                    if (portalTransitionDistance < 1000)
                     {
                         _core.LogMessage($"PORTAL: Bot successfully reached leader after portal transition - clearing portal transition mode");
-                        _portalManager.SetPortalTransitionMode(false); // Clear portal transition mode to allow normal operation
+                        _portalManager.SetPortalTransitionMode(false);
                     }
                 }
 
@@ -89,14 +82,11 @@ namespace BetterFollowbotLite.Core.Movement
                     return;
                 }
 
-                // COMPREHENSIVE ZONE LOADING PROTECTION: Prevent random movement during zone transitions
-                // When loading into a new zone, entity lists might not be fully populated yet
                 if (_core.GameController.IsLoading ||
                     _core.GameController.Area.CurrentArea == null ||
                     string.IsNullOrEmpty(_core.GameController.Area.CurrentArea.DisplayName))
                 {
                     _core.LogMessage("ZONE LOADING: Blocking all task creation during zone loading to prevent random movement");
-                    // Clear any existing tasks to prevent stale movement
                     if (_taskManager.TaskCount > 0)
                     {
                         var clearedTasks = _taskManager.TaskCount;
@@ -106,7 +96,6 @@ namespace BetterFollowbotLite.Core.Movement
                     return;
                 }
 
-                // PRIORITY: Check for any open teleport confirmation dialogs and handle them immediately
                 bool hasTransitionTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
                 if (!hasTransitionTasks)
                 {
@@ -116,7 +105,6 @@ namespace BetterFollowbotLite.Core.Movement
                         _core.LogMessage("TELEPORT: Found open confirmation dialog, handling it immediately");
                         var center = tpConfirmation.GetClientRect().Center;
                         _taskManager.AddTask(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
-                        // Return early to handle this task immediately
                         return;
                     }
                 }
@@ -128,24 +116,20 @@ namespace BetterFollowbotLite.Core.Movement
 
                     _core.LogMessage($"ZONE TRANSITION: Leader is in different zone - Current: '{currentZone}', Leader: '{leaderZone}'");
 
-                    // Only add transition tasks if we don't already have any pending
                     if (!hasTransitionTasks)
                     {
                         _core.LogMessage("ZONE TRANSITION: No pending transition tasks, searching for portal");
                         var portal = GetBestPortalLabel(leaderPartyElement);
                         if (portal != null)
                         {
-                            // Hideout -> Map || Chamber of Sins A7 -> Map
                             _core.LogMessage($"ZONE TRANSITION: Found portal '{portal.Label?.Text}' leading to leader zone '{leaderPartyElement.ZoneName}'");
                             _taskManager.AddTask(new TaskNode(portal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
                             _core.LogMessage("ZONE TRANSITION: Portal transition task added to queue");
                         }
                         else
                         {
-                            // No matching portal found, use party teleport (blue swirl)
                             _core.LogMessage($"ZONE TRANSITION: No matching portal found for '{leaderPartyElement.ZoneName}', falling back to party teleport");
 
-                            // FIRST: Check if teleport confirmation dialog is already open (handle it immediately)
                             var tpConfirmation = GetTpConfirmation();
                             if (tpConfirmation != null)
                             {
@@ -155,12 +139,10 @@ namespace BetterFollowbotLite.Core.Movement
                             }
                             else
                             {
-                                // Try to click the teleport button
                                 var tpButton = GetTpButton(leaderPartyElement);
                                 if (!tpButton.Equals(Vector2.Zero))
                                 {
                                     _core.LogMessage("ZONE TRANSITION: Clicking teleport button to initiate party teleport");
-                                    // SET GLOBAL FLAG: Prevent SMITE and other skills from interfering
                                     AutoPilot.IsTeleportInProgress = true;
                                     _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
                                 }
@@ -173,34 +155,27 @@ namespace BetterFollowbotLite.Core.Movement
                     }
                 }
 
-                // TODO: If in town, do not follow (optional)
                 var distanceToLeader = Vector3.Distance(_core.PlayerPosition, followTarget.Pos);
-                //We are NOT within clear path distance range of leader. Logic can continue
                 if (distanceToLeader >= _core.Settings.autoPilotClearPathDistance.Value)
                 {
-                    // IMPORTANT: Don't process large movements if we already have any transition-related task active
-                    // This prevents zone transition detection from interfering with active transitions/teleports
                     if (_taskManager.Tasks.Any(t =>
                         t.Type == TaskNodeType.Transition ||
                         t.Type == TaskNodeType.TeleportConfirm ||
                         t.Type == TaskNodeType.TeleportButton))
                     {
                         _core.LogMessage("ZONE TRANSITION: Transition/teleport task already active, skipping movement processing");
-                        return; // Exit early to prevent interference
+                        return;
                     }
 
-                    //Leader moved VERY far in one frame. Check for transition to use to follow them.
                     var distanceMoved = Vector3.Distance(lastTargetPosition, followTarget.Pos);
                     if (lastTargetPosition != Vector3.Zero && distanceMoved > _core.Settings.autoPilotClearPathDistance.Value)
                     {
-                        // Check if this is likely a zone transition (moved extremely far)
-                        var isLikelyZoneTransition = distanceMoved > 1000; // Very large distance suggests zone transition
+                        var isLikelyZoneTransition = distanceMoved > 1000;
 
                         if (isLikelyZoneTransition)
                         {
                             _core.LogMessage($"ZONE TRANSITION DETECTED: Leader moved {distanceMoved:F1} units, likely zone transition");
 
-                            // First check if zone names are different (immediate detection)
                             var zonesAreDifferent = leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(_core.GameController?.Area.CurrentArea.DisplayName);
 
                             if (zonesAreDifferent)
@@ -212,15 +187,12 @@ namespace BetterFollowbotLite.Core.Movement
                                 _core.LogMessage($"ZONE TRANSITION: Zone names same but large distance, assuming transition anyway");
                             }
 
-                            // Look for portals regardless of zone name confirmation - force portal search
                             var transition = GetBestPortalLabel(leaderPartyElement, forceSearch: true);
 
-                            // If no portal matched by name, try to find the closest portal (likely the one the leader used)
                             if (transition == null)
                             {
                                 _core.LogMessage("ZONE TRANSITION: No portal matched by name, looking for closest portal");
 
-                                // Get all portal labels again and find the closest one
                                 var allPortals = _core.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
                                     x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
                                     x.ItemOnGround != null &&
@@ -230,7 +202,6 @@ namespace BetterFollowbotLite.Core.Movement
 
                                 if (allPortals != null && allPortals.Count > 0)
                                 {
-                                    // First, check if there's a special portal (Arena or Warden's Quarters) - give them priority
                                     var specialPortal = allPortals.FirstOrDefault(p =>
                                         PortalManager.IsSpecialPortal(p.Label?.Text ?? ""));
                                     LabelOnGround selectedPortal;
@@ -248,7 +219,6 @@ namespace BetterFollowbotLite.Core.Movement
                                         }
                                         else
                                         {
-                                            // Special portal too far, fall back to closest
                                             selectedPortal = allPortals.First();
                                             _core.LogMessage($"ZONE TRANSITION: {portalType} portal too far, using closest instead");
                                         }
@@ -261,8 +231,6 @@ namespace BetterFollowbotLite.Core.Movement
                                     var selectedDistance = Vector3.Distance(_core.PlayerPosition, selectedPortal.ItemOnGround.Pos);
 
                                     _core.LogMessage($"ZONE TRANSITION: Selected portal '{selectedPortal.Label?.Text}' at distance {selectedDistance:F1}");
-
-                                    // If the selected portal is reasonably close (within 800 units), it's likely the one the leader used
                                     // Increased from 500 to 800 to handle cases where leader transitions quickly
                                     if (selectedDistance < 800)
                                     {
@@ -346,10 +314,8 @@ namespace BetterFollowbotLite.Core.Movement
                         // Validate followTarget position before creating tasks
                         if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {
-                            // If very far away, add dash task instead of movement task
-                            if (distanceToLeader > 3000 && _core.Settings.autoPilotDashEnabled) // Increased from 1500 to 3000 to reduce dash spam significantly
+                            if (distanceToLeader > _core.Settings.autoPilotDashDistance && _core.Settings.autoPilotDashEnabled)
                             {
-                                // CRITICAL: Don't add dash tasks if we have any active transition-related task OR another dash task OR teleport in progress
                                 var shouldSkipDashTasks = _taskManager.Tasks.Any(t =>
                                     t.Type == TaskNodeType.Transition ||
                                     t.Type == TaskNodeType.TeleportConfirm ||
@@ -368,7 +334,7 @@ namespace BetterFollowbotLite.Core.Movement
                             }
                             else
                             {
-                                _core.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}, Dash threshold: 700");
+                                _core.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}");
                                 _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                             }
                         }

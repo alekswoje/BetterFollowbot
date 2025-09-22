@@ -610,10 +610,9 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 if (autoPilot != null && autoPilot.FollowTarget == null)
                 {
                     var leaderDetectionTime = DateTime.Now;
-                    LogMessage($"AUTOPILOT: [{leaderDetectionTime:HH:mm:ss.fff}] No follow target set - attempting to find leader '{Settings.autoPilotLeader.Value}'");
+                    var timeSinceZoneLoad = (DateTime.Now - lastAreaChangeTime).TotalSeconds;
 
                     var playerEntities = GameController.Entities.Where(x => x.Type == EntityType.Player).ToList();
-                    LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Found {playerEntities.Count} player entities to search");
 
                     var manualLeaderEntity = playerEntities.FirstOrDefault(x =>
                         x.GetComponent<Player>()?.PlayerName?.Equals(Settings.autoPilotLeader.Value, StringComparison.OrdinalIgnoreCase) == true);
@@ -621,21 +620,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     if (manualLeaderEntity != null)
                     {
                         var detectionDuration = DateTime.Now - leaderDetectionTime;
-                        LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Found leader manually in {detectionDuration.TotalSeconds:F2}s - setting as follow target: '{manualLeaderEntity.GetComponent<Player>()?.PlayerName}' at distance {Vector3.Distance(playerPosition, manualLeaderEntity.Pos):F1}");
+                        LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] ✓ Found leader '{Settings.autoPilotLeader.Value}' in {detectionDuration.TotalSeconds:F2}s ({timeSinceZoneLoad:F1}s since zone load) - distance: {Vector3.Distance(playerPosition, manualLeaderEntity.Pos):F1}");
                         autoPilot.SetFollowTarget(manualLeaderEntity);
-                    }
-                    else
-                    {
-                        var detectionDuration = DateTime.Now - leaderDetectionTime;
-                        LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Still no leader found after {detectionDuration.TotalSeconds:F2}s - bot will not move. Available players:");
-                        foreach (var player in playerEntities)
-                        {
-                            var playerComp = player.GetComponent<Player>();
-                            if (playerComp != null)
-                            {
-                                LogMessage($"AUTOPILOT:   - '{playerComp.PlayerName}' (distance: {Vector3.Distance(playerPosition, player.Pos):F1})");
-                            }
-                        }
                     }
                 }
 

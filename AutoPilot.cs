@@ -888,8 +888,8 @@ namespace BetterFollowbotLite;
                 BetterFollowbotLite.Instance.LogMessage("DEBUG: Follow target is invalid/null - checking for nearby players");
 
                 // First, try to find the original leader by name if they exist
-                var playerEntities = BetterFollowbotLite.Instance.GameController?.Entities?.Where(x => x.Type == EntityType.Player).ToList();
-                if (playerEntities != null && playerEntities.Count > 0)
+                var playerEntities = BetterFollowbotLite.Instance.GameController?.EntityListWrapper?.ValidEntitiesByType[EntityType.Player];
+                if (playerEntities != null && playerEntities.Any())
                 {
                     // Try to find the leader by the configured name first
                     var originalLeader = playerEntities.FirstOrDefault(x =>

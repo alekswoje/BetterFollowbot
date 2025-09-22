@@ -80,7 +80,29 @@ namespace BetterFollowbotLite;
     }
 
     /// <summary>
-    /// Updates the follow target's position if it exists
+    /// Attempts to find and set the leader as follow target
+    /// </summary>
+    private void TryFindLeader()
+    {
+        try
+        {
+            var leaderEntity = _leaderDetector.FindLeaderEntity();
+            if (leaderEntity != null && leaderEntity.IsValid)
+            {
+                SetFollowTarget(leaderEntity);
+                BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Re-found leader after invalid target: '{BetterFollowbotLite.Instance.Settings.autoPilotLeader.Value}' at distance {Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, leaderEntity.Pos):F1}");
+            }
+            else
+            {
+                BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Could not re-find leader after invalid target - leader entity not found or invalid");
+            }
+        }
+        catch (Exception e)
+        {
+            BetterFollowbotLite.Instance.LogError($"AUTOPILOT: Error trying to re-find leader: {e.Message}");
+        }
+    }
+
     /// This is crucial for zone transitions where the entity's position changes
     /// </summary>
     public void UpdateFollowTargetPosition()
@@ -117,9 +139,13 @@ namespace BetterFollowbotLite;
         }
         else if (followTarget != null && !followTarget.IsValid)
         {
-            BetterFollowbotLite.Instance.LogMessage("AUTOPILOT: Follow target became invalid, clearing");
+            BetterFollowbotLite.Instance.LogMessage("AUTOPILOT: Follow target became invalid, clearing and attempting to re-find leader");
             followTarget = null;
             lastTargetPosition = Vector3.Zero;
+
+            // After clearing invalid follow target, immediately try to find the leader again
+            // This is especially important after zone transitions/teleports
+            TryFindLeader();
         }
     }
 

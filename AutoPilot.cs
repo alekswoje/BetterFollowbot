@@ -595,8 +595,8 @@ namespace BetterFollowbotLite;
     {
         ResetPathing();
 
-        // Clear A* path cache on area change
-        _pathfinding.ClearPathCache();
+        // Reset A* PathFinder on area change (terrain changed)
+        _pathfinding.ResetPathFinder();
 
         // Initialize terrain data through the pathfinding service
         var terrainInitStart = DateTime.Now;

@@ -284,10 +284,17 @@ namespace BetterFollowbotLite.Core.Movement
 
         public void ClearPathCache()
         {
-            _core.LogMessage("A* DEBUG: ClearPathCache called - clearing caches and PathFinder");
+            _core.LogMessage("A* DEBUG: ClearPathCache called - clearing path cache only");
+            _pathCache.Clear();
+            _core.LogMessage("A* DEBUG: Path cache cleared");
+        }
+
+        public void ResetPathFinder()
+        {
+            _core.LogMessage("A* DEBUG: ResetPathFinder called - clearing caches and destroying PathFinder");
             _pathCache.Clear();
             _pathFinder = null; // Force recreation of PathFinder
-            _core.LogMessage("A* DEBUG: All path caches cleared");
+            _core.LogMessage("A* DEBUG: PathFinder reset complete");
         }
 
         private Vector2i WorldToGrid(Vector3 worldPos)

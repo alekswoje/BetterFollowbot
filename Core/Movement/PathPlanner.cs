@@ -23,6 +23,9 @@ namespace BetterFollowbotLite.Core.Movement
         private readonly ITaskManager _taskManager;
         private readonly PortalManager _portalManager;
 
+        private DateTime _lastPathPlanningTime = DateTime.MinValue;
+        private Vector3 _lastPathTarget = Vector3.Zero;
+
         public PathPlanner(IFollowbotCore core, ILeaderDetector leaderDetector, ITaskManager taskManager, PortalManager portalManager)
         {
             _core = core ?? throw new ArgumentNullException(nameof(core));
@@ -371,9 +374,17 @@ namespace BetterFollowbotLite.Core.Movement
             }
 
             // A* pathfinding logic - use whenever bot needs to move towards leader
-            if (_taskManager.TaskCount == 0 && distanceToLeader > 50)
+            // Only plan new path if: no recent planning OR target moved significantly OR no tasks
+            var timeSinceLastPlanning = DateTime.Now - _lastPathPlanningTime;
+            var targetMovedDistance = Vector3.Distance(_lastPathTarget, followTarget?.Pos ?? Vector3.Zero);
+            var shouldPlanNewPath = _taskManager.TaskCount == 0 &&
+                                   (timeSinceLastPlanning.TotalSeconds > 2.0 || // 2 second cooldown
+                                    targetMovedDistance > 50.0 || // Target moved 50+ units
+                                    _lastPathTarget == Vector3.Zero); // First time planning
+
+            if (shouldPlanNewPath && distanceToLeader > 50)
             {
-                _core.LogMessage($"A* DEBUG: A* condition met - TaskCount: {_taskManager.TaskCount}, Distance: {distanceToLeader:F1}");
+                _core.LogMessage($"A* DEBUG: Planning new path - TaskCount: {_taskManager.TaskCount}, Distance: {distanceToLeader:F1}, TimeSinceLast: {timeSinceLastPlanning.TotalSeconds:F1}s, TargetMoved: {targetMovedDistance:F1}");
 
                 // Validate followTarget position before creating tasks
                 if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
@@ -413,6 +424,9 @@ namespace BetterFollowbotLite.Core.Movement
                         else
                         {
                             _core.LogMessage($"A* PATH: Created {waypointsAdded} movement tasks along path");
+                            // Update tracking variables for path planning cooldown
+                            _lastPathPlanningTime = DateTime.Now;
+                            _lastPathTarget = followTarget.Pos;
                         }
                     }
                     else
@@ -482,6 +496,10 @@ namespace BetterFollowbotLite.Core.Movement
                             _core.LogMessage($"PATH EXTENSION: Too many movement tasks ({currentMovementTaskCount}) - skipping extension");
                             return;
                         }
+
+                        // Update tracking variables for extension cooldown
+                        _lastPathPlanningTime = DateTime.Now;
+                        _lastPathTarget = followTarget.Pos;
 
                         // Use A* to find additional waypoints from current path end to target
                         var currentPathEnd = _taskManager.Tasks.Last().WorldPosition;

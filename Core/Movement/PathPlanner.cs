@@ -440,42 +440,65 @@ namespace BetterFollowbotLite.Core.Movement
                     // Update the last calculation time
                     _lastPathCalculationTime = DateTime.Now;
 
-                    // Try A* pathfinding first if terrain is loaded
+                    // Try continuous A* pathfinding like Radar plugin
                     if (_core.Pathfinding.IsTerrainLoaded)
                     {
-                        _core.LogMessage($"A* PATH: Close follow - attempting A* pathfinding - Player: {_core.PlayerPosition}, Leader: {followTarget.Pos}");
-                        var pathWaypoints = _core.Pathfinding.GetPath(_core.PlayerPosition, followTarget.Pos);
+                        _core.LogMessage($"A* PATH: Close follow - starting continuous A* pathfinding - Player: {_core.PlayerPosition}, Leader: {followTarget.Pos}");
 
-                        if (pathWaypoints != null && pathWaypoints.Count > 1)
+                        // Start building the distance field toward the leader
+                        var startGrid = _core.Pathfinding.WorldToGrid(_core.PlayerPosition);
+                        var targetGrid = _core.Pathfinding.WorldToGrid(followTarget.Pos);
+
+                        // Run first scan to start building distance field
+                        var firstScanPaths = _core.Pathfinding.RunFirstScan(startGrid, targetGrid).ToList();
+
+                        if (firstScanPaths.Any(p => p != null && p.Count > 0))
                         {
                             _lastPathfindingFailed = false;
-                            _lastPathCalculationPosition = followTarget.Pos; // Update position where we calculated this path
-                            _core.LogMessage($"A* PATH: Close follow found path with {pathWaypoints.Count} waypoints");
+                            _lastPathCalculationPosition = followTarget.Pos;
 
-                            // For close follow, go directly to the leader (last waypoint) to avoid zig-zagging
-                            var gridToWorld = 250f / 23f;
-                            var lastWaypoint = pathWaypoints[pathWaypoints.Count - 1];
-                            var worldPos = new Vector3(
-                                lastWaypoint.X * gridToWorld,
-                                lastWaypoint.Y * gridToWorld,
-                                followTarget.Pos.Z
-                            );
+                            _core.LogMessage($"A* PATH: Close follow - first scan successful, found {firstScanPaths.Count} path segments");
 
-                            _core.LogMessage($"A* PATH: Close follow - going directly to leader: {worldPos}");
-                            _taskManager.AddTask(new TaskNode(worldPos, _core.Settings.autoPilotPathfindingNodeDistance.Value));
+                            // Now get a shorter path using the direction field
+                            var shortPath = _core.Pathfinding.FindPath(startGrid, targetGrid);
+
+                            if (shortPath != null && shortPath.Count > 0)
+                            {
+                                _core.LogMessage($"A* PATH: Close follow - direction field found path with {shortPath.Count} waypoints");
+
+                                // Convert first few waypoints to world positions (limit to avoid zig-zagging)
+                                var gridToWorld = 250f / 23f;
+                                var waypointsToUse = Math.Min(shortPath.Count, 3); // Use at most 3 waypoints to keep it short
+
+                                for (int i = 0; i < waypointsToUse; i++)
+                                {
+                                    var waypoint = shortPath[i];
+                                    var worldPos = new Vector3(
+                                        waypoint.X * gridToWorld,
+                                        waypoint.Y * gridToWorld,
+                                        followTarget.Pos.Z
+                                    );
+
+                                    _core.LogMessage($"A* PATH: Close follow - adding waypoint {i+1}/{waypointsToUse}: {worldPos}");
+                                    _taskManager.AddTask(new TaskNode(worldPos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                }
+                            }
+                            else
+                            {
+                                _core.LogMessage($"A* PATH: Close follow - no short path found, using direct movement");
+                                _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                            }
                         }
                         else
                         {
                             _lastPathfindingFailed = true;
-                            // Don't update _lastPathCalculationPosition for failed attempts - allows retry sooner
-                            _core.LogMessage($"A* PATH: Close follow pathfinding failed, using direct movement");
+                            _core.LogMessage($"A* PATH: Close follow - first scan failed, using direct movement");
                             _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                         }
                     }
                     else
                     {
                         _lastPathfindingFailed = true; // Terrain not loaded counts as a failure
-                        // Don't update _lastPathCalculationPosition for terrain not loaded - allows retry when terrain loads
                         _core.LogMessage($"Close follow: Using direct movement (terrain not loaded)");
                         _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                     }

@@ -301,9 +301,11 @@ namespace BetterFollowbotLite.Core.Movement
 
             _core.LogMessage($"A* DEBUG: Finding path from grid ({startGrid.X}, {startGrid.Y}) to ({targetGrid.X}, {targetGrid.Y})");
 
-            // Check cache first - use both start and target positions as key
+            // For continuous pathfinding, don't use cache for long paths - only cache very short paths
             var cacheKey = $"{startGrid.X},{startGrid.Y}->{targetGrid.X},{targetGrid.Y}";
-            if (_pathCache.TryGetValue(cacheKey, out var cachedPath))
+            var distance = Vector2i.Distance(startGrid, targetGrid);
+
+            if (distance < 10 && _pathCache.TryGetValue(cacheKey, out var cachedPath)) // Only cache very short paths
             {
                 _core.LogMessage($"A* DEBUG: Using cached path with {cachedPath.Count} waypoints");
                 return cachedPath;
@@ -355,39 +357,59 @@ namespace BetterFollowbotLite.Core.Movement
                 foundWalkableTarget:;
             }
 
-            _core.LogMessage($"A* DEBUG: Both positions are walkable, running first scan...");
+            _core.LogMessage($"A* DEBUG: Both positions are walkable, checking distance...");
 
-            // Run first scan if needed
-            var pathFound = false;
-            foreach (var path in RunFirstScan(startGrid, targetGrid))
+            // For continuous pathfinding, prioritize shorter paths and direction field
+            if (distance < 50) // For short distances, try first scan
             {
-                if (path != null && path.Count > 0)
+                _core.LogMessage($"A* DEBUG: Short distance ({distance}), running first scan...");
+
+                // Run first scan if needed
+                foreach (var path in RunFirstScan(startGrid, targetGrid))
                 {
-                    _core.LogMessage($"A* DEBUG: First scan found path with {path.Count} waypoints");
-                    _pathCache[cacheKey] = path;
-                    pathFound = true;
-                    return path;
+                    if (path != null && path.Count > 0)
+                    {
+                        _core.LogMessage($"A* DEBUG: First scan found path with {path.Count} waypoints");
+                        if (distance < 10) _pathCache[cacheKey] = path; // Only cache very short paths
+                        return path;
+                    }
                 }
             }
 
-            if (!pathFound)
+            // For longer distances or if first scan fails, use direction field for shorter paths
+            _core.LogMessage($"A* DEBUG: Using direction field for shorter path...");
+
+            // Find path using direction field (this gives shorter, more reliable paths)
+            var directionPath = FindPath(startGrid, targetGrid);
+            if (directionPath != null && directionPath.Count > 0)
             {
-                _core.LogMessage($"A* DEBUG: First scan found no path, trying direction field...");
+                // Limit path length to avoid zig-zagging and long paths that might fail
+                var maxWaypoints = Math.Min(directionPath.Count, 10); // Limit to 10 waypoints max
+                var limitedPath = directionPath.Take(maxWaypoints).ToList();
+
+                _core.LogMessage($"A* DEBUG: Direction field found path with {limitedPath.Count} waypoints (limited from {directionPath.Count})");
+                if (distance < 10) _pathCache[cacheKey] = limitedPath; // Only cache very short paths
+                return limitedPath;
             }
 
-            // Find path using direction field
-            var finalPath = FindPath(startGrid, targetGrid);
-            if (finalPath != null)
+            // If direction field fails, try first scan as last resort
+            if (distance < 20) // Only try first scan for very short distances
             {
-                _core.LogMessage($"A* DEBUG: Direction field found path with {finalPath.Count} waypoints");
-                _pathCache[cacheKey] = finalPath;
-            }
-            else
-            {
-                _core.LogMessage($"A* DEBUG: No path found by any method");
+                _core.LogMessage($"A* DEBUG: Direction field failed, trying first scan...");
+
+                foreach (var path in RunFirstScan(startGrid, targetGrid))
+                {
+                    if (path != null && path.Count > 0)
+                    {
+                        _core.LogMessage($"A* DEBUG: First scan found path with {path.Count} waypoints");
+                        if (distance < 10) _pathCache[cacheKey] = path;
+                        return path;
+                    }
+                }
             }
 
-            return finalPath;
+            _core.LogMessage($"A* DEBUG: No reliable path found - distance too great or terrain blocked");
+            return null;
         }
 
         public void ClearPathCache()

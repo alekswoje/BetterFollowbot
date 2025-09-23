@@ -546,8 +546,8 @@ namespace BetterFollowbotLite.Core.Movement
                             _core.LogError($"Invalid followTarget position: {followTarget?.Pos}, skipping task creation");
                         }
                     }
-                    // Only extend path when we have very few tasks left (nearly finished current path)
-                    else if (_taskManager.TaskCount > 0 && _taskManager.TaskCount <= 1)
+                    // DISABLED: Path extension causes constant recalculations
+                    // else if (_taskManager.TaskCount > 0 && _taskManager.TaskCount <= 1)
                     {
                         // ADDITIONAL NULL CHECK: Ensure followTarget is still valid before extending path
                         if (followTarget != null && followTarget.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
@@ -646,7 +646,7 @@ namespace BetterFollowbotLite.Core.Movement
                         {
                             // Check if leader has moved far enough from our last target position to warrant new path
                             var leaderMovedSinceLastTask = lastTargetPosition == Vector3.Zero ||
-                                                         Vector3.Distance(lastTargetPosition, followTarget.Pos) > Math.Max(200, _core.Settings.autoPilotPathfindingNodeDistance.Value * 5);
+                                                         Vector3.Distance(lastTargetPosition, followTarget.Pos) > Math.Max(500, _core.Settings.autoPilotPathfindingNodeDistance.Value * 10);
 
                             if (leaderMovedSinceLastTask)
                             {

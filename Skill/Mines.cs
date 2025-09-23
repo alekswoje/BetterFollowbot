@@ -8,6 +8,7 @@ using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared;
 using ExileCore.Shared.Enums;
+using GameOffsets.Native;
 using SharpDX;
 
 namespace BetterFollowbotLite.Skill
@@ -79,40 +80,15 @@ namespace BetterFollowbotLite.Skill
                             minesRange = 35;
 
                         // Find nearby rare/unique enemies within range using ReAgent-style detection
-                        var nearbyRareUniqueEnemies = _instance.Enemys
-                            .Where(monster =>
-                            {
-                                try
-                                {
-                                    // Use Entity.Rarity directly like ReAgent does
-                                    var rarity = monster.Rarity;
-
-                                    // Only target Rare or Unique monsters
-                                    if (rarity != ExileCore.Shared.Enums.MonsterRarity.Rare && rarity != ExileCore.Shared.Enums.MonsterRarity.Unique)
-                                        return false;
-
-                                    // Check distance from player to monster
-                                    var distanceToMonster = Vector3.Distance(monster.Pos, _instance.playerPosition);
-
-                                    return distanceToMonster <= minesRange;
-                                }
-                                catch
-                                {
-                                    // Fallback to component-based checking if Entity.Rarity fails
-                                    var rarityComponent = monster.GetComponent<ObjectMagicProperties>();
-                                    if (rarityComponent == null || (rarityComponent.Rarity != ExileCore.Shared.Enums.MonsterRarity.Rare && rarityComponent.Rarity != ExileCore.Shared.Enums.MonsterRarity.Unique))
-                                        return false;
-
-                                    var distanceToMonster = Vector3.Distance(monster.Pos, _instance.playerPosition);
-                                    return distanceToMonster <= minesRange;
-                                }
-                            })
+                        var nearbyRareUniqueEnemies = _instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Monster]
+                            .Where(monster => IsValidMonsterForMines(monster, minesRange))
                             .ToList();
 
                         // Debug: Show all monsters and their rarities
                         if (_settings.minesEnabled.Value) // Only log when enabled to avoid spam
                         {
-                            foreach (var monster in _instance.Enemys.Take(5)) // Log first 5 monsters
+                            var allMonsters = _instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Monster].Take(10); // Check more monsters
+                            foreach (var monster in allMonsters)
                             {
                                 try
                                 {
@@ -124,17 +100,18 @@ namespace BetterFollowbotLite.Skill
                                         ExileCore.Shared.Enums.MonsterRarity.Unique => "Unique",
                                         _ => "Unknown"
                                     };
-                                    var monsterDistance = Vector3.Distance(monster.Pos, _instance.playerPosition);
-                                    _instance.LogMessage($"MINES DEBUG: Monster {monster.Path} - Rarity: {monsterRarity}, Distance: {monsterDistance:F1}");
+                                    var distance = monster.DistancePlayer;
+                                    var isValid = IsValidMonsterForMines(monster, minesRange);
+                                    _instance.LogMessage($"MINES: Monster {monster.Path} - Rarity: {monsterRarity}, Distance: {distance:F1}, IsValid: {isValid}");
                                 }
                                 catch (Exception ex)
                                 {
-                                    _instance.LogMessage($"MINES DEBUG: Error checking monster {monster.Path}: {ex.Message}");
+                                    _instance.LogMessage($"MINES: Error logging monster {monster?.Path}: {ex.Message}");
                                 }
                             }
                         }
 
-                        _instance.LogMessage($"MINES: Found {nearbyRareUniqueEnemies.Count} rare/unique enemies within range (range: {minesRange}) from {_instance.Enemys.Count} total enemies");
+                        _instance.LogMessage($"MINES: Found {nearbyRareUniqueEnemies.Count} rare/unique enemies within range (range: {minesRange}) from validated monsters");
 
                         if (nearbyRareUniqueEnemies.Any())
                         {
@@ -256,6 +233,59 @@ namespace BetterFollowbotLite.Skill
             }
 
             return false; // Skill was not executed
+        }
+
+        /// <summary>
+        /// Validates if a monster is valid for mines targeting (based on ReAgent logic)
+        /// </summary>
+        private bool IsValidMonsterForMines(Entity monster, int minesRange)
+        {
+            try
+            {
+                // ReAgent-style validation checks
+                if (monster.DistancePlayer > minesRange)
+                    return false;
+
+                if (!monster.HasComponent<Monster>() ||
+                    !monster.HasComponent<Positioned>() ||
+                    !monster.HasComponent<Render>() ||
+                    !monster.HasComponent<Life>() ||
+                    !monster.HasComponent<ObjectMagicProperties>())
+                    return false;
+
+                if (!monster.IsAlive || !monster.IsHostile)
+                    return false;
+
+                // Check for hidden monster buff (like ReAgent does)
+                if (monster.TryGetComponent<Buffs>(out var buffs) && buffs.HasBuff("hidden_monster"))
+                    return false;
+
+                // Use Entity.Rarity directly like ReAgent does
+                var rarity = monster.Rarity;
+
+                // Only target Rare or Unique monsters
+                if (rarity != ExileCore.Shared.Enums.MonsterRarity.Rare &&
+                    rarity != ExileCore.Shared.Enums.MonsterRarity.Unique)
+                    return false;
+
+                // Additional checks for targetability
+                var targetable = monster.GetComponent<Targetable>();
+                if (targetable == null || !targetable.isTargetable)
+                    return false;
+
+                // Check if not invincible (cannot be damaged)
+                var stats = monster.GetComponent<Stats>();
+                if (stats?.StatDictionary?.ContainsKey(GameStat.CannotBeDamaged) == true &&
+                    stats.StatDictionary[GameStat.CannotBeDamaged] > 0)
+                    return false;
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _instance.LogError($"MINES: Error validating monster {monster?.Path}: {ex.Message}");
+                return false;
+            }
         }
     }
 }

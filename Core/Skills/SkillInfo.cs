@@ -516,6 +516,7 @@ internal static class SkillInfo
                 case "pyroclast_mine":
                 case "pyroclastmine":
                 case "PyroclastMine":
+                case "PyroclastMineAltX":
                     pyroclastMine.Id = skill.Id;
                     BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Pyroclast Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
@@ -535,7 +536,8 @@ internal static class SkillInfo
                     // Log mine skills that might have different names
                     else if (skill.InternalName.ToLower().Contains("mine") ||
                              skill.InternalName.ToLower().Contains("stormblast") ||
-                             skill.InternalName.ToLower().Contains("pyroclast"))
+                             skill.InternalName.ToLower().Contains("pyroclast") ||
+                             skill.InternalName.ToLower().Contains("pyroclastminealtx"))
                     {
                         BetterFollowbotLite.Instance?.LogMessage($"POTENTIAL MINE SKILL: {skill.InternalName} - ID: {skill.Id}");
                     }

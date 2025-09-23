@@ -39,11 +39,11 @@ namespace BetterFollowbotLite.Skill
             {
                 _instance.LogMessage($"MINES: Execute called, processing {(_instance.skills?.Count ?? 0)} skills");
 
-                // Loop through all skills to find mine skills
-                foreach (var skill in _instance.skills)
-                {
-                    ProcessMineSkill(skill);
-                }
+                        // Loop through all skills to find mine skills
+                        foreach (var skill in _instance.skills)
+                        {
+                            ProcessMineSkill(skill);
+                        }
             }
             catch (Exception e)
             {
@@ -73,6 +73,10 @@ namespace BetterFollowbotLite.Skill
                     var mineSkill = hasStormblastMine ? SkillInfo.stormblastMine : SkillInfo.pyroclastMine;
                     if (SkillInfo.ManageCooldown(mineSkill, skill))
                     {
+                        // Parse mines range from text input, default to 35 if invalid
+                        if (!int.TryParse(_settings.minesRange.Value, out var minesRange))
+                            minesRange = 35;
+
                         // Find nearby rare/unique enemies within range
                         var nearbyRareUniqueEnemies = _instance.Enemys
                             .Where(monster =>
@@ -84,10 +88,6 @@ namespace BetterFollowbotLite.Skill
 
                                 // Check distance from player to monster
                                 var distanceToMonster = Vector3.Distance(monster.Pos, _instance.playerPosition);
-
-                                // Parse mines range from text input, default to 35 if invalid
-                                if (!int.TryParse(_settings.minesRange.Value, out var minesRange))
-                                    minesRange = 35;
 
                                 return distanceToMonster <= minesRange;
                             })

@@ -173,9 +173,9 @@ namespace BetterFollowbotLite.Core.Movement
             {
                 // Check the perimeter of each expanding square
                 int minX = Math.Max(0, startPosition.X - range);
-                int maxX = Math.Min(_terrainData.GetLength(0) - 1, startPosition.X + range);
+                int maxX = Math.Min(_dimension2 - 1, startPosition.X + range);
                 int minY = Math.Max(0, startPosition.Y - range);
-                int maxY = Math.Min(_terrainData.GetLength(1) - 1, startPosition.Y + range);
+                int maxY = Math.Min(_dimension1 - 1, startPosition.Y + range);
 
                 // Top and bottom edges
                 for (int x = minX; x <= maxX; x++)

@@ -12,17 +12,6 @@ using SharpDX;
 
 namespace BetterFollowbotLite.Skills
 {
-    // MonsterRarity enum (copied from ReAgent for compatibility)
-    [Flags]
-    public enum MonsterRarity
-    {
-        Normal = 1 << 0,
-        Magic = 1 << 1,
-        Rare = 1 << 2,
-        Unique = 1 << 3,
-        Any = Normal | Magic | Rare | Unique,
-        AtLeastRare = Rare | Unique
-    }
 
     internal class Mines : ISkill
     {
@@ -100,17 +89,10 @@ namespace BetterFollowbotLite.Skills
                             .Where(monster =>
                             {
                                 // Check if monster is rare or unique using Entity.Rarity (like ReAgent does)
-                                MonsterRarity rarity;
+                                ExileCore.Shared.Enums.MonsterRarity rarity;
                                 try
                                 {
-                                    rarity = monster.Rarity switch
-                                    {
-                                        ExileCore.Shared.Enums.MonsterRarity.White => MonsterRarity.Normal,
-                                        ExileCore.Shared.Enums.MonsterRarity.Magic => MonsterRarity.Magic,
-                                        ExileCore.Shared.Enums.MonsterRarity.Rare => MonsterRarity.Rare,
-                                        ExileCore.Shared.Enums.MonsterRarity.Unique => MonsterRarity.Unique,
-                                        _ => MonsterRarity.Normal
-                                    };
+                                    rarity = monster.Rarity;
                                 }
                                 catch
                                 {
@@ -119,16 +101,11 @@ namespace BetterFollowbotLite.Skills
                                     if (rarityComponent == null)
                                         return false;
 
-                                    rarity = rarityComponent.Rarity switch
-                                    {
-                                        ExileCore.Shared.Enums.MonsterRarity.Rare => MonsterRarity.Rare,
-                                        ExileCore.Shared.Enums.MonsterRarity.Unique => MonsterRarity.Unique,
-                                        _ => MonsterRarity.Normal
-                                    };
+                                    rarity = rarityComponent.Rarity;
                                 }
 
                                 // Only target Rare or Unique monsters
-                                if (rarity != MonsterRarity.Rare && rarity != MonsterRarity.Unique)
+                                if (rarity != ExileCore.Shared.Enums.MonsterRarity.Rare && rarity != ExileCore.Shared.Enums.MonsterRarity.Unique)
                                     return false;
 
                                 // Check distance from player to monster

@@ -25,7 +25,7 @@ namespace BetterFollowbotLite
                     "combat", "merveil's lair", "merveils lair", "the weaver's nest", "stairs", "pyramid apex",
                     "tower rooftop", "caldera of the king", "the black core", "the black heart", "sanctum of innocence",
                     "the chamber of innocence", "tukohama's keep", "the karui fortress", "prison rooftop",
-                    "valley of the fire drinker"
+                    "valley of the fire drinker", "the cloven pass"
                 }, "Arena"
             }
         };

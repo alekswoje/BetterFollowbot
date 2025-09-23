@@ -656,7 +656,7 @@ namespace BetterFollowbotLite.Core.Movement
                         {
                             // Check if leader has moved far enough from our last target position to warrant new path
                             var leaderMovedSinceLastTask = lastTargetPosition == Vector3.Zero ||
-                                                         Vector3.Distance(lastTargetPosition, followTarget.Pos) > _core.Settings.autoPilotPathfindingNodeDistance.Value * 2;
+                                                         Vector3.Distance(lastTargetPosition, followTarget.Pos) > Math.Max(200, _core.Settings.autoPilotPathfindingNodeDistance.Value * 5);
 
                             if (leaderMovedSinceLastTask)
                             {
@@ -670,9 +670,9 @@ namespace BetterFollowbotLite.Core.Movement
                                     {
                                         _core.LogMessage($"A* PATH: Close follow found path with {pathWaypoints.Count} waypoints");
 
-                                        // For close follow, use 3 waypoints max (start, middle, end) to reduce micro-movements
+                                        // For close follow, use 2 waypoints max (start, end) to reduce micro-movements
                                         var gridToWorld = 250f / 23f;
-                                        var totalWaypoints = Math.Min(3, pathWaypoints.Count); // Max 3 waypoints
+                                        var totalWaypoints = Math.Min(2, pathWaypoints.Count); // Max 2 waypoints
 
                                         for (int i = 0; i < totalWaypoints; i++)
                                         {

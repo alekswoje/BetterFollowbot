@@ -444,18 +444,34 @@ namespace BetterFollowbotLite.Core.Movement
                                         _core.LogMessage($"A* PATH: Following waypoint path (dash={shouldDashToFirstWaypoint}, conflicts={conflictingTasksExist}, teleport={AutoPilot.IsTeleportInProgress})");
                                     }
 
-                                    // Add movement tasks for remaining waypoints
+                                    // Add movement tasks for remaining waypoints, but space them out to avoid too many close waypoints
+                                    var lastWaypointPos = firstWaypointIndex > 0 ? pathWaypoints[firstWaypointIndex - 1] : pathWaypoints[0];
+                                    var minDistanceBetweenWaypoints = 3; // Minimum 3 grid units between waypoints
+
                                     for (int i = firstWaypointIndex; i < pathWaypoints.Count; i++)
                                     {
                                         var waypoint = pathWaypoints[i];
-                                        var worldPos = new Vector3(
-                                            waypoint.X * gridToWorldMultiplier,
-                                            waypoint.Y * gridToWorldMultiplier, // Y is north-south position
-                                            followTarget.Pos.Z // Keep same height
-                                        );
-                                        _core.LogMessage($"A* PATH: Adding waypoint {i}/{pathWaypoints.Count}: grid({waypoint.X},{waypoint.Y}) -> world({worldPos.X:F1},{worldPos.Y:F1},{worldPos.Z:F1})");
-                                        _taskManager.AddTask(new TaskNode(worldPos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                        waypointsAdded++;
+                                        var distanceFromLast = Math.Abs(waypoint.X - lastWaypointPos.X) + Math.Abs(waypoint.Y - lastWaypointPos.Y);
+
+                                        if (distanceFromLast >= minDistanceBetweenWaypoints || i == pathWaypoints.Count - 1) // Always include final waypoint
+                                        {
+                                            var worldPos = new Vector3(
+                                                waypoint.X * gridToWorldMultiplier,
+                                                waypoint.Y * gridToWorldMultiplier, // Y is north-south position
+                                                followTarget.Pos.Z // Keep same height
+                                            );
+                                            _core.LogMessage($"A* PATH: Adding waypoint {i}/{pathWaypoints.Count}: grid({waypoint.X},{waypoint.Y}) -> world({worldPos.X:F1},{worldPos.Y:F1},{worldPos.Z:F1})");
+                                            _taskManager.AddTask(new TaskNode(worldPos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                            waypointsAdded++;
+                                            lastWaypointPos = waypoint;
+
+                                            // Limit total waypoints to prevent excessive task queues
+                                            if (waypointsAdded >= 15)
+                                            {
+                                                _core.LogMessage($"A* PATH: Stopping at 15 waypoints to prevent excessive task queue");
+                                                break;
+                                            }
+                                        }
                                     }
 
                                     if (waypointsAdded == 0)
@@ -505,18 +521,18 @@ namespace BetterFollowbotLite.Core.Movement
                             _core.LogError($"Invalid followTarget position: {followTarget?.Pos}, skipping task creation");
                         }
                     }
-                    //We have a path. Check if the last task is far enough away from current one to add a new task node using A*.
-                    else if (_taskManager.TaskCount > 0)
+                    // Only extend path when we have very few tasks left (nearly finished current path)
+                    else if (_taskManager.TaskCount > 0 && _taskManager.TaskCount <= 3)
                     {
                         // ADDITIONAL NULL CHECK: Ensure followTarget is still valid before extending path
                         if (followTarget != null && followTarget.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {
                             var distanceFromLastTask = Vector3.Distance(_taskManager.Tasks.Last().WorldPosition, followTarget.Pos);
-                            // More responsive: reduce threshold by half for more frequent path updates
-                            var responsiveThreshold = _core.Settings.autoPilotPathfindingNodeDistance.Value / 2;
-                            if (distanceFromLastTask >= responsiveThreshold)
+                            // Only extend if leader has moved significantly from the end of current path
+                            var extensionThreshold = _core.Settings.autoPilotPathfindingNodeDistance.Value * 2;
+                            if (distanceFromLastTask >= extensionThreshold)
                             {
-                                _core.LogMessage($"RESPONSIVENESS: Extending path with A* - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
+                                _core.LogMessage($"PATH EXTENSION: Extending path - Tasks left: {_taskManager.TaskCount}, Distance: {distanceFromLastTask:F1}, Threshold: {extensionThreshold:F1}");
 
                                 // Use A* to find additional waypoints from current path end to target
                                 var currentPathEnd = _taskManager.Tasks.Last().WorldPosition;
@@ -533,19 +549,28 @@ namespace BetterFollowbotLite.Core.Movement
                                     if (extensionWaypoints != null && extensionWaypoints.Count > 1)
                                     {
                                         // Convert grid waypoints back to world positions and add as tasks
-                                        // Skip the first waypoint (current path end position)
+                                        // Skip the first waypoint (current path end position) and space them out
                                         var gridToWorldMultiplier = 250f / 23f; // Same conversion as in Pathfinding.cs
                                         var waypointsAdded = 0;
-                                        for (int i = 1; i < extensionWaypoints.Count; i++) // Start from index 1 to skip current position
+                                        var lastWaypointPos = extensionWaypoints[0]; // Current path end
+                                        var minDistanceBetweenWaypoints = 3; // Minimum 3 grid units between waypoints
+
+                                        for (int i = 1; i < extensionWaypoints.Count && waypointsAdded < 8; i++) // Limit to 8 additional waypoints
                                         {
                                             var waypoint = extensionWaypoints[i];
-                                            var worldPos = new Vector3(
-                                                waypoint.X * gridToWorldMultiplier,
-                                                waypoint.Y * gridToWorldMultiplier, // Y is north-south position
-                                                followTarget.Pos.Z // Keep same height
-                                            );
-                                            _taskManager.AddTask(new TaskNode(worldPos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                            waypointsAdded++;
+                                            var distanceFromLast = Math.Abs(waypoint.X - lastWaypointPos.X) + Math.Abs(waypoint.Y - lastWaypointPos.Y);
+
+                                            if (distanceFromLast >= minDistanceBetweenWaypoints || i == extensionWaypoints.Count - 1) // Always include final waypoint
+                                            {
+                                                var worldPos = new Vector3(
+                                                    waypoint.X * gridToWorldMultiplier,
+                                                    waypoint.Y * gridToWorldMultiplier, // Y is north-south position
+                                                    followTarget.Pos.Z // Keep same height
+                                                );
+                                                _taskManager.AddTask(new TaskNode(worldPos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                                waypointsAdded++;
+                                                lastWaypointPos = waypoint;
+                                            }
                                         }
 
                                         if (waypointsAdded == 0)

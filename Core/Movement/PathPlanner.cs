@@ -444,8 +444,8 @@ namespace BetterFollowbotLite.Core.Movement
                                         _core.LogMessage($"A* PATH: Following waypoint path (dash={shouldDashToFirstWaypoint}, conflicts={conflictingTasksExist}, teleport={AutoPilot.IsTeleportInProgress})");
                                     }
 
-                                    // For short paths (< 200 units), simplify to just start and end waypoints
-                                    if (distanceToLeader < 200)
+                                    // For short paths (< 500 units), simplify to just start and end waypoints
+                                    if (distanceToLeader < 500)
                                     {
                                         _core.LogMessage($"A* PATH: Short path detected ({distanceToLeader:F1} units) - using simplified 2-waypoint path");
 
@@ -480,8 +480,8 @@ namespace BetterFollowbotLite.Core.Movement
                                     }
                                     else
                                     {
-                                        // For longer paths, be very conservative with waypoints
-                                        var maxWaypoints = distanceToLeader > 1000 ? 3 : 5; // Very few waypoints for long distances
+                                        // For longer paths, be extremely aggressive with waypoint reduction
+                                        var maxWaypoints = distanceToLeader > 1500 ? 2 : (distanceToLeader > 800 ? 3 : 4); // Minimal waypoints
                                         var waypointsToAdd = Math.Min(maxWaypoints, pathWaypoints.Count - firstWaypointIndex);
 
                                         for (int w = 0; w < waypointsToAdd; w++)
@@ -553,89 +553,7 @@ namespace BetterFollowbotLite.Core.Movement
                             _core.LogError($"Invalid followTarget position: {followTarget?.Pos}, skipping task creation");
                         }
                     }
-                    // DISABLED: Path extension causes constant recalculations
-                    // else if (_taskManager.TaskCount > 0 && _taskManager.TaskCount <= 1)
-                    {
-                        // ADDITIONAL NULL CHECK: Ensure followTarget is still valid before extending path
-                        if (followTarget != null && followTarget.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
-                        {
-                            var distanceFromLastTask = Vector3.Distance(_taskManager.Tasks.Last().WorldPosition, followTarget.Pos);
-                            // Only extend if leader has moved significantly from the end of current path
-                            var extensionThreshold = Math.Max(300, _core.Settings.autoPilotPathfindingNodeDistance.Value * 5);
-                            if (distanceFromLastTask >= extensionThreshold)
-                            {
-                                _core.LogMessage($"PATH EXTENSION: Extending path - Tasks left: {_taskManager.TaskCount}, Distance: {distanceFromLastTask:F1}, Threshold: {extensionThreshold:F1}");
-
-                                // Use A* to find additional waypoints from current path end to target
-                                var currentPathEnd = _taskManager.Tasks.Last().WorldPosition;
-
-                                // Check if this is a short extension (< 150 units remaining)
-                                var extensionDistance = Vector3.Distance(currentPathEnd, followTarget.Pos);
-                                if (extensionDistance < 150)
-                                {
-                                    _core.LogMessage($"A* PATH EXTENSION: Short extension detected ({extensionDistance:F1} units) - using direct extension");
-                                    _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                }
-                                else if (!_core.Pathfinding.IsTerrainLoaded)
-                                {
-                                    _core.LogMessage($"A* PATH EXTENSION: Terrain not loaded, falling back to direct extension");
-                                    _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                }
-                                else
-                                {
-                                    var extensionWaypoints = _core.Pathfinding.GetPath(currentPathEnd, followTarget.Pos);
-
-                                    if (extensionWaypoints != null && extensionWaypoints.Count > 1)
-                                    {
-                                        // Convert grid waypoints back to world positions and add as tasks
-                                        // Skip the first waypoint (current path end position) and space them out
-                                        var gridToWorldMultiplier = 250f / 23f; // Same conversion as in Pathfinding.cs
-                                        var waypointsAdded = 0;
-                                        var lastWaypointPos = extensionWaypoints[0]; // Current path end
-                                        var minDistanceBetweenWaypoints = 8; // Minimum 8 grid units between waypoints for extensions
-
-                                        for (int i = 1; i < extensionWaypoints.Count && waypointsAdded < 2; i++) // Limit to 2 additional waypoints
-                                        {
-                                            var waypoint = extensionWaypoints[i];
-                                            var distanceFromLast = Math.Abs(waypoint.X - lastWaypointPos.X) + Math.Abs(waypoint.Y - lastWaypointPos.Y);
-
-                                            if (distanceFromLast >= minDistanceBetweenWaypoints || i == extensionWaypoints.Count - 1) // Always include final waypoint
-                                            {
-                                                var worldPos = new Vector3(
-                                                    waypoint.X * gridToWorldMultiplier,
-                                                    waypoint.Y * gridToWorldMultiplier, // Y is north-south position
-                                                    followTarget.Pos.Z // Keep same height
-                                                );
-                                                _taskManager.AddTask(new TaskNode(worldPos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                                waypointsAdded++;
-                                                lastWaypointPos = waypoint;
-                                            }
-                                        }
-
-                                        if (waypointsAdded == 0)
-                                        {
-                                            _core.LogMessage($"A* PATH EXTENSION: No valid waypoints found, falling back to direct extension");
-                                            _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                        }
-                                        else
-                                        {
-                                            _core.LogMessage($"A* PATH EXTENSION: Added {waypointsAdded} additional waypoints");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        // A* failed or returned insufficient waypoints, fall back to direct extension
-                                        _core.LogMessage($"A* PATH EXTENSION: Pathfinding failed (got {extensionWaypoints?.Count ?? 0} waypoints), falling back to direct extension");
-                                        _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                    }
-                                }
-                            }
-                        }
-                        else
-                        {
-                            _core.LogMessage("PATH EXTENSION: followTarget became null during path extension, skipping task creation");
-                        }
-                    }
+                    // PATH EXTENSION COMPLETELY DISABLED - causes zig-zagging and constant recalculations
                 }
                 else
                 {
@@ -653,7 +571,7 @@ namespace BetterFollowbotLite.Core.Movement
                         {
                             // Check if leader has moved far enough from our last target position to warrant new path
                             var leaderMovedSinceLastTask = lastTargetPosition == Vector3.Zero ||
-                                                         Vector3.Distance(lastTargetPosition, followTarget.Pos) > Math.Max(500, _core.Settings.autoPilotPathfindingNodeDistance.Value * 10);
+                                                         Vector3.Distance(lastTargetPosition, followTarget.Pos) > Math.Max(1500, _core.Settings.autoPilotPathfindingNodeDistance.Value * 25);
 
                             if (leaderMovedSinceLastTask)
                             {

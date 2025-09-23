@@ -27,28 +27,11 @@ namespace BetterFollowbotLite.Skill
 
         public string SkillName => "Mines";
 
-        /// <summary>
-        /// Executes mines logic by processing all mine skills
-        /// </summary>
         public void Execute()
         {
-            if (!_settings.minesEnabled)
-                return;
-
-            try
-            {
-                _instance.LogMessage($"MINES: Execute called, processing {(_instance.skills?.Count ?? 0)} skills");
-
-                // Loop through all skills to find mine skills
-                foreach (var skill in _instance.skills)
-                {
-                    ProcessMineSkill(skill);
-                }
-            }
-            catch (Exception e)
-            {
-                _instance.LogError($"Mines Execute Error: {e}");
-            }
+            // Mines logic is handled in the main skill processing loop
+            // This method is called but the actual logic is in the main loop
+            // to handle both Stormblast and Pyroclast mines
         }
 
         /// <summary>
@@ -67,8 +50,6 @@ namespace BetterFollowbotLite.Skill
 
                 if (hasStormblastMine || hasPyroclastMine)
                 {
-                    _instance.LogMessage($"MINES: Found {(hasStormblastMine ? "Stormblast" : "Pyroclast")} mine skill (ID: {skill.Id})");
-
                     // Check cooldown
                     var mineSkill = hasStormblastMine ? SkillInfo.stormblastMine : SkillInfo.pyroclastMine;
                     if (SkillInfo.ManageCooldown(mineSkill, skill))
@@ -78,8 +59,7 @@ namespace BetterFollowbotLite.Skill
                             .Where(monster =>
                             {
                                 // Check if monster is rare or unique
-                                var rarityComponent = monster.GetComponent<ObjectMagicProperties>();
-                                if (rarityComponent == null || (rarityComponent.Rarity != MonsterRarity.Rare && rarityComponent.Rarity != MonsterRarity.Unique))
+                                if (monster.Rarity != MonsterRarity.Rare && monster.Rarity != MonsterRarity.Unique)
                                     return false;
 
                                 // Check distance from player to monster
@@ -94,8 +74,6 @@ namespace BetterFollowbotLite.Skill
                                 return distanceToMonster <= minesRange;
                             })
                             .ToList();
-
-                        _instance.LogMessage($"MINES: Found {nearbyRareUniqueEnemies.Count} rare/unique enemies within range");
 
                         if (nearbyRareUniqueEnemies.Any())
                         {
@@ -180,9 +158,10 @@ namespace BetterFollowbotLite.Skill
                                     mineSkill.Cooldown = 100; // Set cooldown to prevent spam
                                     _instance.LastTimeAny = DateTime.Now;
 
-                                    var rarityComponent = bestTarget.GetComponent<ObjectMagicProperties>();
-                                    var rarity = rarityComponent?.Rarity.ToString() ?? "Unknown";
-                                    _instance.LogMessage($"MINES: Threw {(hasStormblastMine ? "Stormblast" : "Pyroclast")} mine at {bestTarget.Path} (Rarity: {rarity})");
+                                    if (_settings.debugMode)
+                                    {
+                                        _instance.LogMessage($"MINES: Threw {(hasStormblastMine ? "Stormblast" : "Pyroclast")} mine at {bestTarget.Path} (Rarity: {bestTarget.Rarity})");
+                                    }
 
                                     return true; // Skill was executed
                                 }

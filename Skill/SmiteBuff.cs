@@ -8,6 +8,7 @@ using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared;
 using ExileCore.Shared.Enums;
+using GameOffsets.Native;
 using SharpDX;
 
 namespace BetterFollowbotLite.Skills
@@ -54,18 +55,10 @@ namespace BetterFollowbotLite.Skills
                             // Refresh if no buff or buff has less than 2 seconds left
                             if (!hasSmiteBuff || buffTimeLeft < 2.0f)
                             {
-                                // Find monsters within 250 units of player (smite attack range)
-                                var targetMonster = _instance.Enemys
-                                    .Where(monster =>
-                                    {
-                                        // Check if monster is within 250 units of player
-                                        var distanceToPlayer = Vector3.Distance(_instance.playerPosition, monster.Pos);
-                                        // Check if monster is on screen (can be targeted)
-                                        var screenPos = _instance.GameController.IngameState.Camera.WorldToScreen(monster.Pos);
-                                        var isOnScreen = _instance.GameController.Window.GetWindowRectangleTimeCache.Contains(screenPos);
-                                        return distanceToPlayer <= 250 && isOnScreen;
-                                    })
-                                    .OrderBy(monster => Vector3.Distance(_instance.playerPosition, monster.Pos)) // Closest first
+                                // Find valid monsters within 250 units of player (smite attack range) using ReAgent-style validation
+                                var targetMonster = _instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Monster]
+                                    .Where(monster => IsValidMonsterForSmite(monster))
+                                    .OrderBy(monster => monster.DistancePlayer) // Closest first
                                     .FirstOrDefault();
 
                                 if (targetMonster != null)
@@ -97,6 +90,58 @@ namespace BetterFollowbotLite.Skills
                         }
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Validates if a monster is valid for smite targeting (based on ReAgent logic)
+        /// </summary>
+        private bool IsValidMonsterForSmite(Entity monster)
+        {
+            try
+            {
+                // ReAgent-style validation checks
+                const int smiteRange = 250; // Smite has a 250 unit range
+                if (monster.DistancePlayer > smiteRange)
+                    return false;
+
+                if (!monster.HasComponent<Monster>() ||
+                    !monster.HasComponent<Positioned>() ||
+                    !monster.HasComponent<Render>() ||
+                    !monster.HasComponent<Life>() ||
+                    !monster.HasComponent<ObjectMagicProperties>())
+                    return false;
+
+                if (!monster.IsAlive || !monster.IsHostile)
+                    return false;
+
+                // Check for hidden monster buff (like ReAgent does)
+                if (monster.TryGetComponent<Buffs>(out var buffs) && buffs.HasBuff("hidden_monster"))
+                    return false;
+
+                // Check if monster is on screen (can be targeted)
+                var screenPos = _instance.GameController.IngameState.Camera.WorldToScreen(monster.Pos);
+                var isOnScreen = _instance.GameController.Window.GetWindowRectangleTimeCache.Contains(screenPos);
+                if (!isOnScreen)
+                    return false;
+
+                // Additional checks for targetability
+                var targetable = monster.GetComponent<Targetable>();
+                if (targetable == null || !targetable.isTargetable)
+                    return false;
+
+                // Check if not invincible (cannot be damaged)
+                var stats = monster.GetComponent<Stats>();
+                if (stats?.StatDictionary?.ContainsKey(GameStat.CannotBeDamaged) == true &&
+                    stats.StatDictionary[GameStat.CannotBeDamaged] > 0)
+                    return false;
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _instance.LogError($"SMITE: Error validating monster {monster?.Path}: {ex.Message}");
+                return false;
             }
         }
     }

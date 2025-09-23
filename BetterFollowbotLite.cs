@@ -148,11 +148,57 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     #endregion
     public int GetMonsterWithin(float maxDistance, ExileCore.Shared.Enums.MonsterRarity rarity = ExileCore.Shared.Enums.MonsterRarity.White)
     {
-        return (from monster in enemys
-                let rarityComponent = monster.GetComponent<ObjectMagicProperties>()
-                where rarityComponent != null && rarityComponent.Rarity >= rarity
-                select Vector2.Distance(new Vector2(monster.PosNum.X, monster.PosNum.Y), new Vector2(playerPosition.X, playerPosition.Y)))
-                .Count(distance => distance <= maxDistance);
+        return GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Monster]
+            .Count(monster => IsValidMonsterForCount(monster, maxDistance, rarity));
+    }
+
+    /// <summary>
+    /// Validates if a monster is valid for counting (used by GetMonsterWithin) with ReAgent-style validation
+    /// </summary>
+    private bool IsValidMonsterForCount(Entity monster, float maxDistance, ExileCore.Shared.Enums.MonsterRarity rarity)
+    {
+        try
+        {
+            // ReAgent-style validation checks
+            if (monster.DistancePlayer > maxDistance)
+                return false;
+
+            if (!monster.HasComponent<Monster>() ||
+                !monster.HasComponent<Positioned>() ||
+                !monster.HasComponent<Render>() ||
+                !monster.HasComponent<Life>() ||
+                !monster.HasComponent<ObjectMagicProperties>())
+                return false;
+
+            if (!monster.IsAlive || !monster.IsHostile)
+                return false;
+
+            // Check for hidden monster buff (like ReAgent does)
+            if (monster.TryGetComponent<Buffs>(out var buffs) && buffs.HasBuff("hidden_monster"))
+                return false;
+
+            // Additional checks for targetability
+            var targetable = monster.GetComponent<Targetable>();
+            if (targetable == null || !targetable.isTargetable)
+                return false;
+
+            // Check if not invincible (cannot be damaged)
+            var stats = monster.GetComponent<Stats>();
+            if (stats?.StatDictionary?.ContainsKey(GameStat.CannotBeDamaged) == true &&
+                stats.StatDictionary[GameStat.CannotBeDamaged] > 0)
+                return false;
+
+            // Check rarity
+            var rarityComponent = monster.GetComponent<ObjectMagicProperties>();
+            if (rarityComponent == null)
+                return false;
+
+            return rarityComponent.Rarity >= rarity;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     // Method to get entities from GameController (used by skill classes)

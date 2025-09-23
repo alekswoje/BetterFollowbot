@@ -86,33 +86,11 @@ namespace BetterFollowbotLite.Skills
 
                             foreach (var entity in entities)
                             {
-                                if (entity.IsValid && entity.IsAlive && entity.IsHostile)
+                                // Use comprehensive ReAgent-style validation
+                                if (IsValidMonsterForSummonRagingSpirits(entity, deployedObjectIds))
                                 {
-                                    var distanceToEntity = Vector3.Distance(_instance.playerPosition, entity.Pos);
-
-                                    // Only check entities within 500 units and ensure they're not player's deployed objects
-                                    if (distanceToEntity <= 500 && !deployedObjectIds.Contains(entity.Id))
-                                    {
-                                        var rarityComponent = entity.GetComponent<ObjectMagicProperties>();
-                                        if (rarityComponent != null)
-                                        {
-                                            var rarity = rarityComponent.Rarity;
-
-                                            // Always check for rare/unique
-                                            if (rarity == ExileCore.Shared.Enums.MonsterRarity.Unique || rarity == ExileCore.Shared.Enums.MonsterRarity.Rare)
-                                            {
-                                                rareOrUniqueNearby = true;
-                                                break;
-                                            }
-                                            // Also check for magic/white if enabled
-                                            else if (_settings.summonRagingSpiritsMagicNormal.Value &&
-                                                    (rarity == ExileCore.Shared.Enums.MonsterRarity.Magic || rarity == ExileCore.Shared.Enums.MonsterRarity.White))
-                                            {
-                                                rareOrUniqueNearby = true;
-                                                break;
-                                            }
-                                        }
-                                    }
+                                    rareOrUniqueNearby = true;
+                                    break;
                                 }
                             }
 
@@ -138,6 +116,72 @@ namespace BetterFollowbotLite.Skills
             catch (Exception e)
             {
                 // Silent exception handling
+            }
+        }
+
+        /// <summary>
+        /// Validates if a monster is valid for Summon Raging Spirits targeting (based on ReAgent logic)
+        /// </summary>
+        private bool IsValidMonsterForSummonRagingSpirits(Entity monster, HashSet<uint> deployedObjectIds)
+        {
+            try
+            {
+                // ReAgent-style validation checks
+                const int srsRange = 500; // SRS checks within 500 units
+                if (monster.DistancePlayer > srsRange)
+                    return false;
+
+                if (!monster.HasComponent<Monster>() ||
+                    !monster.HasComponent<Positioned>() ||
+                    !monster.HasComponent<Render>() ||
+                    !monster.HasComponent<Life>() ||
+                    !monster.HasComponent<ObjectMagicProperties>())
+                    return false;
+
+                if (!monster.IsAlive || !monster.IsHostile)
+                    return false;
+
+                // Check for hidden monster buff (like ReAgent does)
+                if (monster.TryGetComponent<Buffs>(out var buffs) && buffs.HasBuff("hidden_monster"))
+                    return false;
+
+                // Ensure it's not player's deployed object
+                if (deployedObjectIds.Contains(monster.Id))
+                    return false;
+
+                // Additional checks for targetability
+                var targetable = monster.GetComponent<Targetable>();
+                if (targetable == null || !targetable.isTargetable)
+                    return false;
+
+                // Check if not invincible (cannot be damaged)
+                var stats = monster.GetComponent<Stats>();
+                if (stats?.StatDictionary?.ContainsKey(GameStat.CannotBeDamaged) == true &&
+                    stats.StatDictionary[GameStat.CannotBeDamaged] > 0)
+                    return false;
+
+                // Get rarity using component-based approach (consistent with existing code)
+                var rarityComponent = monster.GetComponent<ObjectMagicProperties>();
+                if (rarityComponent == null)
+                    return false;
+
+                var rarity = rarityComponent.Rarity;
+
+                // Always check for rare/unique
+                if (rarity == ExileCore.Shared.Enums.MonsterRarity.Unique || rarity == ExileCore.Shared.Enums.MonsterRarity.Rare)
+                    return true;
+
+                // Also check for magic/white if enabled
+                if (_settings.summonRagingSpiritsMagicNormal.Value &&
+                    (rarity == ExileCore.Shared.Enums.MonsterRarity.Magic || rarity == ExileCore.Shared.Enums.MonsterRarity.White))
+                    return true;
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _instance.LogError($"SRS: Error validating monster {monster?.Path}: {ex.Message}");
+                return false;
             }
         }
     }

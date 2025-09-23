@@ -24,7 +24,7 @@ namespace BetterFollowbotLite
                     "ascendancy chamber", "arena", "the pit", "warden's quarters", "passageway", "the ring of blades",
                     "combat", "merveil's lair", "merveils lair", "the weaver's nest", "stairs", "pyramid apex",
                     "tower rooftop", "caldera of the king", "the black core", "the black heart", "sanctum of innocence",
-                    "the chamber of innocence", "tukohama's keep"
+                    "the chamber of innocence", "tukohama's keep", "the karui fortress"
                 }, "Arena"
             }
         };
@@ -42,7 +42,7 @@ namespace BetterFollowbotLite
 
         // Distance thresholds for leader distance - portals are only taken if leader is MORE than this distance away
         private const float CloseArenaPortalDistance = 300f; // Close portals (Pit, Warden's Quarters, Stairs)
-        private const float RegularArenaPortalDistance = 2000f; // Regular arena portals
+        private const float RegularArenaPortalDistance = 1350; // Regular arena portals
 
         // Portal transition state
         private Vector3 portalLocation = Vector3.Zero; // Where the portal actually is (leader's position before transition)

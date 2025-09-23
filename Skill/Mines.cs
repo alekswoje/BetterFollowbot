@@ -83,9 +83,7 @@ namespace BetterFollowbotLite.Skill
                                     return false;
 
                                 // Check distance from player to monster
-                                var distanceToMonster = Vector2.Distance(
-                                    new Vector2(monster.PosNum.X, monster.PosNum.Y),
-                                    new Vector2(_instance.playerPosition.X, _instance.playerPosition.Y));
+                                var distanceToMonster = Vector3.Distance(monster.Pos, _instance.playerPosition);
 
                                 // Parse mines range from text input, default to 35 if invalid
                                 if (!int.TryParse(_settings.minesRange.Value, out var minesRange))
@@ -95,16 +93,18 @@ namespace BetterFollowbotLite.Skill
                             })
                             .ToList();
 
-                        _instance.LogMessage($"MINES: Found {nearbyRareUniqueEnemies.Count} rare/unique enemies within range");
+                        _instance.LogMessage($"MINES: Found {nearbyRareUniqueEnemies.Count} rare/unique enemies within range (range: {minesRange})");
 
                         if (nearbyRareUniqueEnemies.Any())
                         {
                             // Check if we're close to the party leader
                             var shouldThrowMine = false;
-                            var leaderPos = Vector2.Zero;
+                            Entity leaderEntity = null;
 
                             if (!string.IsNullOrEmpty(_settings.autoPilotLeader.Value))
                             {
+                                _instance.LogMessage($"MINES: Checking for leader '{_settings.autoPilotLeader.Value}'");
+
                                 // Get party elements
                                 var partyElements = PartyElements.GetPlayerInfoElementList();
                                 var leaderPartyElement = partyElements
@@ -113,36 +113,53 @@ namespace BetterFollowbotLite.Skill
 
                                 if (leaderPartyElement != null)
                                 {
+                                    _instance.LogMessage($"MINES: Found leader party element for '{_settings.autoPilotLeader.Value}'");
+
                                     // Find the actual player entity by name
                                     var playerEntities = _instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
                                         .Where(x => x != null && x.IsValid && !x.IsHostile);
 
-                                    var leaderEntity = playerEntities
+                                    leaderEntity = playerEntities
                                         .FirstOrDefault(x => string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
                                             _settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
 
                                     if (leaderEntity != null)
                                     {
+                                        _instance.LogMessage($"MINES: Found leader entity '{leaderEntity.GetComponent<Player>()?.PlayerName}'");
+
                                         // Check distance to leader
-                                        var distanceToLeader = Vector2.Distance(
-                                            new Vector2(_instance.playerPosition.X, _instance.playerPosition.Y),
-                                            new Vector2(leaderEntity.Pos.X, leaderEntity.Pos.Y));
+                                        var distanceToLeader = Vector3.Distance(_instance.playerPosition, leaderEntity.Pos);
 
                                         // Parse leader distance from text input, default to 50 if invalid
                                         if (!int.TryParse(_settings.minesLeaderDistance.Value, out var leaderDistance))
                                             leaderDistance = 50;
 
+                                        _instance.LogMessage($"MINES: Distance to leader: {distanceToLeader:F1}, threshold: {leaderDistance}");
+
                                         if (distanceToLeader <= leaderDistance)
                                         {
                                             shouldThrowMine = true;
-                                            leaderPos = new Vector2(leaderEntity.Pos.X, leaderEntity.Pos.Y);
+                                            _instance.LogMessage("MINES: Close enough to leader, allowing mine throw");
+                                        }
+                                        else
+                                        {
+                                            _instance.LogMessage("MINES: Too far from leader, not throwing mines");
                                         }
                                     }
+                                    else
+                                    {
+                                        _instance.LogMessage("MINES: Leader entity not found in world");
+                                    }
+                                }
+                                else
+                                {
+                                    _instance.LogMessage($"MINES: Leader party element not found for '{_settings.autoPilotLeader.Value}'");
                                 }
                             }
                             else
                             {
                                 // If no leader set, always throw mines when enemies are nearby
+                                _instance.LogMessage("MINES: No leader set, allowing mine throw");
                                 shouldThrowMine = true;
                             }
 
@@ -152,13 +169,13 @@ namespace BetterFollowbotLite.Skill
                                 var bestTarget = nearbyRareUniqueEnemies
                                     .OrderBy(monster =>
                                     {
-                                        var monsterPos = new Vector2(monster.PosNum.X, monster.PosNum.Y);
-                                        var distanceToMonster = Vector2.Distance(new Vector2(_instance.playerPosition.X, _instance.playerPosition.Y), monsterPos);
+                                        var monsterPos = monster.Pos;
+                                        var distanceToMonster = Vector3.Distance(_instance.playerPosition, monsterPos);
 
                                         // If we have a leader, prefer targets that are closer to the leader
-                                        if (leaderPos != Vector2.Zero)
+                                        if (leaderEntity != null)
                                         {
-                                            var distanceToLeader = Vector2.Distance(monsterPos, leaderPos);
+                                            var distanceToLeader = Vector3.Distance(monsterPos, leaderEntity.Pos);
                                             return distanceToLeader + distanceToMonster * 0.5f; // Weight both distances
                                         }
 
@@ -170,7 +187,7 @@ namespace BetterFollowbotLite.Skill
                                 {
                                     // Move mouse to target position
                                     var targetScreenPos = _instance.GameController.IngameState.Camera.WorldToScreen(bestTarget.Pos);
-                                    Mouse.SetCursorPos(targetScreenPos);
+                                    Mouse.SetCursorPos(new Vector2(targetScreenPos.X, targetScreenPos.Y));
 
                                     // Small delay to ensure mouse movement is registered
                                     System.Threading.Thread.Sleep(50);
@@ -182,7 +199,8 @@ namespace BetterFollowbotLite.Skill
 
                                     var rarityComponent = bestTarget.GetComponent<ObjectMagicProperties>();
                                     var rarity = rarityComponent?.Rarity.ToString() ?? "Unknown";
-                                    _instance.LogMessage($"MINES: Threw {(hasStormblastMine ? "Stormblast" : "Pyroclast")} mine at {bestTarget.Path} (Rarity: {rarity})");
+                                    var distance = Vector3.Distance(_instance.playerPosition, bestTarget.Pos);
+                                    _instance.LogMessage($"MINES: Threw {(hasStormblastMine ? "Stormblast" : "Pyroclast")} mine at {bestTarget.Path} (Rarity: {rarity}, Distance: {distance:F1})");
 
                                     return true; // Skill was executed
                                 }

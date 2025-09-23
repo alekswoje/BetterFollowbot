@@ -48,8 +48,27 @@ namespace BetterFollowbotLite.Skills
                 var skillTreeOpen = _instance.GameController?.IngameState?.IngameUi?.TreePanel?.IsVisible == true;
                 var atlasOpen = _instance.GameController?.IngameState?.IngameUi?.Atlas?.IsVisible == true;
 
+                // Check for ExileCore overlay/menu activity (when user is interacting with the plugin GUI)
+                // If mouse cursor is not over the game window or if we're not in foreground, block
+                var gameWindowRect = _instance.GameController?.Window?.GetWindowRectangleTimeCache;
+                var mousePos = _instance.GetMousePosition();
+
+                // If mouse is outside game window bounds, user is likely in ExileCore overlay
+                var mouseOutsideGame = gameWindowRect == null ||
+                    mousePos.X < gameWindowRect.Left || mousePos.X > gameWindowRect.Right ||
+                    mousePos.Y < gameWindowRect.Top || mousePos.Y > gameWindowRect.Bottom;
+
+                // If not in foreground, definitely block (covers overlay scenarios)
+                var notInForeground = !_instance.GameController.IsForeGroundCache;
+
+                // If chat is open (user might be typing), block
+                var chatField = _instance.GameController?.IngameState?.IngameUi?.ChatPanel?.ChatInputElement?.IsVisible;
+                var chatOpen = chatField != null && (bool)chatField;
+
                 // Note: Map is non-obstructing in PoE, so we don't check it
-                return stashOpen || npcDialogOpen || sellWindowOpen || purchaseWindowOpen || inventoryOpen || skillTreeOpen || atlasOpen;
+                return stashOpen || npcDialogOpen || sellWindowOpen || purchaseWindowOpen ||
+                       inventoryOpen || skillTreeOpen || atlasOpen || mouseOutsideGame ||
+                       notInForeground || chatOpen;
             }
             catch
             {
@@ -62,10 +81,6 @@ namespace BetterFollowbotLite.Skills
         {
             // Block skill execution when blocking UI is open
             if (IsBlockingUiOpen())
-                return;
-
-            // Block skill execution when game is not in foreground
-            if (!_instance.GameController.IsForeGroundCache)
                 return;
 
             // Block skill execution in towns

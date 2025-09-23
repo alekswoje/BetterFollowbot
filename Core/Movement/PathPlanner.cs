@@ -399,9 +399,14 @@ namespace BetterFollowbotLite.Core.Movement
             if (distanceToLeader >= _core.Settings.autoPilotPathfindingNodeDistance.Value)
             {
                 // Check if we need a new path: either no current tasks OR leader moved significantly
+                // For close follow, use a more reasonable recalculation distance
+                var recalculationDistance = Math.Max(500, _core.Settings.autoPilotPathfindingNodeDistance.Value * 10);
+                var leaderMovement = lastTargetPosition != Vector3.Zero ? Vector3.Distance(lastTargetPosition, followTarget.Pos) : 0;
                 var needsNewPath = _taskManager.TaskCount == 0 ||
                                  (lastTargetPosition != Vector3.Zero &&
-                                  Vector3.Distance(lastTargetPosition, followTarget.Pos) > Math.Max(3000, _core.Settings.autoPilotPathfindingNodeDistance.Value * 50));
+                                  Vector3.Distance(lastTargetPosition, followTarget.Pos) > recalculationDistance);
+
+                _core.LogMessage($"CLOSE FOLLOW: Distance to leader: {distanceToLeader:F1}, Tasks: {_taskManager.TaskCount}, Leader moved: {leaderMovement:F1}, Recalc threshold: {recalculationDistance:F1}, Needs new path: {needsNewPath}");
 
                 if (needsNewPath)
                 {

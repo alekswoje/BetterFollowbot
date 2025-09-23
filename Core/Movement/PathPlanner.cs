@@ -187,7 +187,8 @@ namespace BetterFollowbotLite.Core.Movement
                         else
                         {
                             // SPECIAL CASE: Labyrinth areas don't support party TP - always use portals
-                            if (PortalManager.IsInLabyrinthArea)
+                            // EXCEPTION: Aspirants' Plaza allows party TP as fallback
+                            if (PortalManager.IsInLabyrinthArea && _core.GameController?.Area?.CurrentArea?.DisplayName != "Aspirants' Plaza")
                             {
                                 _core.LogMessage("ZONE TRANSITION: In labyrinth area, skipping party TP and using portal search");
                                 var portal = GetBestPortalLabel(leaderPartyElement);
@@ -246,7 +247,8 @@ namespace BetterFollowbotLite.Core.Movement
                             if (!HasConflictingTransitionTasks())
                             {
                                 // SPECIAL CASE: Labyrinth areas don't support party TP
-                                if (PortalManager.IsInLabyrinthArea)
+                                // EXCEPTION: Aspirants' Plaza allows party TP as fallback
+                                if (PortalManager.IsInLabyrinthArea && _core.GameController?.Area?.CurrentArea?.DisplayName != "Aspirants' Plaza")
                                 {
                                     _core.LogMessage("ZONE TRANSITION: In labyrinth area, party TP not available - this is normal");
                                 }
@@ -316,7 +318,8 @@ namespace BetterFollowbotLite.Core.Movement
                             else
                             {
                                 // SPECIAL CASE: Labyrinth areas don't support party TP - use portals instead
-                                if (PortalManager.IsInLabyrinthArea)
+                                // EXCEPTION: Aspirants' Plaza allows party TP as fallback
+                                if (PortalManager.IsInLabyrinthArea && _core.GameController?.Area?.CurrentArea?.DisplayName != "Aspirants' Plaza")
                                 {
                                     _core.LogMessage("ZONE TRANSITION: In labyrinth area, using portal search instead of party TP");
                                     var portal = GetBestPortalLabel(leaderPartyElement);

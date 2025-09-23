@@ -356,25 +356,25 @@ namespace BetterFollowbotLite.Core.Movement
 
         public List<Vector2i> GetPath(Vector3 startWorld, Vector3 targetWorld)
         {
-            // Get grid coordinates from the Positioned components like Radar does
+            // Get grid coordinates from the Render components like Radar does
             var player = _core.GameController.Game.IngameState.Data.LocalPlayer;
-            var playerPositioned = player?.GetComponent<Positioned>();
-            if (playerPositioned == null)
+            var playerRender = player?.GetComponent<Render>();
+            if (playerRender == null)
             {
-                _core.LogMessage("A* DEBUG: Could not get player Positioned component");
+                _core.LogMessage("A* DEBUG: Could not get player Render component");
                 return null;
             }
 
-            var startGrid = new Vector2i((int)playerPositioned.GridPos().X, (int)playerPositioned.GridPos().Y);
+            var startGrid = new Vector2i((int)playerRender.GridPos().X, (int)playerRender.GridPos().Y);
 
             // For target, find the entity at the target position
             var targetEntity = _core.GameController.EntityListWrapper.OnlyValidEntities
-                .FirstOrDefault(e => Vector3.Distance(e.Pos, targetWorld) < 1f && e.HasComponent<Positioned>());
+                .FirstOrDefault(e => Vector3.Distance(e.Pos, targetWorld) < 1f && e.HasComponent<Render>());
             Vector2i targetGrid;
             if (targetEntity != null)
             {
-                var targetPositioned = targetEntity.GetComponent<Positioned>();
-                targetGrid = new Vector2i((int)targetPositioned.GridPos().X, (int)targetPositioned.GridPos().Y);
+                var targetRender = targetEntity.GetComponent<Render>();
+                targetGrid = new Vector2i((int)targetRender.GridPos().X, (int)targetRender.GridPos().Y);
             }
             else
             {

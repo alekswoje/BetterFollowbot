@@ -13,7 +13,6 @@ using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
 using BetterFollowbotLite.Skills;
-using BetterFollowbotLite.Skill;
 using BetterFollowbotLite.Automation;
 using BetterFollowbotLite.Core.TaskManagement;
 using BetterFollowbotLite.Core.Movement;

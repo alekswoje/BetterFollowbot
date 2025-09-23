@@ -316,17 +316,43 @@ namespace BetterFollowbotLite.Core.Movement
                 return new List<Vector2i>();
             }
 
-            // Check if positions are walkable
+            // Check if positions are walkable - be more lenient for target position
             if (!IsTilePathable(startGrid))
             {
                 _core.LogMessage($"A* DEBUG: Start position ({startGrid.X}, {startGrid.Y}) is not walkable!");
                 return null;
             }
 
+            // For target position, try nearby walkable tiles if the exact position is blocked
             if (!IsTilePathable(targetGrid))
             {
-                _core.LogMessage($"A* DEBUG: Target position ({targetGrid.X}, {targetGrid.Y}) is not walkable!");
+                _core.LogMessage($"A* DEBUG: Target position ({targetGrid.X}, {targetGrid.Y}) is not walkable - trying nearby walkable tiles");
+
+                // Search in expanding circles for a walkable target
+                for (int radius = 1; radius <= 3; radius++) // Search up to 3 tiles away
+                {
+                    for (int dx = -radius; dx <= radius; dx++)
+                    {
+                        for (int dy = -radius; dy <= radius; dy++)
+                        {
+                            if (Math.Abs(dx) + Math.Abs(dy) == radius) // Only check perimeter for efficiency
+                            {
+                                var nearbyTile = new Vector2i(targetGrid.X + dx, targetGrid.Y + dy);
+                                if (IsTilePathable(nearbyTile))
+                                {
+                                    _core.LogMessage($"A* DEBUG: Found nearby walkable target at ({nearbyTile.X}, {nearbyTile.Y}) - using as target");
+                                    targetGrid = nearbyTile;
+                                    goto foundWalkableTarget;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                _core.LogMessage($"A* DEBUG: No walkable target found within 3 tiles - A* pathfinding failed!");
                 return null;
+
+                foundWalkableTarget:;
             }
 
             _core.LogMessage($"A* DEBUG: Both positions are walkable, running first scan...");

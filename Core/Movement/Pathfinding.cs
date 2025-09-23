@@ -6,7 +6,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using BetterFollowbotLite.Interfaces;
 using ExileCore;
-using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
 using GameOffsets;
 using GameOffsets.Native;
@@ -29,8 +28,9 @@ namespace BetterFollowbotLite.Core.Movement
         private int _dimension2;
         private int _dimension1;
 
-        // Path finding
-        private PathFinder _pathFinder;
+        // A* pathfinding data structures
+        private ConcurrentDictionary<Vector2i, Dictionary<Vector2i, float>> _exactDistanceField = new();
+        private ConcurrentDictionary<Vector2i, byte[][]> _directionField = new();
         private ConcurrentDictionary<string, List<Vector2i>> _pathCache = new();
 
         public Pathfinding(IFollowbotCore core, ITerrainAnalyzer terrainAnalyzer)
@@ -47,9 +47,6 @@ namespace BetterFollowbotLite.Core.Movement
 
         public void InitializeTerrain()
         {
-            // Clear caches when terrain is reinitialized
-            ClearPathCache();
-
             try
             {
                 _terrainMetadata = BetterFollowbotLite.Instance.GameController.IngameState.Data.DataStruct.Terrain;
@@ -78,43 +75,10 @@ namespace BetterFollowbotLite.Core.Movement
                 }
 
                 _core.LogMessage($"PATHFINDING: Processing {_processedTerrainData.Length} terrain rows");
-                if (_processedTerrainData.Length == 0)
-                {
-                    _core.LogError("PATHFINDING: RawPathfindingData is empty!");
-                    _grid = null;
-                    return;
-                }
 
                 _grid = _processedTerrainData.Select(x => x.Select(y => pv.Contains(y)).ToArray()).ToArray();
 
-                // Set dimensions based on actual terrain data, not calculated metadata
-                _dimension1 = _processedTerrainData.Length;      // rows
-                _dimension2 = _processedTerrainData[0].Length;   // columns
-
-                _core.LogMessage($"PATHFINDING: Updated terrain dimensions - Cols: {_dimension2}, Rows: {_dimension1}");
-
                 _processedTerrainTargetingData = BetterFollowbotLite.Instance.GameController.IngameState.Data.RawTerrainTargetingData;
-
-                // Initialize Radar-style PathFinder
-                try
-                {
-                    _core.LogMessage($"PATHFINDING: Creating PathFinder with terrain data dimensions {_processedTerrainData.Length}x{_processedTerrainData[0].Length}");
-                    _pathFinder = new PathFinder(_processedTerrainData, pathableValues);
-                    if (_pathFinder != null)
-                    {
-                        _core.LogMessage("PATHFINDING: A* PathFinder initialized successfully");
-                    }
-                    else
-                    {
-                        _core.LogError("PATHFINDING: PathFinder constructor returned null!");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _core.LogError($"PATHFINDING: Failed to initialize PathFinder: {ex.Message}");
-                    _core.LogError($"PATHFINDING: Stack trace: {ex.StackTrace}");
-                    _pathFinder = null;
-                }
 
                 _core.LogMessage("PATHFINDING: A* terrain data initialized successfully");
 
@@ -128,12 +92,6 @@ namespace BetterFollowbotLite.Core.Movement
                     }
                 }
                 _core.LogMessage($"PATHFINDING: Found {walkableCount} walkable tiles out of {_dimension1 * _dimension2} total tiles");
-
-                // Check if we have any walkable tiles at all
-                if (walkableCount == 0)
-                {
-                    _core.LogError("PATHFINDING: No walkable tiles found in terrain data!");
-                }
             }
             catch (Exception e)
             {
@@ -169,82 +127,181 @@ namespace BetterFollowbotLite.Core.Movement
 
         #endregion
 
+        #region A* Pathfinding Methods
 
+        private bool IsTilePathable(Vector2i tile)
+        {
+            if (tile.X < 0 || tile.X >= _dimension2)
+                return false;
+
+            if (tile.Y < 0 || tile.Y >= _dimension1)
+                return false;
+
+            return _grid[tile.Y][tile.X];
+        }
+
+        private static readonly List<Vector2i> NeighborOffsets = new List<Vector2i>
+        {
+            new Vector2i(0, 1),
+            new Vector2i(1, 1),
+            new Vector2i(1, 0),
+            new Vector2i(1, -1),
+            new Vector2i(0, -1),
+            new Vector2i(-1, -1),
+            new Vector2i(-1, 0),
+            new Vector2i(-1, 1),
+        };
+
+        private static IEnumerable<Vector2i> GetNeighbors(Vector2i tile)
+        {
+            return NeighborOffsets.Select(offset => tile + offset);
+        }
+
+        private static float GetExactDistance(Vector2i tile, Dictionary<Vector2i, float> dict)
+        {
+            return dict.GetValueOrDefault(tile, float.PositiveInfinity);
+        }
+
+        public List<Vector2i> FindPath(Vector2i start, Vector2i target)
+        {
+            if (_directionField.GetValueOrDefault(target) is { } directionField)
+            {
+                if (directionField[start.Y][start.X] == 0)
+                    return null;
+                var path = new List<Vector2i>();
+                var current = start;
+                while (current != target)
+                {
+                    var directionIndex = directionField[current.Y][current.X];
+                    if (directionIndex == 0)
+                        return null;
+
+                    var next = NeighborOffsets[directionIndex - 1] + current;
+                    path.Add(next);
+                    current = next;
+                }
+                return path;
+            }
+            else
+            {
+                var exactDistanceField = _exactDistanceField[target];
+                if (float.IsPositiveInfinity(GetExactDistance(start, exactDistanceField)))
+                    return null;
+                var path = new List<Vector2i>();
+                var current = start;
+                while (current != target)
+                {
+                    var next = GetNeighbors(current).MinBy(x => GetExactDistance(x, exactDistanceField));
+                    path.Add(next);
+                    current = next;
+                }
+                return path;
+            }
+        }
+
+        public IEnumerable<List<Vector2i>> RunFirstScan(Vector2i start, Vector2i target)
+        {
+            if (_directionField.ContainsKey(target))
+            {
+                yield break;
+            }
+
+            if (!_exactDistanceField.TryAdd(target, new Dictionary<Vector2i, float>()))
+            {
+                yield break;
+            }
+
+            var exactDistanceField = _exactDistanceField[target];
+            exactDistanceField[target] = 0;
+            var localBacktrackDictionary = new Dictionary<Vector2i, Vector2i>();
+            var queue = new BinaryHeap<float, Vector2i>();
+            queue.Add(0, target);
+
+            void TryEnqueueTile(Vector2i coord, Vector2i previous, float previousScore)
+            {
+                if (!IsTilePathable(coord))
+                    return;
+
+                if (localBacktrackDictionary.ContainsKey(coord))
+                    return;
+
+                localBacktrackDictionary.Add(coord, previous);
+                var exactDistance = previousScore + coord.DistanceF(previous);
+                exactDistanceField.TryAdd(coord, exactDistance);
+                queue.Add(exactDistance, coord);
+            }
+
+            var sw = Stopwatch.StartNew();
+
+            localBacktrackDictionary.Add(target, target);
+            var reversePath = new List<Vector2i>();
+            while (queue.TryRemoveTop(out var top))
+            {
+                var current = top.Value;
+                var currentDistance = top.Key;
+                if (reversePath.Count == 0 && current.Equals(start))
+                {
+                    reversePath.Add(current);
+                    var it = current;
+                    while (it != target && localBacktrackDictionary.TryGetValue(it, out var previous))
+                    {
+                        reversePath.Add(previous);
+                        it = previous;
+                    }
+
+                    yield return reversePath;
+                }
+
+                foreach (var neighbor in GetNeighbors(current))
+                {
+                    TryEnqueueTile(neighbor, current, currentDistance);
+                }
+
+                if (sw.ElapsedMilliseconds > 100)
+                {
+                    yield return reversePath;
+                    sw.Restart();
+                }
+            }
+
+            localBacktrackDictionary.Clear();
+
+            if (_dimension1 * _dimension2 < exactDistanceField.Count * (sizeof(int) * 2 + Unsafe.SizeOf<Vector2i>() + Unsafe.SizeOf<float>()))
+            {
+                var directionGrid = _grid
+                    .AsParallel().AsOrdered().Select((r, y) => r.Select((_, x) =>
+                    {
+                        var coordVec = new Vector2i(x, y);
+                        if (float.IsPositiveInfinity(GetExactDistance(coordVec, exactDistanceField)))
+                            return (byte)0;
+
+                        var neighbors = GetNeighbors(coordVec);
+                        var (closestNeighbor, clndistance) = neighbors.Select(n => (n, distance: GetExactDistance(n, exactDistanceField))).MinBy(p => p.distance);
+                        if (float.IsPositiveInfinity(clndistance))
+                            return (byte)0;
+
+                        var bestDirection = closestNeighbor - coordVec;
+                        return (byte)(1 + NeighborOffsets.IndexOf(bestDirection));
+                    }).ToArray())
+                    .ToArray();
+
+                _directionField[target] = directionGrid;
+                _exactDistanceField.TryRemove(target, out _);
+            }
+        }
+
+        #endregion
 
         #region Utility Methods
 
         public List<Vector2i> GetPath(Vector3 startWorld, Vector3 targetWorld)
         {
-            _core.LogMessage($"A* DEBUG: GetPath called - Start: {startWorld}, Target: {targetWorld}, PathFinder null: {_pathFinder == null}");
-
-            // Get grid coordinates from the Render components like Radar does
-            var player = _core.GameController.Game.IngameState.Data.LocalPlayer;
-            var playerRender = player?.GetComponent<Render>();
-            if (playerRender == null)
-            {
-                _core.LogMessage("A* DEBUG: Could not get player Render component");
-                return null;
-            }
-
-            var startGrid = new Vector2i((int)playerRender.GridPos().X, (int)playerRender.GridPos().Y);
-            _core.LogMessage($"A* DEBUG: Player grid pos: ({startGrid.X}, {startGrid.Y})");
-
-            // For target, find the entity at the target position
-            var targetEntity = _core.GameController.EntityListWrapper.OnlyValidEntities
-                .FirstOrDefault(e => Vector3.Distance(e.Pos, targetWorld) < 1f && e.HasComponent<Render>());
-            Vector2i targetGrid;
-            if (targetEntity != null)
-            {
-                var targetRender = targetEntity.GetComponent<Render>();
-                targetGrid = new Vector2i((int)targetRender.GridPos().X, (int)targetRender.GridPos().Y);
-            }
-            else
-            {
-                // Fallback to world-to-grid conversion for target if entity not found
-                targetGrid = WorldToGrid(targetWorld);
-                _core.LogMessage($"A* DEBUG: Using fallback grid conversion for target: world {targetWorld} -> grid ({targetGrid.X}, {targetGrid.Y})");
-            }
+            var startGrid = WorldToGrid(startWorld);
+            var targetGrid = WorldToGrid(targetWorld);
 
             _core.LogMessage($"A* DEBUG: Finding path from grid ({startGrid.X}, {startGrid.Y}) to ({targetGrid.X}, {targetGrid.Y})");
 
-            // Check bounds
-            _core.LogMessage($"A* DEBUG: Grid bounds check - Dimensions: {_dimension2}x{_dimension1}, Start: ({startGrid.X}, {startGrid.Y}), Target: ({targetGrid.X}, {targetGrid.Y})");
-            if (startGrid.X < 0 || startGrid.X >= _dimension2 || startGrid.Y < 0 || startGrid.Y >= _dimension1 ||
-                targetGrid.X < 0 || targetGrid.X >= _dimension2 || targetGrid.Y < 0 || targetGrid.Y >= _dimension1)
-            {
-                _core.LogMessage($"A* DEBUG: Grid coordinates out of bounds - Start: ({startGrid.X}, {startGrid.Y}), Target: ({targetGrid.X}, {targetGrid.Y}), Dimensions: {_dimension2}x{_dimension1}");
-                return null;
-            }
-
-            // Check if start and target positions are walkable
-            if (_grid != null && startGrid.Y < _grid.Length && startGrid.X < _grid[startGrid.Y].Length)
-            {
-                bool startWalkable = _grid[startGrid.Y][startGrid.X];
-                _core.LogMessage($"A* DEBUG: Start position ({startGrid.X}, {startGrid.Y}) walkable: {startWalkable}");
-            }
-            else
-            {
-                _core.LogMessage($"A* DEBUG: Cannot check start position walkability - grid is null or coordinates out of range");
-            }
-
-            if (_grid != null && targetGrid.Y < _grid.Length && targetGrid.X < _grid[targetGrid.Y].Length)
-            {
-                bool targetWalkable = _grid[targetGrid.Y][targetGrid.X];
-                _core.LogMessage($"A* DEBUG: Target position ({targetGrid.X}, {targetGrid.Y}) walkable: {targetWalkable}");
-            }
-            else
-            {
-                _core.LogMessage($"A* DEBUG: Cannot check target position walkability - grid is null or coordinates out of range");
-            }
-
-            // Check if start and target are the same
-            if (startGrid == targetGrid)
-            {
-                _core.LogMessage("A* DEBUG: Start and target positions are the same");
-                return new List<Vector2i>();
-            }
-
-            // Check cache first
+            // Check cache first - use both start and target positions as key
             var cacheKey = $"{startGrid.X},{startGrid.Y}->{targetGrid.X},{targetGrid.Y}";
             if (_pathCache.TryGetValue(cacheKey, out var cachedPath))
             {
@@ -252,49 +309,64 @@ namespace BetterFollowbotLite.Core.Movement
                 return cachedPath;
             }
 
-            // Use Radar-style path finding
-            if (_pathFinder == null)
+            // Check if start and target are the same
+            if (startGrid == targetGrid)
             {
-                _core.LogMessage("A* DEBUG: PathFinder not initialized");
+                _core.LogMessage($"A* DEBUG: Start and target are the same, returning empty path");
+                return new List<Vector2i>();
+            }
+
+            // Check if positions are walkable
+            if (!IsTilePathable(startGrid))
+            {
+                _core.LogMessage($"A* DEBUG: Start position ({startGrid.X}, {startGrid.Y}) is not walkable!");
                 return null;
             }
 
-            // Run first scan to populate direction/exact distance fields
-            var scanResults = _pathFinder.RunFirstScan(startGrid, targetGrid).ToList();
-            if (scanResults.Any() && scanResults.First().Any())
+            if (!IsTilePathable(targetGrid))
             {
-                var path = scanResults.First();
-                _pathCache[cacheKey] = path;
-                _core.LogMessage($"A* DEBUG: Found path with {path.Count} waypoints");
-                return path;
+                _core.LogMessage($"A* DEBUG: Target position ({targetGrid.X}, {targetGrid.Y}) is not walkable!");
+                return null;
             }
 
-            // If first scan didn't find a path, try direct FindPath
-            var directPath = _pathFinder.FindPath(startGrid, targetGrid);
-            if (directPath != null)
+            _core.LogMessage($"A* DEBUG: Both positions are walkable, running first scan...");
+
+            // Run first scan if needed
+            var pathFound = false;
+            foreach (var path in RunFirstScan(startGrid, targetGrid))
             {
-                _pathCache[cacheKey] = directPath;
-                _core.LogMessage($"A* DEBUG: Found direct path with {directPath.Count} waypoints");
-                return directPath;
+                if (path != null && path.Count > 0)
+                {
+                    _core.LogMessage($"A* DEBUG: First scan found path with {path.Count} waypoints");
+                    _pathCache[cacheKey] = path;
+                    pathFound = true;
+                    return path;
+                }
             }
 
-            _core.LogMessage("A* DEBUG: No path found");
-            return null;
+            if (!pathFound)
+            {
+                _core.LogMessage($"A* DEBUG: First scan found no path, trying direction field...");
+            }
+
+            // Find path using direction field
+            var finalPath = FindPath(startGrid, targetGrid);
+            if (finalPath != null)
+            {
+                _core.LogMessage($"A* DEBUG: Direction field found path with {finalPath.Count} waypoints");
+                _pathCache[cacheKey] = finalPath;
+            }
+            else
+            {
+                _core.LogMessage($"A* DEBUG: No path found by any method");
+            }
+
+            return finalPath;
         }
 
         public void ClearPathCache()
         {
-            _core.LogMessage("A* DEBUG: ClearPathCache called - clearing path cache only");
             _pathCache.Clear();
-            _core.LogMessage("A* DEBUG: Path cache cleared");
-        }
-
-        public void ResetPathFinder()
-        {
-            _core.LogMessage("A* DEBUG: ResetPathFinder called - clearing caches and destroying PathFinder");
-            _pathCache.Clear();
-            _pathFinder = null; // Force recreation of PathFinder
-            _core.LogMessage("A* DEBUG: PathFinder reset complete");
         }
 
         private Vector2i WorldToGrid(Vector3 worldPos)
@@ -302,13 +374,18 @@ namespace BetterFollowbotLite.Core.Movement
             // Convert world position to grid coordinates (similar to Radar's GridToWorldMultiplier)
             const float GridToWorldMultiplier = 250f / 23f; // TileToWorldConversion / TileToGridConversion
             var gridX = (int)(worldPos.X / GridToWorldMultiplier);
-            var gridY = (int)(worldPos.Z / GridToWorldMultiplier); // Z is up in world space, Y in grid
+            var gridY = (int)(worldPos.Y / GridToWorldMultiplier); // Y is north-south in world space, Y in grid
+
+            // Clamp coordinates to valid range
+            gridX = Math.Max(0, Math.Min(gridX, _dimension2 - 1));
+            gridY = Math.Max(0, Math.Min(gridY, _dimension1 - 1));
+
             return new Vector2i(gridX, gridY);
         }
 
         private Vector2i WorldToGrid(Vector2 worldPos)
         {
-            return WorldToGrid(new Vector3(worldPos.X, 0, worldPos.Y));
+            return WorldToGrid(new Vector3(worldPos.X, worldPos.Y, 0));
         }
 
         private byte GetTerrainTileFromGrid(int x, int y)

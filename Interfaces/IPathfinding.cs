@@ -56,6 +56,5 @@ namespace BetterFollowbotLite.Interfaces
         /// Clear the path cache
         /// </summary>
         void ClearPathCache();
-        void ResetPathFinder();
     }
 }

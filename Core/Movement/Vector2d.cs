@@ -24,4 +24,3 @@ public readonly record struct Vector2d(double X, double Y)
         return new Vector2d(v.X / d, v.Y / d);
     }
 }
-

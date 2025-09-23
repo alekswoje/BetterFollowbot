@@ -369,7 +369,7 @@ namespace BetterFollowbotLite.Core.Movement
             _pathCache.Clear();
         }
 
-        private Vector2i WorldToGrid(Vector3 worldPos)
+        public Vector2i WorldToGrid(Vector3 worldPos)
         {
             // Convert world position to grid coordinates (similar to Radar's GridToWorldMultiplier)
             const float GridToWorldMultiplier = 250f / 23f; // TileToWorldConversion / TileToGridConversion

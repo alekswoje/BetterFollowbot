@@ -11,6 +11,7 @@ using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using ExileCore.Shared.Interfaces;
 using ExileCore.Shared.Nodes;
+using GameOffsets.Native;
 using SharpDX;
 
 namespace BetterFollowbotLite.Core.Movement
@@ -367,10 +368,20 @@ namespace BetterFollowbotLite.Core.Movement
                         // Validate followTarget position before creating tasks
                         if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {
-                            // Check if terrain is loaded before using A* pathfinding
-                            if (!_core.Pathfinding.IsTerrainLoaded)
+                            // CORRIDOR-AWARE PATHFINDING: Check if we're in a tight space
+                            bool isInTightSpace = IsInTightSpace(_core.PlayerPosition, followTarget.Pos);
+                            bool useDirectMovement = isInTightSpace || !_core.Pathfinding.IsTerrainLoaded;
+
+                            if (useDirectMovement)
                             {
-                                _core.LogMessage($"A* PATH: Terrain not loaded, falling back to direct movement - Distance: {distanceToLeader:F1}");
+                                if (isInTightSpace)
+                                {
+                                    _core.LogMessage($"CORRIDOR MODE: Using direct movement in tight space - Distance: {distanceToLeader:F1}");
+                                }
+                                else
+                                {
+                                    _core.LogMessage($"A* PATH: Terrain not loaded, falling back to direct movement - Distance: {distanceToLeader:F1}");
+                                }
                                 _core.LogMessage($"A* PATH: Player pos: {_core.PlayerPosition}, Leader pos: {followTarget.Pos}");
 
                                 if (distanceToLeader > _core.Settings.autoPilotDashDistance && _core.Settings.autoPilotDashEnabled)
@@ -387,13 +398,13 @@ namespace BetterFollowbotLite.Core.Movement
                                     }
                                     else
                                     {
-                                        _core.LogMessage($"Adding Dash task (terrain not loaded) - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}");
+                                        _core.LogMessage($"Adding Dash task (direct/corridor mode) - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}");
                                         _taskManager.AddTask(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
                                     }
                                 }
                                 else
                                 {
-                                    _core.LogMessage($"Adding Movement task (terrain not loaded) - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}");
+                                    _core.LogMessage($"Adding Movement task (direct/corridor mode) - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}");
                                     _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                                 }
                             }
@@ -499,8 +510,8 @@ namespace BetterFollowbotLite.Core.Movement
                         if (followTarget != null && followTarget.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {
                             var distanceFromLastTask = Vector3.Distance(_taskManager.Tasks.Last().WorldPosition, followTarget.Pos);
-                            // More responsive: reduce threshold by half for more frequent path updates
-                            var responsiveThreshold = _core.Settings.autoPilotPathfindingNodeDistance.Value / 2;
+                            // LESS AGGRESSIVE: Use 75% of node distance instead of 50% to reduce path recalculations
+                            var responsiveThreshold = _core.Settings.autoPilotPathfindingNodeDistance.Value * 0.75f;
                             if (distanceFromLastTask >= responsiveThreshold)
                             {
                                 _core.LogMessage($"RESPONSIVENESS: Extending path with A* - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
@@ -706,6 +717,65 @@ namespace BetterFollowbotLite.Core.Movement
                 t.Type == TaskNodeType.Transition ||
                 t.Type == TaskNodeType.TeleportConfirm ||
                 t.Type == TaskNodeType.TeleportButton);
+        }
+
+        /// <summary>
+        /// Determines if the bot is in a tight space (corridor, narrow passage) where A* pathfinding
+        /// might cause issues due to frequent path recalculations from small movements.
+        /// </summary>
+        private bool IsInTightSpace(Vector3 botPosition, Vector3 leaderPosition)
+        {
+            try
+            {
+                var distanceToLeader = Vector3.Distance(botPosition, leaderPosition);
+
+                // If very close to leader, likely in tight space
+                if (distanceToLeader < 100f)
+                    return true;
+
+                // If terrain not loaded, use distance-based heuristic
+                if (!_core.Pathfinding.IsTerrainLoaded)
+                {
+                    // Consider it tight if we're relatively close but not too close
+                    // This helps in corridors where terrain data might not be fully loaded
+                    return distanceToLeader < 300f;
+                }
+
+                // Use a simpler terrain-based approach
+                // Check if the bot's current position has restricted movement options
+                var currentTile = _core.Pathfinding.GetTerrainTile((int)botPosition.X, (int)botPosition.Z);
+                if (currentTile <= 0)
+                    return true; // Not on walkable terrain, likely tight space
+
+                // Check a few adjacent positions for walkability
+                var walkableCount = 0;
+                var checkCount = 0;
+                var checkRadius = 2; // Check within 2 units
+
+                for (int dx = -checkRadius; dx <= checkRadius; dx++)
+                {
+                    for (int dz = -checkRadius; dz <= checkRadius; dz++)
+                    {
+                        if (dx == 0 && dz == 0) continue; // Skip current position
+
+                        checkCount++;
+                        var tile = _core.Pathfinding.GetTerrainTile((int)botPosition.X + dx, (int)botPosition.Z + dz);
+                        if (tile > 0) // Any positive tile value is considered walkable
+                        {
+                            walkableCount++;
+                        }
+                    }
+                }
+
+                // If less than 70% of surrounding area is walkable, consider it tight space
+                var walkableRatio = checkCount > 0 ? (float)walkableCount / checkCount : 0f;
+                return walkableRatio < 0.7f;
+            }
+            catch
+            {
+                // On error, assume not tight space to avoid breaking functionality
+                return false;
+            }
         }
     }
 }

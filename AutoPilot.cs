@@ -51,14 +51,60 @@ namespace BetterFollowbotLite;
         private Vector3 lastPlayerPosition;
         private Entity followTarget;
 
+        // PREDICTIVE FOLLOWING: Track leader movement velocity for anticipation
+        private Vector3 _leaderVelocity = Vector3.Zero;
+        private DateTime _lastVelocityUpdate = DateTime.MinValue;
+        private const float PREDICTION_TIME = 0.5f; // Predict 0.5 seconds ahead
+
+        /// <summary>
+        /// Updates leader velocity tracking for predictive following
+        /// </summary>
+        private void UpdateLeaderVelocity(Vector3 currentPosition)
+        {
+            var now = DateTime.Now;
+            if (lastTargetPosition != Vector3.Zero && (now - _lastVelocityUpdate).TotalMilliseconds > 100)
+            {
+                var timeDelta = (float)(now - _lastVelocityUpdate).TotalSeconds;
+                if (timeDelta > 0 && timeDelta < 2.0f) // Reasonable time delta
+                {
+                    var displacement = currentPosition - lastTargetPosition;
+                    var instantVelocity = displacement / timeDelta;
+
+                    // Smooth velocity with exponential moving average
+                    const float smoothingFactor = 0.3f;
+                    _leaderVelocity = _leaderVelocity * (1 - smoothingFactor) + instantVelocity * smoothingFactor;
+
+                    // Cap velocity to reasonable bounds to prevent wild predictions
+                    const float maxVelocity = 200f; // units per second
+                    if (_leaderVelocity.Length() > maxVelocity)
+                    {
+                        _leaderVelocity = Vector3.Normalize(_leaderVelocity) * maxVelocity;
+                    }
+                }
+                _lastVelocityUpdate = now;
+            }
+        }
+
+        /// <summary>
+        /// Gets a predicted leader position based on current velocity
+        /// </summary>
+        private Vector3 GetPredictedLeaderPosition()
+        {
+            if (_leaderVelocity.Length() < 1f) // Only predict if moving reasonably fast
+                return lastTargetPosition;
+
+            return lastTargetPosition + _leaderVelocity * PREDICTION_TIME;
+        }
+
         public static bool IsTeleportInProgress { get; set; } = false;
 
     public Entity FollowTarget => followTarget;
 
     /// <summary>
     /// Gets the current position of the follow target, using updated position data
+    /// Now includes predictive following to anticipate leader movement
     /// </summary>
-    public Vector3 FollowTargetPosition => lastTargetPosition;
+    public Vector3 FollowTargetPosition => GetPredictedLeaderPosition();
 
     /// <summary>
     /// Sets the follow target entity
@@ -111,6 +157,9 @@ namespace BetterFollowbotLite;
             portalManager.DetectPortalTransition(lastTargetPosition, newPosition);
 
             lastTargetPosition = newPosition;
+
+            // Update predictive following velocity tracking
+            UpdateLeaderVelocity(newPosition);
 
             var totalUpdateDuration = DateTime.Now - updateStartTime;
             if (totalUpdateDuration.TotalMilliseconds > 10)
@@ -261,11 +310,18 @@ namespace BetterFollowbotLite;
 
                     float dotProduct = Vector3.Dot(botToTask, botToPlayer);
 
-                    if (dotProduct < -0.5f)
+                    // REDUCED RESPONSIVENESS: Only clear path if going strongly opposite direction (>120 degrees)
+                    // Previous threshold was -0.5f (120 degrees), now -0.3f (107 degrees) for less sensitivity
+                    if (dotProduct < -0.3f)
                     {
-                        lastPathClearTime = DateTime.Now;
-                        lastResponsivenessCheck = DateTime.Now;
-                        return true;
+                        // Additional check: only clear if we're not in a tight space where direction changes are common
+                        var distanceToTarget = Vector3.Distance(botPos, playerPos);
+                        if (distanceToTarget > 50f) // Only clear if reasonably far from leader
+                        {
+                            lastPathClearTime = DateTime.Now;
+                            lastResponsivenessCheck = DateTime.Now;
+                            return true;
+                        }
                     }
                 }
             }
@@ -371,8 +427,8 @@ namespace BetterFollowbotLite;
         }
     }
 
-    private void ResetPathing()
-    {
+        private void ResetPathing()
+        {
         _taskManager.ClearTasks();
         followTarget = null;
         lastTargetPosition = Vector3.Zero;
@@ -383,6 +439,10 @@ namespace BetterFollowbotLite;
         lastPathClearTime = DateTime.MinValue;
         lastResponsivenessCheck = DateTime.MinValue;
         lastEfficiencyCheck = DateTime.MinValue;
+
+        // Reset predictive following
+        _leaderVelocity = Vector3.Zero;
+        _lastVelocityUpdate = DateTime.MinValue;
 
         IsTeleportInProgress = false;
     }

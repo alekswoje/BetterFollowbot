@@ -146,7 +146,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     }
     
     #endregion
-    public int GetMonsterWithin(float maxDistance, MonsterRarity rarity = MonsterRarity.Normal)
+    public int GetMonsterWithin(float maxDistance, ExileCore.Shared.Enums.MonsterRarity rarity = ExileCore.Shared.Enums.MonsterRarity.White)
     {
         return (from monster in enemys
                 let rarityComponent = monster.GetComponent<ObjectMagicProperties>()

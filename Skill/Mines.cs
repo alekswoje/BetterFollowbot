@@ -99,16 +99,16 @@ namespace BetterFollowbotLite.Skill
                             .Where(monster =>
                             {
                                 // Check if monster is rare or unique using Entity.Rarity (like ReAgent does)
-                                MonsterRarity rarity;
+                                BetterFollowbotLite.Skill.MonsterRarity rarity;
                                 try
                                 {
                                     rarity = monster.Rarity switch
                                     {
-                                        ExileCore.Shared.Enums.MonsterRarity.White => MonsterRarity.Normal,
-                                        ExileCore.Shared.Enums.MonsterRarity.Magic => MonsterRarity.Magic,
-                                        ExileCore.Shared.Enums.MonsterRarity.Rare => MonsterRarity.Rare,
-                                        ExileCore.Shared.Enums.MonsterRarity.Unique => MonsterRarity.Unique,
-                                        _ => MonsterRarity.Normal
+                                        ExileCore.Shared.Enums.MonsterRarity.White => BetterFollowbotLite.Skill.MonsterRarity.Normal,
+                                        ExileCore.Shared.Enums.MonsterRarity.Magic => BetterFollowbotLite.Skill.MonsterRarity.Magic,
+                                        ExileCore.Shared.Enums.MonsterRarity.Rare => BetterFollowbotLite.Skill.MonsterRarity.Rare,
+                                        ExileCore.Shared.Enums.MonsterRarity.Unique => BetterFollowbotLite.Skill.MonsterRarity.Unique,
+                                        _ => BetterFollowbotLite.Skill.MonsterRarity.Normal
                                     };
                                 }
                                 catch
@@ -120,14 +120,14 @@ namespace BetterFollowbotLite.Skill
 
                                     rarity = rarityComponent.Rarity switch
                                     {
-                                        ExileCore.Shared.Enums.MonsterRarity.Rare => MonsterRarity.Rare,
-                                        ExileCore.Shared.Enums.MonsterRarity.Unique => MonsterRarity.Unique,
-                                        _ => MonsterRarity.Normal
+                                        ExileCore.Shared.Enums.MonsterRarity.Rare => BetterFollowbotLite.Skill.MonsterRarity.Rare,
+                                        ExileCore.Shared.Enums.MonsterRarity.Unique => BetterFollowbotLite.Skill.MonsterRarity.Unique,
+                                        _ => BetterFollowbotLite.Skill.MonsterRarity.Normal
                                     };
                                 }
 
                                 // Only target Rare or Unique monsters
-                                if (rarity != MonsterRarity.Rare && rarity != MonsterRarity.Unique)
+                                if (rarity != BetterFollowbotLite.Skill.MonsterRarity.Rare && rarity != BetterFollowbotLite.Skill.MonsterRarity.Unique)
                                     return false;
 
                                 // Check distance from player to monster

@@ -564,7 +564,7 @@ namespace BetterFollowbotLite.Core.Movement
                         {
                             var distanceFromLastTask = Vector3.Distance(_taskManager.Tasks.Last().WorldPosition, followTarget.Pos);
                             // Only extend if leader has moved significantly from the end of current path
-                            var extensionThreshold = Math.Max(150, _core.Settings.autoPilotPathfindingNodeDistance.Value * 3);
+                            var extensionThreshold = Math.Max(300, _core.Settings.autoPilotPathfindingNodeDistance.Value * 5);
                             if (distanceFromLastTask >= extensionThreshold)
                             {
                                 _core.LogMessage($"PATH EXTENSION: Extending path - Tasks left: {_taskManager.TaskCount}, Distance: {distanceFromLastTask:F1}, Threshold: {extensionThreshold:F1}");
@@ -595,9 +595,9 @@ namespace BetterFollowbotLite.Core.Movement
                                         var gridToWorldMultiplier = 250f / 23f; // Same conversion as in Pathfinding.cs
                                         var waypointsAdded = 0;
                                         var lastWaypointPos = extensionWaypoints[0]; // Current path end
-                                        var minDistanceBetweenWaypoints = 4; // Minimum 4 grid units between waypoints for extensions
+                                        var minDistanceBetweenWaypoints = 6; // Minimum 6 grid units between waypoints for extensions
 
-                                        for (int i = 1; i < extensionWaypoints.Count && waypointsAdded < 5; i++) // Limit to 5 additional waypoints
+                                        for (int i = 1; i < extensionWaypoints.Count && waypointsAdded < 3; i++) // Limit to 3 additional waypoints
                                         {
                                             var waypoint = extensionWaypoints[i];
                                             var distanceFromLast = Math.Abs(waypoint.X - lastWaypointPos.X) + Math.Abs(waypoint.Y - lastWaypointPos.Y);
@@ -651,46 +651,58 @@ namespace BetterFollowbotLite.Core.Movement
                     }
                     if (_core.Settings.autoPilotCloseFollow.Value)
                     {
-                        //Close follow logic. We have no current tasks. Check if we should move towards leader
+                        // Close follow logic. Only create tasks if we have none and leader moved significantly
                         if (distanceToLeader >= _core.Settings.autoPilotPathfindingNodeDistance.Value)
                         {
-                            // Try A* pathfinding first if terrain is loaded
-                            if (_core.Pathfinding.IsTerrainLoaded)
+                            // Check if leader has moved far enough from our last target position to warrant new path
+                            var leaderMovedSinceLastTask = lastTargetPosition == Vector3.Zero ||
+                                                         Vector3.Distance(lastTargetPosition, followTarget.Pos) > _core.Settings.autoPilotPathfindingNodeDistance.Value * 2;
+
+                            if (leaderMovedSinceLastTask)
                             {
-                                _core.LogMessage($"A* PATH: Close follow - attempting A* pathfinding - Player: {_core.PlayerPosition}, Leader: {followTarget.Pos}");
-                                var pathWaypoints = _core.Pathfinding.GetPath(_core.PlayerPosition, followTarget.Pos);
-
-                                if (pathWaypoints != null && pathWaypoints.Count > 1)
+                                // Try A* pathfinding first if terrain is loaded
+                                if (_core.Pathfinding.IsTerrainLoaded)
                                 {
-                                    _core.LogMessage($"A* PATH: Close follow found path with {pathWaypoints.Count} waypoints");
+                                    _core.LogMessage($"A* PATH: Close follow - attempting A* pathfinding - Player: {_core.PlayerPosition}, Leader: {followTarget.Pos}");
+                                    var pathWaypoints = _core.Pathfinding.GetPath(_core.PlayerPosition, followTarget.Pos);
 
-                                    // For close follow, simplify to 2 waypoints max (start and end)
-                                    var startWorldPos = new Vector3(
-                                        pathWaypoints[0].X * 250f / 23f,
-                                        pathWaypoints[0].Y * 250f / 23f,
-                                        followTarget.Pos.Z
-                                    );
-                                    var endWorldPos = new Vector3(
-                                        pathWaypoints[pathWaypoints.Count - 1].X * 250f / 23f,
-                                        pathWaypoints[pathWaypoints.Count - 1].Y * 250f / 23f,
-                                        followTarget.Pos.Z
-                                    );
+                                    if (pathWaypoints != null && pathWaypoints.Count > 1)
+                                    {
+                                        _core.LogMessage($"A* PATH: Close follow found path with {pathWaypoints.Count} waypoints");
 
-                                    _core.LogMessage($"A* PATH: Close follow - adding start waypoint: {startWorldPos}, end waypoint: {endWorldPos}");
+                                        // For close follow, use 3 waypoints max (start, middle, end) to reduce micro-movements
+                                        var gridToWorld = 250f / 23f;
+                                        var totalWaypoints = Math.Min(3, pathWaypoints.Count); // Max 3 waypoints
 
-                                    _taskManager.AddTask(new TaskNode(startWorldPos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                    _taskManager.AddTask(new TaskNode(endWorldPos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                        for (int i = 0; i < totalWaypoints; i++)
+                                        {
+                                            var waypointIndex = (int)((float)i / (totalWaypoints - 1) * (pathWaypoints.Count - 1));
+                                            var waypoint = pathWaypoints[waypointIndex];
+                                            var worldPos = new Vector3(
+                                                waypoint.X * gridToWorld,
+                                                waypoint.Y * gridToWorld,
+                                                followTarget.Pos.Z
+                                            );
+
+                                            _core.LogMessage($"A* PATH: Close follow - adding waypoint {i+1}/{totalWaypoints}: {worldPos}");
+                                            _taskManager.AddTask(new TaskNode(worldPos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                        }
+                                    }
+                                    else
+                                    {
+                                        _core.LogMessage($"A* PATH: Close follow pathfinding failed, using direct movement");
+                                        _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                    }
                                 }
                                 else
                                 {
-                                    _core.LogMessage($"A* PATH: Close follow pathfinding failed, using direct movement");
+                                    _core.LogMessage($"Close follow: Using direct movement (terrain not loaded)");
                                     _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                                 }
                             }
                             else
                             {
-                                _core.LogMessage($"Close follow: Using direct movement (terrain not loaded)");
-                                _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                _core.LogMessage($"Close follow: Leader hasn't moved significantly ({Vector3.Distance(lastTargetPosition, followTarget.Pos):F1} units), skipping path recalculation");
                             }
                         }
                     }

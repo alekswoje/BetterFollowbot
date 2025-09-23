@@ -78,13 +78,37 @@ namespace BetterFollowbotLite.Core.Movement
                 }
 
                 _core.LogMessage($"PATHFINDING: Processing {_processedTerrainData.Length} terrain rows");
+                if (_processedTerrainData.Length == 0)
+                {
+                    _core.LogError("PATHFINDING: RawPathfindingData is empty!");
+                    _grid = null;
+                    return;
+                }
 
                 _grid = _processedTerrainData.Select(x => x.Select(y => pv.Contains(y)).ToArray()).ToArray();
 
                 _processedTerrainTargetingData = BetterFollowbotLite.Instance.GameController.IngameState.Data.RawTerrainTargetingData;
 
                 // Initialize Radar-style PathFinder
-                _pathFinder = new PathFinder(_processedTerrainData, pathableValues);
+                try
+                {
+                    _core.LogMessage($"PATHFINDING: Creating PathFinder with terrain data dimensions {_processedTerrainData.Length}x{_processedTerrainData[0].Length}");
+                    _pathFinder = new PathFinder(_processedTerrainData, pathableValues);
+                    if (_pathFinder != null)
+                    {
+                        _core.LogMessage("PATHFINDING: A* PathFinder initialized successfully");
+                    }
+                    else
+                    {
+                        _core.LogError("PATHFINDING: PathFinder constructor returned null!");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _core.LogError($"PATHFINDING: Failed to initialize PathFinder: {ex.Message}");
+                    _core.LogError($"PATHFINDING: Stack trace: {ex.StackTrace}");
+                    _pathFinder = null;
+                }
 
                 _core.LogMessage("PATHFINDING: A* terrain data initialized successfully");
 
@@ -98,6 +122,12 @@ namespace BetterFollowbotLite.Core.Movement
                     }
                 }
                 _core.LogMessage($"PATHFINDING: Found {walkableCount} walkable tiles out of {_dimension1 * _dimension2} total tiles");
+
+                // Check if we have any walkable tiles at all
+                if (walkableCount == 0)
+                {
+                    _core.LogError("PATHFINDING: No walkable tiles found in terrain data!");
+                }
             }
             catch (Exception e)
             {
@@ -172,6 +202,7 @@ namespace BetterFollowbotLite.Core.Movement
             _core.LogMessage($"A* DEBUG: Finding path from grid ({startGrid.X}, {startGrid.Y}) to ({targetGrid.X}, {targetGrid.Y})");
 
             // Check bounds
+            _core.LogMessage($"A* DEBUG: Grid bounds check - Dimensions: {_dimension2}x{_dimension1}, Start: ({startGrid.X}, {startGrid.Y}), Target: ({targetGrid.X}, {targetGrid.Y})");
             if (startGrid.X < 0 || startGrid.X >= _dimension2 || startGrid.Y < 0 || startGrid.Y >= _dimension1 ||
                 targetGrid.X < 0 || targetGrid.X >= _dimension2 || targetGrid.Y < 0 || targetGrid.Y >= _dimension1)
             {

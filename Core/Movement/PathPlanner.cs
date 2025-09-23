@@ -25,6 +25,32 @@ namespace BetterFollowbotLite.Core.Movement
         // Throttle frequent log messages
         private DateTime _lastPortalThresholdLog = DateTime.MinValue;
 
+        /// <summary>
+        /// Checks if any blocking UI elements are open that should prevent path planning
+        /// </summary>
+        private bool IsBlockingUiOpen()
+        {
+            try
+            {
+                // Check common blocking UI elements
+                var stashOpen = _core.GameController?.IngameState?.IngameUi?.StashElement?.IsVisibleLocal == true;
+                var npcDialogOpen = _core.GameController?.IngameState?.IngameUi?.NpcDialog?.IsVisible == true;
+                var sellWindowOpen = _core.GameController?.IngameState?.IngameUi?.SellWindow?.IsVisible == true;
+                var purchaseWindowOpen = _core.GameController?.IngameState?.IngameUi?.PurchaseWindow?.IsVisible == true;
+                var inventoryOpen = _core.GameController?.IngameState?.IngameUi?.InventoryPanel?.IsVisible == true;
+                var skillTreeOpen = _core.GameController?.IngameState?.IngameUi?.TreePanel?.IsVisible == true;
+                var atlasOpen = _core.GameController?.IngameState?.IngameUi?.Atlas?.IsVisible == true;
+
+                // Note: Map is non-obstructing in PoE, so we don't check it
+                return stashOpen || npcDialogOpen || sellWindowOpen || purchaseWindowOpen || inventoryOpen || skillTreeOpen || atlasOpen;
+            }
+            catch
+            {
+                // If we can't check UI state, err on the side of caution
+                return true;
+            }
+        }
+
         public PathPlanner(IFollowbotCore core, ILeaderDetector leaderDetector, ITaskManager taskManager, PortalManager portalManager)
         {
             _core = core ?? throw new ArgumentNullException(nameof(core));
@@ -138,7 +164,7 @@ namespace BetterFollowbotLite.Core.Movement
                 }
 
                 if (!_core.Settings.Enable.Value || !_core.Settings.autoPilotEnabled.Value || _core.LocalPlayer == null || !_core.LocalPlayer.IsAlive ||
-                    !_core.GameController.IsForeGroundCache || MenuWindow.IsOpened || _core.GameController.IsLoading || !_core.GameController.InGame)
+                    !_core.GameController.IsForeGroundCache || IsBlockingUiOpen() || _core.GameController.IsLoading || !_core.GameController.InGame)
                 {
                     return;
                 }

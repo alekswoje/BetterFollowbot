@@ -30,6 +30,32 @@ namespace BetterFollowbotLite;
         private DateTime _lastMenuCheckLog = DateTime.MinValue;
 
         /// <summary>
+        /// Checks if any blocking UI elements are open that should prevent task execution
+        /// </summary>
+        private bool IsBlockingUiOpen()
+        {
+            try
+            {
+                // Check common blocking UI elements
+                var stashOpen = BetterFollowbotLite.Instance.GameController?.IngameState?.IngameUi?.StashElement?.IsVisibleLocal == true;
+                var npcDialogOpen = BetterFollowbotLite.Instance.GameController?.IngameState?.IngameUi?.NpcDialog?.IsVisible == true;
+                var sellWindowOpen = BetterFollowbotLite.Instance.GameController?.IngameState?.IngameUi?.SellWindow?.IsVisible == true;
+                var purchaseWindowOpen = BetterFollowbotLite.Instance.GameController?.IngameState?.IngameUi?.PurchaseWindow?.IsVisible == true;
+                var inventoryOpen = BetterFollowbotLite.Instance.GameController?.IngameState?.IngameUi?.InventoryPanel?.IsVisible == true;
+                var skillTreeOpen = BetterFollowbotLite.Instance.GameController?.IngameState?.IngameUi?.TreePanel?.IsVisible == true;
+                var atlasOpen = BetterFollowbotLite.Instance.GameController?.IngameState?.IngameUi?.Atlas?.IsVisible == true;
+
+                // Note: Map is non-obstructing in PoE, so we don't check it
+                return stashOpen || npcDialogOpen || sellWindowOpen || purchaseWindowOpen || inventoryOpen || skillTreeOpen || atlasOpen;
+            }
+            catch
+            {
+                // If we can't check UI state, err on the side of caution
+                return true;
+            }
+        }
+
+        /// <summary>
         /// Constructor for AutoPilot
         /// </summary>
     public AutoPilot(ILeaderDetector leaderDetector, ITaskManager taskManager, IPathfinding pathfinding, IMovementExecutor movementExecutor, PathPlanner pathPlanner)
@@ -641,9 +667,9 @@ namespace BetterFollowbotLite;
                 {
                     BetterFollowbotLite.Instance.LogMessage("FOREGROUND CHECK: Game not in foreground - blocking task execution");
                 }
-                if (MenuWindow.IsOpened && (DateTime.Now - _lastMenuCheckLog).TotalSeconds > 5)
+                if (IsBlockingUiOpen() && (DateTime.Now - _lastMenuCheckLog).TotalSeconds > 5)
                 {
-                    BetterFollowbotLite.Instance.LogMessage("MENU CHECK: Menu window is open - blocking task execution");
+                    BetterFollowbotLite.Instance.LogMessage("UI CHECK: Blocking UI is open - blocking task execution");
                     _lastMenuCheckLog = DateTime.Now;
                 }
                 await Task.Delay(100);

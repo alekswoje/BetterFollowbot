@@ -31,10 +31,36 @@ namespace BetterFollowbotLite.Skills
 
         public string SkillName => "Summon Skeletons";
 
+        /// <summary>
+        /// Checks if any blocking UI elements are open that should prevent skill execution
+        /// </summary>
+        private bool IsBlockingUiOpen()
+        {
+            try
+            {
+                // Check common blocking UI elements
+                var stashOpen = _instance.GameController?.IngameState?.IngameUi?.StashElement?.IsVisibleLocal == true;
+                var npcDialogOpen = _instance.GameController?.IngameState?.IngameUi?.NpcDialog?.IsVisible == true;
+                var sellWindowOpen = _instance.GameController?.IngameState?.IngameUi?.SellWindow?.IsVisible == true;
+                var purchaseWindowOpen = _instance.GameController?.IngameState?.IngameUi?.PurchaseWindow?.IsVisible == true;
+                var inventoryOpen = _instance.GameController?.IngameState?.IngameUi?.InventoryPanel?.IsVisible == true;
+                var skillTreeOpen = _instance.GameController?.IngameState?.IngameUi?.TreePanel?.IsVisible == true;
+                var atlasOpen = _instance.GameController?.IngameState?.IngameUi?.Atlas?.IsVisible == true;
+
+                // Note: Map is non-obstructing in PoE, so we don't check it
+                return stashOpen || npcDialogOpen || sellWindowOpen || purchaseWindowOpen || inventoryOpen || skillTreeOpen || atlasOpen;
+            }
+            catch
+            {
+                // If we can't check UI state, err on the side of caution
+                return true;
+            }
+        }
+
         public void Execute()
         {
-            // Block skill execution when menu is open
-            if (MenuWindow.IsOpened)
+            // Block skill execution when blocking UI is open
+            if (IsBlockingUiOpen())
                 return;
 
             // Block skill execution in towns

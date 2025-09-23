@@ -1021,7 +1021,7 @@ namespace BetterFollowbotLite;
                         {
                             // Second attempt with direct Windows API
                             BetterFollowbotLite.Instance.LogMessage($"TRANSITION: First move failed ({distanceFromTarget:F1} pixels), trying direct Windows API");
-                            Cursor.Position = new Point((int)transitionPos.X, (int)transitionPos.Y);
+                            System.Windows.Forms.Cursor.Position = new System.Drawing.Point((int)transitionPos.X, (int)transitionPos.Y);
                             await Task.Delay(100);
 
                             mousePosAfterMove = BetterFollowbotLite.Instance.GetMousePosition();
@@ -1223,28 +1223,28 @@ namespace BetterFollowbotLite;
                 var portalLabel = portal.Label?.Text ?? "Unknown";
                 var labelRect = portal.Label.GetClientRectCache;
 
-                BetterFollowbotLite.Instance.Graphics.DrawLine(labelRect.TopLeft, labelRect.TopRight, 2f, Color.Firebrick);
-                BetterFollowbotLite.Instance.Graphics.DrawLine(labelRect.TopRight, labelRect.BottomRight, 2f, Color.Firebrick);
-                BetterFollowbotLite.Instance.Graphics.DrawLine(labelRect.BottomRight, labelRect.BottomLeft, 2f, Color.Firebrick);
-                BetterFollowbotLite.Instance.Graphics.DrawLine(labelRect.BottomLeft, labelRect.TopLeft, 2f, Color.Firebrick);
+                BetterFollowbotLite.Instance.Graphics.DrawLine(labelRect.TopLeft, labelRect.TopRight, 2f, SharpDX.Color.Firebrick);
+                BetterFollowbotLite.Instance.Graphics.DrawLine(labelRect.TopRight, labelRect.BottomRight, 2f, SharpDX.Color.Firebrick);
+                BetterFollowbotLite.Instance.Graphics.DrawLine(labelRect.BottomRight, labelRect.BottomLeft, 2f, SharpDX.Color.Firebrick);
+                BetterFollowbotLite.Instance.Graphics.DrawLine(labelRect.BottomLeft, labelRect.TopLeft, 2f, SharpDX.Color.Firebrick);
 
                 var labelPos = new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 20);
-                BetterFollowbotLite.Instance.Graphics.DrawText($"Portal: {portalLabel}", labelPos, Color.Yellow);
+                BetterFollowbotLite.Instance.Graphics.DrawText($"Portal: {portalLabel}", labelPos, SharpDX.Color.Yellow);
 
                 var distance = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, portal.ItemOnGround.Pos);
                 var distancePos = new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 35);
-                BetterFollowbotLite.Instance.Graphics.DrawText($"{distance:F1}m", distancePos, Color.Cyan);
+                BetterFollowbotLite.Instance.Graphics.DrawText($"{distance:F1}m", distancePos, SharpDX.Color.Cyan);
 
                 if (PortalManager.IsSpecialPortal(portalLabel))
                 {
                     var portalType = PortalManager.GetSpecialPortalType(portalLabel);
-                    var color = portalType == "Arena" ? Color.Red : Color.OrangeRed;
+                    var color = portalType == "Arena" ? SharpDX.Color.Red : SharpDX.Color.OrangeRed;
                     BetterFollowbotLite.Instance.Graphics.DrawText(portalType, new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 50), color);
 
                     // Add extra highlighting for arena portals
                     if (portalType == "Arena")
                     {
-                        BetterFollowbotLite.Instance.Graphics.DrawText("PRIORITY", new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 65), Color.Yellow);
+                        BetterFollowbotLite.Instance.Graphics.DrawText("PRIORITY", new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 65), SharpDX.Color.Yellow);
                     }
 
                     // Show where we will actually click (world position converted to screen)
@@ -1256,13 +1256,13 @@ namespace BetterFollowbotLite;
                     BetterFollowbotLite.Instance.Graphics.DrawLine(
                         clickPos - new System.Numerics.Vector2(crossSize, 0),
                         clickPos + new System.Numerics.Vector2(crossSize, 0),
-                        2f, Color.Green);
+                        2f, SharpDX.Color.Green);
                     BetterFollowbotLite.Instance.Graphics.DrawLine(
                         clickPos - new System.Numerics.Vector2(0, crossSize),
                         clickPos + new System.Numerics.Vector2(0, crossSize),
-                        2f, Color.Green);
+                        2f, SharpDX.Color.Green);
 
-                    BetterFollowbotLite.Instance.Graphics.DrawText("CLICK", new System.Numerics.Vector2(clickPos.X + 8, clickPos.Y - 8), Color.Green);
+                    BetterFollowbotLite.Instance.Graphics.DrawText("CLICK", new System.Numerics.Vector2(clickPos.X + 8, clickPos.Y - 8), SharpDX.Color.Green);
                 }
             }
         }
@@ -1279,7 +1279,7 @@ namespace BetterFollowbotLite;
         if (transitionTasks.Any())
         {
             var currentTransitionTask = transitionTasks.First();
-            BetterFollowbotLite.Instance.Graphics.DrawText($"Transition: {currentTransitionTask.Type}", new System.Numerics.Vector2(350, 180), Color.Yellow);
+            BetterFollowbotLite.Instance.Graphics.DrawText($"Transition: {currentTransitionTask.Type}", new System.Numerics.Vector2(350, 180), SharpDX.Color.Yellow);
         }
 
         try
@@ -1298,7 +1298,7 @@ namespace BetterFollowbotLite;
                     {
                         BetterFollowbotLite.Instance.Graphics.DrawLine(
                             Helper.WorldToValidScreenPosition(BetterFollowbotLite.Instance.playerPosition),
-                            Helper.WorldToValidScreenPosition(task.WorldPosition), 2f, Color.Pink);
+                            Helper.WorldToValidScreenPosition(task.WorldPosition), 2f, SharpDX.Color.Pink);
                         dist = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, task.WorldPosition);
                         BetterFollowbotLite.Instance.Graphics.DrawText(
                             "Distance: " + dist.ToString("F2") + "m",

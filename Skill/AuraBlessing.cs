@@ -89,7 +89,11 @@ namespace BetterFollowbotLite.Skills
                         // If Holy Relic health is below threshold OR we don't have any minion buff, summon new Holy Relic
                         if (healthLow || missingBuff)
                         {
-                            Keyboard.KeyPress(_instance.GetSkillInputKey(skill.SkillSlotIndex));
+                            var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
+                            if (skillKey != Keys.None)
+                            {
+                                Keyboard.KeyPress(skillKey);
+                            }
                             SkillInfo.holyRelict.Cooldown = 200; // 2 second cooldown to prevent double-spawning
                         }
                     }

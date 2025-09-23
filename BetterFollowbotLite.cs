@@ -344,6 +344,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         return index switch
         {
             1 => Settings.inputKey1.Value,
+            2 => Settings.inputKey2.Value,
             3 => Settings.inputKey3.Value,
             4 => Settings.inputKey4.Value,
             5 => Settings.inputKey5.Value,
@@ -354,7 +355,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
             10 => Settings.inputKey10.Value,
             11 => Settings.inputKey11.Value,
             12 => Settings.inputKey12.Value,
-            _ => Keys.Escape
+            _ => Keys.None  // Return None instead of Escape to prevent spam
         };
     }
 

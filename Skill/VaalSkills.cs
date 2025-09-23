@@ -91,7 +91,11 @@ namespace BetterFollowbotLite.Skills
                         if (!hasVaalHasteBuff)
                         {
                             // Activate the skill
-                            Keyboard.KeyPress(_instance.GetSkillInputKey(skill.SkillSlotIndex));
+                            var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
+                            if (skillKey != Keys.None)
+                            {
+                                Keyboard.KeyPress(skillKey);
+                            }
                         }
                     }
                 }
@@ -155,7 +159,11 @@ namespace BetterFollowbotLite.Skills
                             if (!hasVaalDisciplineBuff)
                             {
                                 // Activate the skill
-                                Keyboard.KeyPress(_instance.GetSkillInputKey(skill.SkillSlotIndex));
+                                var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
+                            if (skillKey != Keys.None)
+                            {
+                                Keyboard.KeyPress(skillKey);
+                            }
                             }
                         }
                     }

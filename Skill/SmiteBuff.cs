@@ -110,7 +110,11 @@ namespace BetterFollowbotLite.Skills
                                     if (distanceFromTarget < 50) // Within reasonable tolerance
                                     {
                                         // Activate the skill
-                                        Keyboard.KeyPress(_instance.GetSkillInputKey(skill.SkillSlotIndex));
+                                        var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
+                                        if (skillKey != Keys.None)
+                                        {
+                                            Keyboard.KeyPress(skillKey);
+                                        }
                                         SkillInfo.smite.Cooldown = 100;
                                         _instance.LastTimeAny = DateTime.Now; // Update global cooldown
                                     }

@@ -222,7 +222,11 @@ namespace BetterFollowbotLite.Skill
                                     System.Threading.Thread.Sleep(50);
 
                                     // Activate the mine skill
-                                    Keyboard.KeyPress(_instance.GetSkillInputKey(skill.SkillSlotIndex));
+                                    var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
+                                    if (skillKey != Keys.None)
+                                    {
+                                        Keyboard.KeyPress(skillKey);
+                                    }
                                     mineSkill.Cooldown = 100; // Set cooldown to prevent spam
                                     _instance.LastTimeAny = DateTime.Now;
 

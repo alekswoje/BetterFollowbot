@@ -197,7 +197,7 @@ namespace BetterFollowbotLite.Skills
                                     }
 
                                     // Get the skill slot for the totem
-                                    var skillSlot = _instance.GetSkillInputKey(skill.SkillSlotIndex);
+                                    var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
 
                                     // Check if skill has charges available
                                     if (skill.RemainingUses <= 0 && skill.IsOnCooldown)
@@ -206,7 +206,10 @@ namespace BetterFollowbotLite.Skills
                                     }
 
                                     // Place the totem
-                                    Keyboard.KeyPress(skillSlot);
+                                    if (skillKey != Keys.None)
+                                    {
+                                        Keyboard.KeyPress(skillKey);
+                                    }
 
                                     // Set cooldown to prevent spamming (2 seconds as requested)
                                     SkillInfo.rejuvenationTotem.Cooldown = 2000;

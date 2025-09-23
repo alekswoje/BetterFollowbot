@@ -122,7 +122,11 @@ namespace BetterFollowbotLite.Skills
                                     Mouse.SetCursorPos(leaderScreenPosForMouse);
 
                                     // Activate the skill
-                                    Keyboard.KeyPress(_instance.GetSkillInputKey(skill.SkillSlotIndex));
+                                    var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
+                                    if (skillKey != Keys.None)
+                                    {
+                                        Keyboard.KeyPress(skillKey);
+                                    }
                                     linkSkill.Cooldown = 100;
                                 }
                             }

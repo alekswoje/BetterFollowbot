@@ -110,7 +110,11 @@ namespace BetterFollowbotLite.Skills
                                     if (summonSkeletonsSkill != null && summonSkeletonsSkill.IsOnSkillBar && summonSkeletonsSkill.CanBeUsed)
                                     {
                                         // Use the summon skeletons skill
-                                        Keyboard.KeyPress(_instance.GetSkillInputKey(summonSkeletonsSkill.SkillSlotIndex));
+                                        var skillKey = _instance.GetSkillInputKey(summonSkeletonsSkill.SkillSlotIndex);
+                                        if (skillKey != Keys.None)
+                                        {
+                                            Keyboard.KeyPress(skillKey);
+                                        }
                                         _instance.LastTimeAny = DateTime.Now; // Update global cooldown
                                     }
                                 }

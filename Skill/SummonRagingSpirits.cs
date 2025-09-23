@@ -139,7 +139,11 @@ namespace BetterFollowbotLite.Skills
                                 if (summonRagingSpiritsSkill != null && summonRagingSpiritsSkill.IsOnSkillBar && summonRagingSpiritsSkill.CanBeUsed)
                                 {
                                     // Use the Summon Raging Spirits skill
-                                    Keyboard.KeyPress(_instance.GetSkillInputKey(summonRagingSpiritsSkill.SkillSlotIndex));
+                                    var skillKey = _instance.GetSkillInputKey(summonRagingSpiritsSkill.SkillSlotIndex);
+                                    if (skillKey != Keys.None)
+                                    {
+                                        Keyboard.KeyPress(skillKey);
+                                    }
                                     _instance.LastTimeAny = DateTime.Now; // Update global cooldown
                                 }
                             }

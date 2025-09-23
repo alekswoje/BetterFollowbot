@@ -10,7 +10,7 @@ using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
 
-namespace BetterFollowbotLite.Skill
+namespace BetterFollowbotLite.Skills
 {
     // MonsterRarity enum (copied from ReAgent for compatibility)
     [Flags]

@@ -22,6 +22,9 @@ namespace BetterFollowbotLite.Core.Movement
         private readonly ITaskManager _taskManager;
         private readonly PortalManager _portalManager;
 
+        // Throttle frequent log messages
+        private DateTime _lastPortalThresholdLog = DateTime.MinValue;
+
         public PathPlanner(IFollowbotCore core, ILeaderDetector leaderDetector, ITaskManager taskManager, PortalManager portalManager)
         {
             _core = core ?? throw new ArgumentNullException(nameof(core));
@@ -127,9 +130,10 @@ namespace BetterFollowbotLite.Core.Movement
                             _core.LogMessage($"ARENA PORTAL: Selected portal '{selectedPortalLabel}' is not special/arena, ignoring");
                         }
                     }
-                    else if (leaderDistance > 100) // Fallback: if leader is far but no portals should be taken, still log
+                    else if (leaderDistance > 100 && (DateTime.Now - _lastPortalThresholdLog).TotalSeconds > 5) // Fallback: if leader is far but no portals should be taken, log occasionally
                     {
                         _core.LogMessage($"ARENA PORTAL: Leader is {leaderDistance:F1} units away but not far enough for any portal threshold");
+                        _lastPortalThresholdLog = DateTime.Now;
                     }
                 }
 

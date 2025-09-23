@@ -33,6 +33,14 @@ namespace BetterFollowbotLite.Skill
         /// </summary>
         public void Execute()
         {
+            // Block skill execution when menu is open
+            if (MenuWindow.IsOpened)
+                return;
+
+            // Block skill execution in towns
+            if (_instance.GameController?.Area?.CurrentArea?.IsTown == true)
+                return;
+
             // Always log that Execute was called for debugging
             _instance.LogMessage($"MINES: Execute called (Enabled: {_settings.minesEnabled.Value})");
 

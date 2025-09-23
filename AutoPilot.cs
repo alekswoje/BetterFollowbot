@@ -26,6 +26,9 @@ namespace BetterFollowbotLite;
         private PathPlanner _pathPlanner;
         private readonly Random random = new Random();
 
+        // Throttle frequent log messages
+        private DateTime _lastMenuCheckLog = DateTime.MinValue;
+
         /// <summary>
         /// Constructor for AutoPilot
         /// </summary>
@@ -638,9 +641,10 @@ namespace BetterFollowbotLite;
                 {
                     BetterFollowbotLite.Instance.LogMessage("FOREGROUND CHECK: Game not in foreground - blocking task execution");
                 }
-                if (MenuWindow.IsOpened)
+                if (MenuWindow.IsOpened && (DateTime.Now - _lastMenuCheckLog).TotalSeconds > 5)
                 {
                     BetterFollowbotLite.Instance.LogMessage("MENU CHECK: Menu window is open - blocking task execution");
+                    _lastMenuCheckLog = DateTime.Now;
                 }
                 await Task.Delay(100);
                 continue;

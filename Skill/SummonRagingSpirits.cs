@@ -50,6 +50,14 @@ namespace BetterFollowbotLite.Skills
 
         public void Execute()
         {
+            // Block skill execution when menu is open
+            if (MenuWindow.IsOpened)
+                return;
+
+            // Block skill execution in towns
+            if (_instance.GameController?.Area?.CurrentArea?.IsTown == true)
+                return;
+
             try
             {
 

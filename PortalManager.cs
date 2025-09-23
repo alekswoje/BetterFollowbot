@@ -28,10 +28,10 @@ namespace BetterFollowbotLite
             }
         };
 
-        // Close arena portals - these use a shorter distance threshold (500 units)
+        // Close arena portals - these use a shorter distance threshold (300 units)
         private static readonly string[] CloseArenaPortals = new[]
         {
-            "the bowels of the beast",
+            "the bowels of the beast", "shavronne's arena"
         };
     
         // Special portal names that should be treated as high-priority interzone portals
@@ -39,7 +39,7 @@ namespace BetterFollowbotLite
         private static readonly string[] SpecialPortalNames = PortalTypeMappings.Keys.SelectMany(keywords => keywords).ToArray();
 
         // Distance thresholds for leader distance - portals are only taken if leader is MORE than this distance away
-        private const float CloseArenaPortalDistance = 2500f; // Close portals (Pit, Warden's Quarters, Stairs)
+        private const float CloseArenaPortalDistance = 300f; // Close portals (Pit, Warden's Quarters, Stairs)
         private const float RegularArenaPortalDistance = 3000f; // Regular arena portals
 
         // Portal transition state

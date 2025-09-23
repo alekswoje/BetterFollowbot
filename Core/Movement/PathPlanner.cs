@@ -444,78 +444,30 @@ namespace BetterFollowbotLite.Core.Movement
                                         _core.LogMessage($"A* PATH: Following waypoint path (dash={shouldDashToFirstWaypoint}, conflicts={conflictingTasksExist}, teleport={AutoPilot.IsTeleportInProgress})");
                                     }
 
-                                    // For short paths (< 500 units), simplify to just start and end waypoints
-                                    if (distanceToLeader < 500)
+                                    // SIMPLIFIED APPROACH: Just go directly to the end point for ALL paths
+                                    // This eliminates zig-zagging by not using intermediate waypoints at all
+                                    var endWaypoint = pathWaypoints[pathWaypoints.Count - 1];
+                                    var endWorldPos = new Vector3(
+                                        endWaypoint.X * gridToWorldMultiplier,
+                                        endWaypoint.Y * gridToWorldMultiplier,
+                                        followTarget.Pos.Z
+                                    );
+
+                                    // Use smaller completion distance for A* end waypoint to get closer to leader
+                                    var endCompletionDistance = Math.Min(_core.Settings.autoPilotPathfindingNodeDistance.Value, 50);
+                                    _core.LogMessage($"A* PATH: Going directly to end point: grid({endWaypoint.X},{endWaypoint.Y}) -> world({endWorldPos.X:F1},{endWorldPos.Y:F1},{endWorldPos.Z:F1}), distance: {endCompletionDistance}");
+
+                                    // Clear any existing movement tasks first to prevent zig-zagging
+                                    for (int i = _taskManager.Tasks.Count - 1; i >= 0; i--)
                                     {
-                                        _core.LogMessage($"A* PATH: Short path detected ({distanceToLeader:F1} units) - using simplified 2-waypoint path");
-
-                                        // Just use start and end waypoints for short paths
-                                        var startWaypoint = pathWaypoints[0];
-                                        var endWaypoint = pathWaypoints[pathWaypoints.Count - 1];
-
-                                        // Add start waypoint (skip if dashing)
-                                        if (firstWaypointIndex == 1)
-                                        {
-                                            var startWorldPos = new Vector3(
-                                                startWaypoint.X * gridToWorldMultiplier,
-                                                startWaypoint.Y * gridToWorldMultiplier,
-                                                followTarget.Pos.Z
-                                            );
-                                            _core.LogMessage($"A* PATH: Adding start waypoint: grid({startWaypoint.X},{startWaypoint.Y}) -> world({startWorldPos.X:F1},{startWorldPos.Y:F1},{startWorldPos.Z:F1})");
-                                            _taskManager.AddTask(new TaskNode(startWorldPos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                            waypointsAdded++;
-                                        }
-
-                                        // Add end waypoint
-                                        var endWorldPos = new Vector3(
-                                            endWaypoint.X * gridToWorldMultiplier,
-                                            endWaypoint.Y * gridToWorldMultiplier,
-                                            followTarget.Pos.Z
-                                        );
-                                        // Use smaller completion distance for A* end waypoint to get closer to leader
-                                        var endCompletionDistance = Math.Min(_core.Settings.autoPilotPathfindingNodeDistance.Value, 50);
-                                        _core.LogMessage($"A* PATH: Adding end waypoint: grid({endWaypoint.X},{endWaypoint.Y}) -> world({endWorldPos.X:F1},{endWorldPos.Y:F1},{endWorldPos.Z:F1}), distance: {endCompletionDistance}");
-                                        _taskManager.AddTask(new TaskNode(endWorldPos, endCompletionDistance));
-                                        waypointsAdded++;
-                                    }
-                                    else
-                                    {
-                                        // For longer paths, be extremely aggressive with waypoint reduction
-                                        var maxWaypoints = distanceToLeader > 1500 ? 2 : (distanceToLeader > 800 ? 3 : 4); // Minimal waypoints
-                                        var waypointsToAdd = Math.Min(maxWaypoints, pathWaypoints.Count - firstWaypointIndex);
-
-                                        for (int w = 0; w < waypointsToAdd; w++)
-                                        {
-                                            // Space waypoints evenly across the path
-                                            var waypointIndex = firstWaypointIndex + (int)((float)w / (waypointsToAdd - 1) * (pathWaypoints.Count - firstWaypointIndex - 1));
-                                            var waypoint = pathWaypoints[waypointIndex];
-
-                                            var worldPos = new Vector3(
-                                                waypoint.X * gridToWorldMultiplier,
-                                                waypoint.Y * gridToWorldMultiplier, // Y is north-south position
-                                                followTarget.Pos.Z // Keep same height
-                                            );
-                                            // For the final waypoint, use a smaller completion distance to get closer to leader
-                                            var completionDistance = (w == waypointsToAdd - 1) ?
-                                                Math.Min(_core.Settings.autoPilotPathfindingNodeDistance.Value, 50) : // Max 50 units for final waypoint
-                                                _core.Settings.autoPilotPathfindingNodeDistance.Value;
-
-                                            _core.LogMessage($"A* PATH: Adding waypoint {w+1}/{waypointsToAdd} (index {waypointIndex}/{pathWaypoints.Count}): grid({waypoint.X},{waypoint.Y}) -> world({worldPos.X:F1},{worldPos.Y:F1},{worldPos.Z:F1}), distance: {completionDistance}");
-                                            _taskManager.AddTask(new TaskNode(worldPos, completionDistance));
-                                            waypointsAdded++;
-                                        }
+                                        if (_taskManager.Tasks[i].Type == TaskNodeType.Movement)
+                                            _taskManager.RemoveTaskAt(i);
                                     }
 
-                                    if (waypointsAdded == 0)
-                                    {
-                                        // If no waypoints were added, fall back to direct movement
-                                        _core.LogMessage($"A* PATH: No valid waypoints found, falling back to direct movement");
-                                        _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                    }
-                                    else
-                                    {
-                                        _core.LogMessage($"A* PATH: Created {waypointsAdded} movement tasks along path");
-                                    }
+                                    _taskManager.AddTask(new TaskNode(endWorldPos, endCompletionDistance));
+                                    waypointsAdded = 1;
+
+                                    // No fallback needed since we always add exactly 1 waypoint
                                 }
                                 else
                                 {
@@ -571,7 +523,7 @@ namespace BetterFollowbotLite.Core.Movement
                         {
                             // Check if leader has moved far enough from our last target position to warrant new path
                             var leaderMovedSinceLastTask = lastTargetPosition == Vector3.Zero ||
-                                                         Vector3.Distance(lastTargetPosition, followTarget.Pos) > Math.Max(1500, _core.Settings.autoPilotPathfindingNodeDistance.Value * 25);
+                                                         Vector3.Distance(lastTargetPosition, followTarget.Pos) > Math.Max(3000, _core.Settings.autoPilotPathfindingNodeDistance.Value * 50);
 
                             if (leaderMovedSinceLastTask)
                             {

@@ -12,6 +12,7 @@ using ExileCore.Shared.Enums;
 using ExileCore.Shared.Interfaces;
 using ExileCore.Shared.Nodes;
 using SharpDX;
+using Vector2i = System.Numerics.Vector2;
 
 namespace BetterFollowbotLite.Core.Movement
 {

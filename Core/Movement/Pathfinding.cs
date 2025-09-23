@@ -355,8 +355,32 @@ namespace BetterFollowbotLite.Core.Movement
 
         public List<Vector2i> GetPath(Vector3 startWorld, Vector3 targetWorld)
         {
-            var startGrid = WorldToGrid(startWorld);
-            var targetGrid = WorldToGrid(targetWorld);
+            // Get grid coordinates from the Positioned components like Radar does
+            var player = _core.GameController.Game.IngameState.Data.LocalPlayer;
+            var playerPositioned = player?.GetComponent<Positioned>();
+            if (playerPositioned == null)
+            {
+                _core.LogMessage("A* DEBUG: Could not get player Positioned component");
+                return null;
+            }
+
+            var startGrid = new Vector2i((int)playerPositioned.GridPos().X, (int)playerPositioned.GridPos().Y);
+
+            // For target, find the entity at the target position
+            var targetEntity = _core.GameController.EntityListWrapper.OnlyValidEntities
+                .FirstOrDefault(e => Vector3.Distance(e.Pos, targetWorld) < 1f && e.HasComponent<Positioned>());
+            Vector2i targetGrid;
+            if (targetEntity != null)
+            {
+                var targetPositioned = targetEntity.GetComponent<Positioned>();
+                targetGrid = new Vector2i((int)targetPositioned.GridPos().X, (int)targetPositioned.GridPos().Y);
+            }
+            else
+            {
+                // Fallback to world-to-grid conversion for target if entity not found
+                targetGrid = WorldToGrid(targetWorld);
+                _core.LogMessage($"A* DEBUG: Using fallback grid conversion for target: world {targetWorld} -> grid ({targetGrid.X}, {targetGrid.Y})");
+            }
 
             _core.LogMessage($"A* DEBUG: Finding path from grid ({startGrid.X}, {startGrid.Y}) to ({targetGrid.X}, {targetGrid.Y})");
 

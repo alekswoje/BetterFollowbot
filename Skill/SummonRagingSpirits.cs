@@ -106,7 +106,7 @@ namespace BetterFollowbotLite.Skills
                                             }
                                             // Also check for magic/white if enabled
                                             else if (_settings.summonRagingSpiritsMagicNormal.Value &&
-                                                    (rarity == MonsterRarity.Magic || rarity == MonsterRarity.White))
+                                                    (rarity == MonsterRarity.Magic || rarity == MonsterRarity.Normal))
                                             {
                                                 rareOrUniqueNearby = true;
                                                 break;

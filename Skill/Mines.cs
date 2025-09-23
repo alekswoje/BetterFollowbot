@@ -12,6 +12,18 @@ using SharpDX;
 
 namespace BetterFollowbotLite.Skill
 {
+    // MonsterRarity enum (copied from ReAgent for compatibility)
+    [Flags]
+    public enum MonsterRarity
+    {
+        Normal = 1 << 0,
+        Magic = 1 << 1,
+        Rare = 1 << 2,
+        Unique = 1 << 3,
+        Any = Normal | Magic | Rare | Unique,
+        AtLeastRare = Rare | Unique
+    }
+
     internal class Mines : ISkill
     {
         private readonly BetterFollowbotLite _instance;
@@ -62,6 +74,8 @@ namespace BetterFollowbotLite.Skill
             if (!_settings.minesEnabled)
                 return false;
 
+            _instance.LogMessage($"MINES: ProcessMineSkill called for skill {skill.Id} ({skill.InternalName}), enemies count: {_instance.Enemys?.Count ?? 0}");
+
             try
             {
                 // Check if we have either stormblast or pyroclast mine skills enabled
@@ -85,27 +99,36 @@ namespace BetterFollowbotLite.Skill
                             .Where(monster =>
                             {
                                 // Check if monster is rare or unique using Entity.Rarity (like ReAgent does)
+                                MonsterRarity rarity;
                                 try
                                 {
-                                    var rarity = monster.Rarity switch
+                                    rarity = monster.Rarity switch
                                     {
-                                        ExileCore.Shared.Enums.MonsterRarity.White => MonsterRarity.White,
+                                        ExileCore.Shared.Enums.MonsterRarity.White => MonsterRarity.Normal,
                                         ExileCore.Shared.Enums.MonsterRarity.Magic => MonsterRarity.Magic,
                                         ExileCore.Shared.Enums.MonsterRarity.Rare => MonsterRarity.Rare,
                                         ExileCore.Shared.Enums.MonsterRarity.Unique => MonsterRarity.Unique,
-                                        _ => MonsterRarity.White
+                                        _ => MonsterRarity.Normal
                                     };
-
-                                    if (rarity != MonsterRarity.Rare && rarity != MonsterRarity.Unique)
-                                        return false;
                                 }
                                 catch
                                 {
                                     // Fallback to component-based checking if Entity.Rarity fails
                                     var rarityComponent = monster.GetComponent<ObjectMagicProperties>();
-                                    if (rarityComponent == null || (rarityComponent.Rarity != MonsterRarity.Rare && rarityComponent.Rarity != MonsterRarity.Unique))
+                                    if (rarityComponent == null)
                                         return false;
+
+                                    rarity = rarityComponent.Rarity switch
+                                    {
+                                        ExileCore.Shared.Enums.MonsterRarity.Rare => MonsterRarity.Rare,
+                                        ExileCore.Shared.Enums.MonsterRarity.Unique => MonsterRarity.Unique,
+                                        _ => MonsterRarity.Normal
+                                    };
                                 }
+
+                                // Only target Rare or Unique monsters
+                                if (rarity != MonsterRarity.Rare && rarity != MonsterRarity.Unique)
+                                    return false;
 
                                 // Check distance from player to monster
                                 var distanceToMonster = Vector3.Distance(monster.Pos, _instance.playerPosition);
@@ -123,7 +146,7 @@ namespace BetterFollowbotLite.Skill
                                 {
                                     var monsterRarity = monster.Rarity switch
                                     {
-                                        ExileCore.Shared.Enums.MonsterRarity.White => "White",
+                                        ExileCore.Shared.Enums.MonsterRarity.White => "Normal",
                                         ExileCore.Shared.Enums.MonsterRarity.Magic => "Magic",
                                         ExileCore.Shared.Enums.MonsterRarity.Rare => "Rare",
                                         ExileCore.Shared.Enums.MonsterRarity.Unique => "Unique",
@@ -139,7 +162,7 @@ namespace BetterFollowbotLite.Skill
                             }
                         }
 
-                        _instance.LogMessage($"MINES: Found {nearbyRareUniqueEnemies.Count} rare/unique enemies within range (range: {minesRange})");
+                        _instance.LogMessage($"MINES: Found {nearbyRareUniqueEnemies.Count} rare/unique enemies within range (range: {minesRange}) from {_instance.Enemys.Count} total enemies");
 
                         if (nearbyRareUniqueEnemies.Any())
                         {

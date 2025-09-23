@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Drawing;
 using ExileCore;
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.Components;
@@ -1003,17 +1005,39 @@ namespace BetterFollowbotLite;
                     {
                         BetterFollowbotLite.Instance.LogMessage("TRANSITION: Starting portal click sequence");
 
-                        // Move mouse to portal position
+                        // Move mouse to portal position with multiple attempts
                         BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Moving mouse to portal position ({transitionPos.X:F1}, {transitionPos.Y:F1})");
-                        Mouse.SetCursorPosHuman(transitionPos);
 
-                        // Wait a bit for mouse to settle
-                        await Task.Delay(60);
+                        // First attempt
+                        Mouse.SetCursorPosHuman(transitionPos);
+                        await Task.Delay(100);
+
+                        var mousePosAfterMove = BetterFollowbotLite.Instance.GetMousePosition();
+                        BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Mouse position after first move - X: {mousePosAfterMove.X:F1}, Y: {mousePosAfterMove.Y:F1}");
+
+                        // Check if close enough (within 30 pixels)
+                        var distanceFromTarget = Math.Sqrt(Math.Pow(mousePosAfterMove.X - transitionPos.X, 2) + Math.Pow(mousePosAfterMove.Y - transitionPos.Y, 2));
+                        if (distanceFromTarget > 30)
+                        {
+                            // Second attempt with direct Windows API
+                            BetterFollowbotLite.Instance.LogMessage($"TRANSITION: First move failed ({distanceFromTarget:F1} pixels), trying direct Windows API");
+                            Cursor.Position = new Point((int)transitionPos.X, (int)transitionPos.Y);
+                            await Task.Delay(100);
+
+                            mousePosAfterMove = BetterFollowbotLite.Instance.GetMousePosition();
+                            distanceFromTarget = Math.Sqrt(Math.Pow(mousePosAfterMove.X - transitionPos.X, 2) + Math.Pow(mousePosAfterMove.Y - transitionPos.Y, 2));
+                            BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Mouse position after second move - X: {mousePosAfterMove.X:F1}, Y: {mousePosAfterMove.Y:F1}");
+
+                            if (distanceFromTarget > 30)
+                            {
+                                BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Mouse movement failed - {distanceFromTarget:F1} pixels from target, skipping click");
+                                await Task.Delay(200);
+                                continue;
+                            }
+                        }
 
                         // Perform the click with additional logging
                         BetterFollowbotLite.Instance.LogMessage("TRANSITION: Performing left click on portal");
-                        var currentMousePos = BetterFollowbotLite.Instance.GetMousePosition();
-                        BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Mouse position before click - X: {currentMousePos.X:F1}, Y: {currentMousePos.Y:F1}");
 
                         Mouse.LeftClick();
 

@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
+using BetterFollowbotLite;
 using BetterFollowbotLite.Interfaces;
 using BetterFollowbotLite.Core.Skills;
 using ExileCore;
@@ -59,6 +61,10 @@ namespace BetterFollowbotLite.Skills
             if (IsBlockingUiOpen())
                 return;
 
+            // Block skill execution when game is not in foreground
+            if (!_instance.GameController.IsForeGroundCache)
+                return;
+
             // Block skill execution in towns
             if (_instance.GameController?.Area?.CurrentArea?.IsTown == true)
                 return;
@@ -82,7 +88,7 @@ namespace BetterFollowbotLite.Skills
                             .ToList();
 
                         // Find party members that need linking (no target buff or low timer)
-                        var partyMembersNeedingLink = new List<(PartyElement partyElement, Entity playerEntity, float priority)>();
+                        var partyMembersNeedingLink = new List<(PartyElementWindow partyElement, Entity playerEntity, float priority)>();
 
                         foreach (var partyElement in partyElements)
                         {

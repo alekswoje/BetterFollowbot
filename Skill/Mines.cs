@@ -64,6 +64,10 @@ namespace BetterFollowbotLite.Skill
             if (IsBlockingUiOpen())
                 return;
 
+            // Block skill execution when game is not in foreground
+            if (!_instance.GameController.IsForeGroundCache)
+                return;
+
             // Block skill execution in towns
             if (_instance.GameController?.Area?.CurrentArea?.IsTown == true)
                 return;

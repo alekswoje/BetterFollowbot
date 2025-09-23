@@ -21,6 +21,32 @@ namespace BetterFollowbotLite.Automation
             _settings = settings;
         }
 
+        /// <summary>
+        /// Checks if any blocking UI elements are open that should prevent gem leveling
+        /// </summary>
+        private bool IsBlockingUiOpen()
+        {
+            try
+            {
+                // Check common blocking UI elements
+                var stashOpen = _instance.GameController?.IngameState?.IngameUi?.StashElement?.IsVisibleLocal == true;
+                var npcDialogOpen = _instance.GameController?.IngameState?.IngameUi?.NpcDialog?.IsVisible == true;
+                var sellWindowOpen = _instance.GameController?.IngameState?.IngameUi?.SellWindow?.IsVisible == true;
+                var purchaseWindowOpen = _instance.GameController?.IngameState?.IngameUi?.PurchaseWindow?.IsVisible == true;
+                var inventoryOpen = _instance.GameController?.IngameState?.IngameUi?.InventoryPanel?.IsVisible == true;
+                var skillTreeOpen = _instance.GameController?.IngameState?.IngameUi?.TreePanel?.IsVisible == true;
+                var atlasOpen = _instance.GameController?.IngameState?.IngameUi?.Atlas?.IsVisible == true;
+
+                // Note: Map is non-obstructing in PoE, so we don't check it
+                return stashOpen || npcDialogOpen || sellWindowOpen || purchaseWindowOpen || inventoryOpen || skillTreeOpen || atlasOpen;
+            }
+            catch
+            {
+                // If we can't check UI state, err on the side of caution
+                return true;
+            }
+        }
+
         public bool IsEnabled => _settings.autoLevelGemsEnabled;
 
         public string AutomationName => "Auto Level Gems";
@@ -41,13 +67,13 @@ namespace BetterFollowbotLite.Automation
                     // 5. Not in game
                     var inventoryOpen = _instance.GameController.IngameState.IngameUi.InventoryPanel.IsVisible;
                     var gameNotFocused = !_instance.GameController.IsForeGroundCache;
-                    var menuWindowOpen = MenuWindow.IsOpened;
+                    var blockingUiOpen = IsBlockingUiOpen();
                     var gameLoading = _instance.GameController.IsLoading;
                     var notInGame = !_instance.GameController.InGame;
 
-                    if (inventoryOpen || gameNotFocused || menuWindowOpen || gameLoading || notInGame)
+                    if (inventoryOpen || gameNotFocused || blockingUiOpen || gameLoading || notInGame)
                     {
-                        BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Skipping - InventoryOpen: {inventoryOpen}, GameNotFocused: {gameNotFocused}, MenuOpen: {menuWindowOpen}, Loading: {gameLoading}, NotInGame: {notInGame}");
+                        BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Skipping - InventoryOpen: {inventoryOpen}, GameNotFocused: {gameNotFocused}, BlockingUiOpen: {blockingUiOpen}, Loading: {gameLoading}, NotInGame: {notInGame}");
                         return;
                     }
 

@@ -171,14 +171,13 @@ namespace BetterFollowbotLite.Skills
                                     var sellWindowOpen = _instance.GameController.IngameState.IngameUi.SellWindow.IsVisible;
                                     var purchaseWindowOpen = _instance.GameController.IngameState.IngameUi.PurchaseWindow.IsVisible;
                                     var mapOpen = _instance.GameController.IngameState.IngameUi.Map.IsVisible;
-                                    var menuWindowOpen = MenuWindow.IsOpened;
 
                                     // Additional potential blocking elements
                                     var inventoryOpen = _instance.GameController.IngameState.IngameUi.InventoryPanel.IsVisible;
                                     var skillTreeOpen = _instance.GameController.IngameState.IngameUi.TreePanel.IsVisible;
 
                                     // Check for blocking UI elements (map is non-obstructing in PoE)
-                                    if (stashOpen || npcDialogOpen || sellWindowOpen || purchaseWindowOpen || menuWindowOpen || inventoryOpen || skillTreeOpen)
+                                    if (stashOpen || npcDialogOpen || sellWindowOpen || purchaseWindowOpen || inventoryOpen || skillTreeOpen)
                                     {
                                         return;
                                     }

@@ -731,7 +731,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
             if (GameController.Area.CurrentArea.IsHideout || GameController.Area.CurrentArea.IsTown ||
                 /*GameController.IngameState.IngameUi.StashElement.IsVisible ||*/ // 3.15 Null
                 GameController.IngameState.IngameUi.NpcDialog.IsVisible ||
-                GameController.IngameState.IngameUi.SellWindow.IsVisible || MenuWindow.IsOpened ||
+                GameController.IngameState.IngameUi.SellWindow.IsVisible ||
                 !GameController.InGame || GameController.IsLoading) return;
                 
             enemys = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Monster].Where(x =>

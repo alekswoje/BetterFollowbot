@@ -660,7 +660,7 @@ namespace BetterFollowbotLite;
         while (true)
         {
             if (!BetterFollowbotLite.Instance.Settings.Enable.Value || !BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value || BetterFollowbotLite.Instance.localPlayer == null || !BetterFollowbotLite.Instance.localPlayer.IsAlive ||
-                !BetterFollowbotLite.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || BetterFollowbotLite.Instance.GameController.IsLoading || !BetterFollowbotLite.Instance.GameController.InGame)
+                !BetterFollowbotLite.Instance.GameController.IsForeGroundCache || IsBlockingUiOpen() || BetterFollowbotLite.Instance.GameController.IsLoading || !BetterFollowbotLite.Instance.GameController.InGame)
             {
                 // Log check failures that might cause delays
                 if (!BetterFollowbotLite.Instance.GameController.IsForeGroundCache)

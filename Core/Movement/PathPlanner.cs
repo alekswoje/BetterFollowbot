@@ -361,14 +361,19 @@ namespace BetterFollowbotLite.Core.Movement
                             _core.LogMessage($"LEADER MOVED FAR: Leader moved {distanceMoved:F1} units but within reasonable distance, using normal movement/dash");
                         }
                     }
-                    //We have no path, set us to go to leader pos using A* pathfinding.
-                    else if (_taskManager.TaskCount == 0 && distanceToLeader > 200)
+                    //We have no path, set us to go to leader pos using A* pathfinding when terrain is loaded.
+                    else if (_taskManager.TaskCount == 0)
                     {
                         // Validate followTarget position before creating tasks
                         if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {
-                            // Check if terrain is loaded before using A* pathfinding
-                            if (!_core.Pathfinding.IsTerrainLoaded)
+                            // Use A* pathfinding when terrain is loaded, otherwise direct movement
+                            if (_core.Pathfinding.IsTerrainLoaded)
+                            {
+                                _core.LogMessage($"A* PATH: Terrain loaded, using A* pathfinding - Distance: {distanceToLeader:F1}");
+                                // A* pathfinding logic will be executed below
+                            }
+                            else
                             {
                                 _core.LogMessage($"A* PATH: Terrain not loaded, falling back to direct movement - Distance: {distanceToLeader:F1}");
                                 _core.LogMessage($"A* PATH: Player pos: {_core.PlayerPosition}, Leader pos: {followTarget.Pos}");
@@ -396,12 +401,20 @@ namespace BetterFollowbotLite.Core.Movement
                                     _core.LogMessage($"Adding Movement task (terrain not loaded) - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}");
                                     _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                                 }
+                                return; // Exit early if terrain not loaded
                             }
-                            else
-                            {
-                                // Use A* pathfinding to create waypoint tasks instead of straight line
-                                _core.LogMessage($"A* PATH: Attempting to find path - Player: {_core.PlayerPosition}, Leader: {followTarget.Pos}");
-                                var pathWaypoints = _core.Pathfinding.GetPath(_core.PlayerPosition, followTarget.Pos);
+
+                        // Use A* pathfinding to create waypoint tasks instead of straight line
+                        _core.LogMessage($"A* PATH: Attempting to find path - Player: {_core.PlayerPosition}, Leader: {followTarget.Pos}");
+                        var pathWaypoints = _core.Pathfinding.GetPath(_core.PlayerPosition, followTarget.Pos);
+
+                        // If A* fails and terrain is loaded, fall back to direct movement
+                        if (pathWaypoints == null && _core.Pathfinding.IsTerrainLoaded)
+                        {
+                            _core.LogMessage($"A* PATH: Pathfinding failed, falling back to direct movement");
+                            _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                            return;
+                        }
 
                                 if (pathWaypoints != null && pathWaypoints.Count > 1) // Need more than just start position
                                 {
@@ -521,11 +534,12 @@ namespace BetterFollowbotLite.Core.Movement
                         // Close follow logic. Only create tasks if we have none and leader moved significantly
                         if (distanceToLeader >= _core.Settings.autoPilotPathfindingNodeDistance.Value)
                         {
-                            // Check if leader has moved far enough from our last target position to warrant new path
-                            var leaderMovedSinceLastTask = lastTargetPosition == Vector3.Zero ||
-                                                         Vector3.Distance(lastTargetPosition, followTarget.Pos) > Math.Max(3000, _core.Settings.autoPilotPathfindingNodeDistance.Value * 50);
+                            // Check if we need a new path: either no current tasks OR leader moved significantly
+                            var needsNewPath = _taskManager.TaskCount == 0 ||
+                                             (lastTargetPosition != Vector3.Zero &&
+                                              Vector3.Distance(lastTargetPosition, followTarget.Pos) > Math.Max(3000, _core.Settings.autoPilotPathfindingNodeDistance.Value * 50));
 
-                            if (leaderMovedSinceLastTask)
+                            if (needsNewPath)
                             {
                                 // Try A* pathfinding first if terrain is loaded
                                 if (_core.Pathfinding.IsTerrainLoaded)

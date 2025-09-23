@@ -43,6 +43,14 @@ namespace BetterFollowbotLite.Core.Movement
                     return;
                 }
 
+                // Prevent excessive task creation - if we have too many movement tasks, don't plan new paths
+                var movementTaskCount = _taskManager.CountTasks(t => t.Type == TaskNodeType.Movement);
+                if (movementTaskCount > 50) // Allow up to 50 movement tasks before blocking
+                {
+                    _core.LogMessage($"PATH PLANNING: Too many movement tasks ({movementTaskCount}) - blocking path planning until tasks are executed");
+                    return;
+                }
+
                 if (_portalManager.IsInPortalTransition)
                 {
                     _core.LogMessage($"PORTAL: In portal transition mode - actively searching for portals to follow leader");
@@ -504,6 +512,14 @@ namespace BetterFollowbotLite.Core.Movement
                             if (distanceFromLastTask >= responsiveThreshold)
                             {
                                 _core.LogMessage($"RESPONSIVENESS: Extending path with A* - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
+
+                                // Check if we already have too many tasks before extending
+                                var currentMovementTaskCount = _taskManager.CountTasks(t => t.Type == TaskNodeType.Movement);
+                                if (currentMovementTaskCount > 30) // Allow fewer tasks for extension
+                                {
+                                    _core.LogMessage($"PATH EXTENSION: Too many movement tasks ({currentMovementTaskCount}) - skipping extension");
+                                    return;
+                                }
 
                                 // Use A* to find additional waypoints from current path end to target
                                 var currentPathEnd = _taskManager.Tasks.Last().WorldPosition;

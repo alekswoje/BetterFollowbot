@@ -82,6 +82,8 @@ namespace BetterFollowbotLite.Core.Movement
                         if (portal != null)
                         {
                             _core.LogMessage($"PORTAL: Found portal '{portal.Label?.Text}' during transition - creating transition task");
+                            // Clear any existing transition tasks to prevent queue buildup
+                            _taskManager.Tasks.RemoveAll(t => t.Type == TaskNodeType.Transition);
                             _taskManager.AddTask(new TaskNode(portal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
                             _core.LogMessage($"PORTAL: Portal transition task created for portal at {portal.ItemOnGround.Pos}");
                         }
@@ -148,6 +150,8 @@ namespace BetterFollowbotLite.Core.Movement
                         if (isSpecialPortal || isArenaPortal)
                         {
                             _core.LogMessage($"ARENA PORTAL: Creating transition task for portal '{selectedPortalLabel}'");
+                            // Clear any existing transition tasks to prevent queue buildup
+                            _taskManager.Tasks.RemoveAll(t => t.Type == TaskNodeType.Transition);
                             _taskManager.AddTask(new TaskNode(selectedPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
                             _core.LogMessage($"ARENA PORTAL: Portal transition task created for portal at {selectedPortal.ItemOnGround.Pos}");
                         }
@@ -225,6 +229,8 @@ namespace BetterFollowbotLite.Core.Movement
                                 if (portal != null)
                                 {
                                     _core.LogMessage($"ZONE TRANSITION: Found portal '{portal.Label?.Text}' for labyrinth navigation");
+                                    // Clear any existing transition tasks to prevent queue buildup
+                                    _taskManager.Tasks.RemoveAll(t => t.Type == TaskNodeType.Transition);
                                     _taskManager.AddTask(new TaskNode(portal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
                                     _core.LogMessage("ZONE TRANSITION: Labyrinth portal transition task added to queue");
                                 }
@@ -249,6 +255,8 @@ namespace BetterFollowbotLite.Core.Movement
                                     if (portal != null)
                                     {
                                         _core.LogMessage($"ZONE TRANSITION: Found portal '{portal.Label?.Text}' leading to leader zone '{leaderPartyElement.ZoneName}'");
+                                        // Clear any existing transition tasks to prevent queue buildup
+                                        _taskManager.Tasks.RemoveAll(t => t.Type == TaskNodeType.Transition);
                                         _taskManager.AddTask(new TaskNode(portal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
                                         _core.LogMessage("ZONE TRANSITION: Portal transition task added to queue");
                                     }
@@ -356,6 +364,8 @@ namespace BetterFollowbotLite.Core.Movement
                                     if (portal != null)
                                     {
                                         _core.LogMessage($"ZONE TRANSITION: Found portal '{portal.Label?.Text}' for labyrinth navigation after large movement");
+                                        // Clear any existing transition tasks to prevent queue buildup
+                                        _taskManager.Tasks.RemoveAll(t => t.Type == TaskNodeType.Transition);
                                         _taskManager.AddTask(new TaskNode(portal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
                                         _core.LogMessage("ZONE TRANSITION: Labyrinth portal transition task added to queue");
                                     }
@@ -404,6 +414,8 @@ namespace BetterFollowbotLite.Core.Movement
                                                 transition = selectedPortal; // Set transition so we use this portal
 
                                                 // Add the transition task since party teleport failed
+                                                // Clear any existing transition tasks to prevent queue buildup
+                                                _taskManager.Tasks.RemoveAll(t => t.Type == TaskNodeType.Transition);
                                                 _taskManager.AddTask(new TaskNode(selectedPortal, 200, TaskNodeType.Transition));
                                                 _core.LogMessage("ZONE TRANSITION: Portal transition task added as fallback");
                                             }
@@ -420,6 +432,8 @@ namespace BetterFollowbotLite.Core.Movement
                                         if (!_taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition))
                                         {
                                             _core.LogMessage($"ZONE TRANSITION: Found nearby portal '{transition.Label?.Text}', adding transition task");
+                                            // Clear any existing transition tasks to prevent queue buildup
+                                            _taskManager.Tasks.RemoveAll(t => t.Type == TaskNodeType.Transition);
                                             _taskManager.AddTask(new TaskNode(transition, 200, TaskNodeType.Transition));
                                         }
                                         else

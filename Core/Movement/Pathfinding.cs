@@ -48,6 +48,9 @@ namespace BetterFollowbotLite.Core.Movement
 
         public void InitializeTerrain()
         {
+            // Clear caches when terrain is reinitialized
+            ClearPathCache();
+
             try
             {
                 _terrainMetadata = BetterFollowbotLite.Instance.GameController.IngameState.Data.DataStruct.Terrain;
@@ -158,6 +161,11 @@ namespace BetterFollowbotLite.Core.Movement
             return NeighborOffsets.Select(offset => tile + offset);
         }
 
+        private IEnumerable<Vector2i> GetWalkableNeighbors(Vector2i tile)
+        {
+            return GetNeighbors(tile).Where(neighbor => IsTilePathable(neighbor));
+        }
+
         /// <summary>
         /// Finds the nearest walkable tile to the given position, expanding outward in a spiral pattern
         /// </summary>
@@ -237,6 +245,12 @@ namespace BetterFollowbotLite.Core.Movement
                         return null;
 
                     var next = NeighborOffsets[directionIndex - 1] + current;
+                    // Validate that the next tile is actually walkable
+                    if (!IsTilePathable(next))
+                    {
+                        _core.LogMessage($"A* DEBUG: Path contains non-walkable tile at ({next.X}, {next.Y}) - path invalid");
+                        return null;
+                    }
                     path.Add(next);
                     current = next;
                 }
@@ -251,7 +265,12 @@ namespace BetterFollowbotLite.Core.Movement
                 var current = start;
                 while (current != target)
                 {
-                    var next = GetNeighbors(current).MinBy(x => GetExactDistance(x, exactDistanceField));
+                    var next = GetWalkableNeighbors(current).MinBy(x => GetExactDistance(x, exactDistanceField));
+                    if (next == default(Vector2i) || !IsTilePathable(next))
+                    {
+                        _core.LogMessage($"A* DEBUG: No valid walkable neighbor found from ({current.X}, {current.Y}) - path invalid");
+                        return null;
+                    }
                     path.Add(next);
                     current = next;
                 }
@@ -462,7 +481,10 @@ namespace BetterFollowbotLite.Core.Movement
 
         public void ClearPathCache()
         {
+            _directionField.Clear();
+            _exactDistanceField.Clear();
             _pathCache.Clear();
+            _core.LogMessage("A* DEBUG: All path caches cleared");
         }
 
         private Vector2i WorldToGrid(Vector3 worldPos)

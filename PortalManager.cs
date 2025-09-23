@@ -22,7 +22,8 @@ namespace BetterFollowbotLite
                 new[]
                 {
                     "ascendancy chamber", "arena portal", "the pit", "pit portal", "warden's quarters", "wardens quarters",
-                    "combat", "merveil's lair", "merveils lair", "the weaver's nest", "stairs", "pyramid apex"
+                    "combat", "merveil's lair", "merveils lair", "the weaver's nest", "stairs", "pyramid apex",
+                    "tower rooftop"
                 }, "Arena"
             }
         };

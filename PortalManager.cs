@@ -24,7 +24,7 @@ namespace BetterFollowbotLite
                     "ascendancy chamber", "arena", "the pit", "warden's quarters", "portal", "the ring of blades",
                     "combat", "merveil's lair", "merveils lair", "the weaver's nest", "stairs", "pyramid apex",
                     "tower rooftop", "caldera of the king", "the black core", "the black heart", "sanctum of innocence",
-                    "the chamber of innocence", "tukohama's keep", "the karui fortress"
+                    "the chamber of innocence", "tukohama's keep", "the karui fortress", "prison rooftop"
                 }, "Arena"
             }
         };

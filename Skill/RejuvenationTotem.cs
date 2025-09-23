@@ -44,8 +44,8 @@ namespace BetterFollowbotLite.Skills
                             if (!hasTotemBuff)
                             {
                                 // Check for unique/rare monsters within range
-                                var monsterCount = _instance.GetMonsterWithin(_settings.rejuvenationTotemRange, ExileCore.Shared.Enums.MonsterRarity.Rare);
-                                var uniqueMonsterCount = _instance.GetMonsterWithin(_settings.rejuvenationTotemRange, ExileCore.Shared.Enums.MonsterRarity.Unique);
+                                var monsterCount = _instance.GetMonsterWithin(_settings.rejuvenationTotemRange, MonsterRarity.Rare);
+                                var uniqueMonsterCount = _instance.GetMonsterWithin(_settings.rejuvenationTotemRange, MonsterRarity.Unique);
                                 var hasRareOrUniqueNearby = monsterCount > 0 || uniqueMonsterCount > 0;
 
                                 // Check if any party member total pool (Life + ES) is below threshold

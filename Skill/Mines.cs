@@ -10,9 +10,8 @@ using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
 
-namespace BetterFollowbotLite.Skills
+namespace BetterFollowbotLite.Skill
 {
-
     internal class Mines : ISkill
     {
         private readonly BetterFollowbotLite _instance;
@@ -41,13 +40,11 @@ namespace BetterFollowbotLite.Skills
 
             try
             {
-                _instance.LogMessage($"MINES: Execute called, processing {(_instance.skills?.Count ?? 0)} skills");
-
-                        // Loop through all skills to find mine skills
-                        foreach (var skill in _instance.skills)
-                        {
-                            ProcessMineSkill(skill);
-                        }
+                // Loop through all skills to find mine skills
+                foreach (var skill in _instance.skills)
+                {
+                    ProcessMineSkill(skill);
+                }
             }
             catch (Exception e)
             {
@@ -62,8 +59,6 @@ namespace BetterFollowbotLite.Skills
         {
             if (!_settings.minesEnabled)
                 return false;
-
-            _instance.LogMessage($"MINES: ProcessMineSkill called for skill {skill.Id} ({skill.InternalName}), enemies count: {_instance.Enemys?.Count ?? 0}");
 
             try
             {
@@ -80,43 +75,42 @@ namespace BetterFollowbotLite.Skills
                     if (SkillInfo.ManageCooldown(mineSkill, skill))
                     {
                         // Parse mines range from text input, default to 35 if invalid
-                        int minesRange;
-                        if (!int.TryParse(_settings.minesRange.Value, out minesRange))
+                        if (!int.TryParse(_settings.minesRange.Value, out var minesRange))
                             minesRange = 35;
 
-                        // Find nearby rare/unique enemies within range
+                        // Find nearby rare/unique enemies within range using ReAgent-style detection
                         var nearbyRareUniqueEnemies = _instance.Enemys
                             .Where(monster =>
                             {
-                                // Check if monster is rare or unique using Entity.Rarity (like ReAgent does)
-                                ExileCore.Shared.Enums.MonsterRarity rarity;
                                 try
                                 {
-                                    rarity = monster.Rarity;
+                                    // Use Entity.Rarity directly like ReAgent does
+                                    var rarity = monster.Rarity;
+
+                                    // Only target Rare or Unique monsters
+                                    if (rarity != ExileCore.Shared.Enums.MonsterRarity.Rare && rarity != ExileCore.Shared.Enums.MonsterRarity.Unique)
+                                        return false;
+
+                                    // Check distance from player to monster
+                                    var distanceToMonster = Vector3.Distance(monster.Pos, _instance.playerPosition);
+
+                                    return distanceToMonster <= minesRange;
                                 }
                                 catch
                                 {
                                     // Fallback to component-based checking if Entity.Rarity fails
                                     var rarityComponent = monster.GetComponent<ObjectMagicProperties>();
-                                    if (rarityComponent == null)
+                                    if (rarityComponent == null || (rarityComponent.Rarity != ExileCore.Shared.Enums.MonsterRarity.Rare && rarityComponent.Rarity != ExileCore.Shared.Enums.MonsterRarity.Unique))
                                         return false;
 
-                                    rarity = rarityComponent.Rarity;
+                                    var distanceToMonster = Vector3.Distance(monster.Pos, _instance.playerPosition);
+                                    return distanceToMonster <= minesRange;
                                 }
-
-                                // Only target Rare or Unique monsters
-                                if (rarity != ExileCore.Shared.Enums.MonsterRarity.Rare && rarity != ExileCore.Shared.Enums.MonsterRarity.Unique)
-                                    return false;
-
-                                // Check distance from player to monster
-                                var distanceToMonster = Vector3.Distance(monster.Pos, _instance.playerPosition);
-
-                                return distanceToMonster <= minesRange;
                             })
                             .ToList();
 
                         // Debug: Show all monsters and their rarities
-                        if (_settings.minesEnabled) // Only log when enabled to avoid spam
+                        if (_settings.minesEnabled.Value) // Only log when enabled to avoid spam
                         {
                             foreach (var monster in _instance.Enemys.Take(5)) // Log first 5 monsters
                             {
@@ -244,24 +238,8 @@ namespace BetterFollowbotLite.Skills
                                     mineSkill.Cooldown = 100; // Set cooldown to prevent spam
                                     _instance.LastTimeAny = DateTime.Now;
 
-                                    // Get rarity using the same approach as detection
-                                    var rarity = "Unknown";
-                                    try
-                                    {
-                                        rarity = bestTarget.Rarity switch
-                                        {
-                                            ExileCore.Shared.Enums.MonsterRarity.White => "White",
-                                            ExileCore.Shared.Enums.MonsterRarity.Magic => "Magic",
-                                            ExileCore.Shared.Enums.MonsterRarity.Rare => "Rare",
-                                            ExileCore.Shared.Enums.MonsterRarity.Unique => "Unique",
-                                            _ => "Unknown"
-                                        };
-                                    }
-                                    catch
-                                    {
-                                        var rarityComponent = bestTarget.GetComponent<ObjectMagicProperties>();
-                                        rarity = rarityComponent?.Rarity.ToString() ?? "Unknown";
-                                    }
+                                    var rarityComponent = bestTarget.GetComponent<ObjectMagicProperties>();
+                                    var rarity = rarityComponent?.Rarity.ToString() ?? "Unknown";
                                     var distance = Vector3.Distance(_instance.playerPosition, bestTarget.Pos);
                                     _instance.LogMessage($"MINES: Threw {(hasStormblastMine ? "Stormblast" : "Pyroclast")} mine at {bestTarget.Path} (Rarity: {rarity}, Distance: {distance:F1})");
 

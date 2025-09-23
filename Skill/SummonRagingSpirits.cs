@@ -99,14 +99,14 @@ namespace BetterFollowbotLite.Skills
                                             var rarity = rarityComponent.Rarity;
 
                                             // Always check for rare/unique
-                                            if (rarity == ExileCore.Shared.Enums.MonsterRarity.Unique || rarity == ExileCore.Shared.Enums.MonsterRarity.Rare)
+                                            if (rarity == MonsterRarity.Unique || rarity == MonsterRarity.Rare)
                                             {
                                                 rareOrUniqueNearby = true;
                                                 break;
                                             }
                                             // Also check for magic/white if enabled
                                             else if (_settings.summonRagingSpiritsMagicNormal.Value &&
-                                                    (rarity == ExileCore.Shared.Enums.MonsterRarity.Magic || rarity == ExileCore.Shared.Enums.MonsterRarity.White))
+                                                    (rarity == MonsterRarity.Magic || rarity == MonsterRarity.Normal))
                                             {
                                                 rareOrUniqueNearby = true;
                                                 break;

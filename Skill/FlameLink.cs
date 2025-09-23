@@ -73,63 +73,106 @@ namespace BetterFollowbotLite.Skills
 
                     if (SkillInfo.ManageCooldown(linkSkill, skill))
                     {
-                        // Get party leader
+                        // Get all party members
                         var partyElements = PartyElements.GetPlayerInfoElementList();
 
-                        var leaderPartyElement = partyElements
-                            .FirstOrDefault(x => string.Equals(x?.PlayerName?.ToLower(),
-                                _settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
+                        // Get player entities for all party members
+                        var playerEntities = _instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
+                            .Where(x => x != null && x.IsValid && !x.IsHostile)
+                            .ToList();
 
-                        if (leaderPartyElement != null)
+                        // Find party members that need linking (no target buff or low timer)
+                        var partyMembersNeedingLink = new List<(PartyElement partyElement, Entity playerEntity, float priority)>();
+
+                        foreach (var partyElement in partyElements)
                         {
-                            // Find the actual player entity by name
-                            var playerEntities = _instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
-                                .Where(x => x != null && x.IsValid && !x.IsHostile);
+                            if (partyElement?.PlayerName == null) continue;
 
-                            var leaderEntity = playerEntities
+                            // Find the corresponding player entity
+                            var playerEntity = playerEntities
                                 .FirstOrDefault(x => string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
-                                    _settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
+                                    partyElement.PlayerName.ToLower(), StringComparison.CurrentCultureIgnoreCase));
 
-                            if (leaderEntity != null)
+                            if (playerEntity != null)
                             {
-                                // Set the player entity
-                                leaderPartyElement.Data.PlayerEntity = leaderEntity;
+                                // Set the player entity for reference
+                                partyElement.Data.PlayerEntity = playerEntity;
 
-                                var leader = leaderPartyElement.Data.PlayerEntity;
-                                var leaderBuffs = leader.GetComponent<Buffs>().BuffsList;
+                                var playerBuffs = playerEntity.GetComponent<Buffs>()?.BuffsList ?? new System.Collections.Generic.List<Buff>();
+                                var linkTargetBuff = playerBuffs.FirstOrDefault(x => x.Name == targetBuffName);
 
-                                // Check if leader has the target buff
-                                var hasLinkTarget = leaderBuffs.Exists(x => x.Name == targetBuffName);
+                                // Calculate priority (lower is better)
+                                // Priority 1: No buff at all (most urgent)
+                                // Priority 2: Buff timer < 5 seconds
+                                // Priority 3: Buff timer < 10 seconds
+                                // Priority 4+: Everything else
+                                float priority = 10; // Default priority
 
-                                // Check if we have the source buff and its timer
-                                var linkSourceBuff = _instance.Buffs.FirstOrDefault(x => x.Name == linkSkill.BuffName);
-                                var linkSourceTimeLeft = linkSourceBuff?.Timer ?? 0;
-
-                                // Check distance from leader to mouse cursor in screen space
-                                var mouseScreenPos = _instance.GetMousePosition();
-                                var leaderScreenPos = Helper.WorldToValidScreenPosition(leader.Pos);
-                                var distanceToCursor = Vector2.Distance(mouseScreenPos, leaderScreenPos);
-
-                                // Logic: Aggressive flame link maintenance - refresh much earlier and with larger distance tolerance
-                                // Emergency linking (no source buff): ignore distance
-                                // Normal linking: use distance check
-                                var shouldActivate = (!hasLinkTarget || linkSourceTimeLeft < 8 || linkSourceBuff == null) &&
-                                                     (linkSourceBuff == null || distanceToCursor < 100);
-
-                                if (shouldActivate)
+                                if (linkTargetBuff == null)
                                 {
-                                    // Move mouse to leader position
-                                    var leaderScreenPosForMouse = _instance.GameController.IngameState.Camera.WorldToScreen(leader.Pos);
-                                    Mouse.SetCursorPos(leaderScreenPosForMouse);
+                                    priority = 1; // Most urgent - no buff
+                                }
+                                else if (linkTargetBuff.Timer < 5)
+                                {
+                                    priority = 2; // Very urgent - buff expiring soon
+                                }
+                                else if (linkTargetBuff.Timer < 10)
+                                {
+                                    priority = 3; // Moderately urgent - buff low
+                                }
 
-                                    // Activate the skill
+                                partyMembersNeedingLink.Add((partyElement, playerEntity, priority));
+                            }
+                        }
+
+                        // Sort by priority (lowest first) and distance (closest first)
+                        var mouseScreenPos = _instance.GetMousePosition();
+                        var bestTarget = partyMembersNeedingLink
+                            .OrderBy(x => x.priority) // Priority first
+                            .ThenBy(x =>
+                            {
+                                var screenPos = Helper.WorldToValidScreenPosition(x.playerEntity.Pos);
+                                return Vector2.Distance(mouseScreenPos, screenPos);
+                            }) // Then by distance
+                            .FirstOrDefault();
+
+                        if (bestTarget != default)
+                        {
+                            var targetPartyElement = bestTarget.partyElement;
+                            var targetEntity = bestTarget.playerEntity;
+                            var targetPriority = bestTarget.priority;
+
+                            // Check if we have the source buff and its timer
+                            var linkSourceBuff = _instance.Buffs.FirstOrDefault(x => x.Name == linkSkill.BuffName);
+                            var linkSourceTimeLeft = linkSourceBuff?.Timer ?? 0;
+
+                            // Check distance from target to mouse cursor in screen space
+                            var targetScreenPos = Helper.WorldToValidScreenPosition(targetEntity.Pos);
+                            var distanceToCursor = Vector2.Distance(mouseScreenPos, targetScreenPos);
+
+                            // Logic: Aggressive flame link maintenance - refresh much earlier and with larger distance tolerance
+                            // Emergency linking (no source buff): ignore distance
+                            // Normal linking: use distance check
+                            // Higher priority targets get more lenient distance checks
+                            var maxDistance = targetPriority <= 2 ? 150 : 100; // More urgent targets allow longer distance
+                            var shouldActivate = (linkSourceTimeLeft < 8 || linkSourceBuff == null) &&
+                                                 (linkSourceBuff == null || distanceToCursor < maxDistance);
+
+                            if (shouldActivate)
+                            {
+                                // Move mouse to target position
+                                var targetScreenPosForMouse = _instance.GameController.IngameState.Camera.WorldToScreen(targetEntity.Pos);
+                                Mouse.SetCursorPos(targetScreenPosForMouse);
+
+                                // Activate the skill
                                     var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
-                                    if (skillKey != Keys.None)
+                                    if (skillKey != default(Keys))
                                     {
                                         Keyboard.KeyPress(skillKey);
                                     }
-                                    linkSkill.Cooldown = 100;
-                                }
+                                linkSkill.Cooldown = 100;
+
+                                _instance.LogMessage($"FLAME LINK: Linked to {targetPartyElement.PlayerName} (Priority: {targetPriority}, Distance: {distanceToCursor:F1})");
                             }
                         }
                     }

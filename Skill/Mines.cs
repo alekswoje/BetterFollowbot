@@ -224,7 +224,7 @@ namespace BetterFollowbotLite.Skill
 
                                     // Activate the mine skill
                                     var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
-                                    if (skillKey != Keys.None)
+                                    if (skillKey != default(Keys))
                                     {
                                         Keyboard.KeyPress(skillKey);
                                     }

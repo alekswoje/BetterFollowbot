@@ -354,7 +354,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
             10 => Settings.inputKey10.Value,
             11 => Settings.inputKey11.Value,
             12 => Settings.inputKey12.Value,
-            _ => Keys.None  // Return None instead of Escape to prevent spam
+            _ => default(Keys)  // Return default instead of Escape to prevent spam
         };
     }
 

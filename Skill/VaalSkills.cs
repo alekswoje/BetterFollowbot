@@ -93,7 +93,7 @@ namespace BetterFollowbotLite.Skills
                         {
                             // Activate the skill
                             var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
-                            if (skillKey != Keys.None)
+                            if (skillKey != default(Keys))
                             {
                                 Keyboard.KeyPress(skillKey);
                             }
@@ -161,7 +161,7 @@ namespace BetterFollowbotLite.Skills
                             {
                                 // Activate the skill
                                 var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
-                            if (skillKey != Keys.None)
+                            if (skillKey != default(Keys))
                             {
                                 Keyboard.KeyPress(skillKey);
                             }

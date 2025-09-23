@@ -112,7 +112,7 @@ namespace BetterFollowbotLite.Skills
                                     {
                                         // Use the summon skeletons skill
                                         var skillKey = _instance.GetSkillInputKey(summonSkeletonsSkill.SkillSlotIndex);
-                                        if (skillKey != Keys.None)
+                                        if (skillKey != default(Keys))
                                         {
                                             Keyboard.KeyPress(skillKey);
                                         }

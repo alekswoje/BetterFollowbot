@@ -396,6 +396,23 @@ namespace BetterFollowbotLite;
             if (leaderPartyElement == null)
                 return null;
 
+            // SPECIAL CASE: Labyrinth areas - use different logic since party TP doesn't work
+            if (PortalManager.IsInLabyrinthArea)
+            {
+                BetterFollowbotLite.Instance.LogMessage("PORTAL SEARCH: In labyrinth area, using nearest portal logic");
+                var nearestPortal = PortalManager.FindNearestLabyrinthPortal();
+                if (nearestPortal != null)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL SEARCH: Found nearest labyrinth portal: {nearestPortal.Label?.Text ?? "Unknown"} at distance {nearestPortal.ItemOnGround.DistancePlayer:F1}");
+                    return nearestPortal;
+                }
+                else
+                {
+                    BetterFollowbotLite.Instance.LogMessage("PORTAL SEARCH: No portals found in labyrinth area");
+                    return null;
+                }
+            }
+
             var currentZoneName = BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName;
             var leaderZoneName = leaderPartyElement.ZoneName;
             var isHideout = (bool)BetterFollowbotLite.Instance?.GameController?.Area?.CurrentArea?.IsHideout;

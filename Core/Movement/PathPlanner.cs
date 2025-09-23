@@ -186,26 +186,45 @@ namespace BetterFollowbotLite.Core.Movement
                         }
                         else
                         {
-                            var tpButton = GetTpButton(leaderPartyElement);
-                            if (!tpButton.Equals(Vector2.Zero))
+                            // SPECIAL CASE: Labyrinth areas don't support party TP - always use portals
+                            if (PortalManager.IsInLabyrinthArea)
                             {
-                                _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
-                                AutoPilot.IsTeleportInProgress = true;
-                                _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
-                            }
-                            else
-                            {
-                                _core.LogMessage("ZONE TRANSITION: Party teleport button not available, falling back to portal search");
+                                _core.LogMessage("ZONE TRANSITION: In labyrinth area, skipping party TP and using portal search");
                                 var portal = GetBestPortalLabel(leaderPartyElement);
                                 if (portal != null)
                                 {
-                                    _core.LogMessage($"ZONE TRANSITION: Found portal '{portal.Label?.Text}' leading to leader zone '{leaderPartyElement.ZoneName}'");
+                                    _core.LogMessage($"ZONE TRANSITION: Found portal '{portal.Label?.Text}' for labyrinth navigation");
                                     _taskManager.AddTask(new TaskNode(portal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
-                                    _core.LogMessage("ZONE TRANSITION: Portal transition task added to queue");
+                                    _core.LogMessage("ZONE TRANSITION: Labyrinth portal transition task added to queue");
                                 }
                                 else
                                 {
-                                    _core.LogMessage("ZONE TRANSITION: No teleport button or portal available, cannot follow through transition");
+                                    _core.LogMessage("ZONE TRANSITION: No portals found in labyrinth area, cannot follow through transition");
+                                }
+                            }
+                            else
+                            {
+                                var tpButton = GetTpButton(leaderPartyElement);
+                                if (!tpButton.Equals(Vector2.Zero))
+                                {
+                                    _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
+                                    AutoPilot.IsTeleportInProgress = true;
+                                    _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
+                                }
+                                else
+                                {
+                                    _core.LogMessage("ZONE TRANSITION: Party teleport button not available, falling back to portal search");
+                                    var portal = GetBestPortalLabel(leaderPartyElement);
+                                    if (portal != null)
+                                    {
+                                        _core.LogMessage($"ZONE TRANSITION: Found portal '{portal.Label?.Text}' leading to leader zone '{leaderPartyElement.ZoneName}'");
+                                        _taskManager.AddTask(new TaskNode(portal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                                        _core.LogMessage("ZONE TRANSITION: Portal transition task added to queue");
+                                    }
+                                    else
+                                    {
+                                        _core.LogMessage("ZONE TRANSITION: No teleport button or portal available, cannot follow through transition");
+                                    }
                                 }
                             }
                         }
@@ -223,20 +242,28 @@ namespace BetterFollowbotLite.Core.Movement
                         {
                             _core.LogMessage($"ZONE TRANSITION: Leader in different zone via party element - Current: '{_core.GameController.Area.CurrentArea.DisplayName}', Leader: '{leaderPartyElement.ZoneName}'");
 
-                            // Prioritize party teleport over portal clicking
+                            // Prioritize party teleport over portal clicking (but not in labyrinth areas)
                             if (!HasConflictingTransitionTasks())
                             {
-                                var tpButton = GetTpButton(leaderPartyElement);
-                                if (!tpButton.Equals(Vector2.Zero))
+                                // SPECIAL CASE: Labyrinth areas don't support party TP
+                                if (PortalManager.IsInLabyrinthArea)
                                 {
-                                    _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
-                                    AutoPilot.IsTeleportInProgress = true;
-                                    _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
-                                    _core.LogMessage("ZONE TRANSITION: Party teleport task added to queue");
+                                    _core.LogMessage("ZONE TRANSITION: In labyrinth area, party TP not available - this is normal");
                                 }
                                 else
                                 {
-                                    _core.LogMessage("ZONE TRANSITION: Party teleport button not available for null entity transition");
+                                    var tpButton = GetTpButton(leaderPartyElement);
+                                    if (!tpButton.Equals(Vector2.Zero))
+                                    {
+                                        _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
+                                        AutoPilot.IsTeleportInProgress = true;
+                                        _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
+                                        _core.LogMessage("ZONE TRANSITION: Party teleport task added to queue");
+                                    }
+                                    else
+                                    {
+                                        _core.LogMessage("ZONE TRANSITION: Party teleport button not available for null entity transition");
+                                    }
                                 }
                             }
                         }
@@ -288,13 +315,31 @@ namespace BetterFollowbotLite.Core.Movement
                             }
                             else
                             {
-                                // Try to click the teleport button - this is the preferred method for following party members
-                                var tpButton = GetTpButton(leaderPartyElement);
-                                if (!tpButton.Equals(Vector2.Zero))
+                                // SPECIAL CASE: Labyrinth areas don't support party TP - use portals instead
+                                if (PortalManager.IsInLabyrinthArea)
                                 {
-                                    _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
-                                    // SET GLOBAL FLAG: Prevent SMITE and other skills from interfering
-                                    AutoPilot.IsTeleportInProgress = true;
+                                    _core.LogMessage("ZONE TRANSITION: In labyrinth area, using portal search instead of party TP");
+                                    var portal = GetBestPortalLabel(leaderPartyElement);
+                                    if (portal != null)
+                                    {
+                                        _core.LogMessage($"ZONE TRANSITION: Found portal '{portal.Label?.Text}' for labyrinth navigation after large movement");
+                                        _taskManager.AddTask(new TaskNode(portal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                                        _core.LogMessage("ZONE TRANSITION: Labyrinth portal transition task added to queue");
+                                    }
+                                    else
+                                    {
+                                        _core.LogMessage("ZONE TRANSITION: No portals found in labyrinth area after large movement");
+                                    }
+                                }
+                                else
+                                {
+                                    // Try to click the teleport button - this is the preferred method for following party members
+                                    var tpButton = GetTpButton(leaderPartyElement);
+                                    if (!tpButton.Equals(Vector2.Zero))
+                                    {
+                                        _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
+                                        // SET GLOBAL FLAG: Prevent SMITE and other skills from interfering
+                                        AutoPilot.IsTeleportInProgress = true;
                                     _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
                                 }
                                 else
@@ -353,6 +398,7 @@ namespace BetterFollowbotLite.Core.Movement
                                     {
                                         _core.LogMessage("ZONE TRANSITION: No party teleport button or suitable portal found, cannot follow through transition");
                                     }
+                                }
                                 }
                             }
                         }

@@ -23,7 +23,8 @@ namespace BetterFollowbotLite
                 {
                     "ascendancy chamber", "arena", "the pit", "warden's quarters", "passageway", "the ring of blades",
                     "combat", "merveil's lair", "merveils lair", "the weaver's nest", "stairs", "pyramid apex",
-                    "tower rooftop", "caldera of the king", "the black core", "the black heart", "sanctum of innocence"
+                    "tower rooftop", "caldera of the king", "the black core", "the black heart", "sanctum of innocence",
+                    "the chamber of innocence"
                 }, "Arena"
             }
         };
@@ -31,7 +32,8 @@ namespace BetterFollowbotLite
         // Close arena portals - these use a shorter distance threshold (300 units)
         private static readonly string[] CloseArenaPortals = new[]
         {
-            "the bowels of the beast", "shavronne's arena", "maligaro's arena", "deodre's arena"
+            "the bowels of the beast", "shavronne's arena", "maligaro's arena", "deodre's arena", "cathedral apex",
+            ""
         };
     
         // Special portal names that should be treated as high-priority interzone portals

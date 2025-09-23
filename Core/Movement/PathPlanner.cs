@@ -23,6 +23,7 @@ namespace BetterFollowbotLite.Core.Movement
         private readonly PortalManager _portalManager;
 
         private bool _lastPathfindingFailed;
+        private Vector3 _lastPathCalculationPosition; // Track where we last calculated a path
 
         public PathPlanner(IFollowbotCore core, ILeaderDetector leaderDetector, ITaskManager taskManager, PortalManager portalManager)
         {
@@ -413,16 +414,17 @@ namespace BetterFollowbotLite.Core.Movement
                 if (_lastPathfindingFailed && shouldResetFailureFlag)
                 {
                     _lastPathfindingFailed = false;
+                    _lastPathCalculationPosition = Vector3.Zero; // Reset calculation position so we recalculate
                     _core.LogMessage($"CLOSE FOLLOW: Resetting pathfinding failure flag (leader moved: {leaderMovement:F1}, distance: {distanceToLeader:F1})");
                 }
 
-                // Only recalculate when leader has moved significantly from last calculation position
+                // Only recalculate when leader has moved significantly from last path calculation position
                 // OR when we have no tasks at all (initial setup)
+                var leaderMovedFromLastCalculation = Vector3.Distance(_lastPathCalculationPosition, followTarget.Pos);
                 var needsNewPath = _taskManager.TaskCount == 0 || // Always recalculate if no tasks (initial state)
-                                 (lastTargetPosition != Vector3.Zero &&
-                                  Vector3.Distance(lastTargetPosition, followTarget.Pos) > recalculationDistance);
+                                 leaderMovedFromLastCalculation > recalculationDistance;
 
-                _core.LogMessage($"CLOSE FOLLOW: Distance to leader: {distanceToLeader:F1}, Tasks: {_taskManager.TaskCount}, Leader moved: {leaderMovement:F1}, Recalc threshold: {recalculationDistance:F1}, Last failed: {_lastPathfindingFailed}, Needs new path: {needsNewPath}");
+                _core.LogMessage($"CLOSE FOLLOW: Distance to leader: {distanceToLeader:F1}, Tasks: {_taskManager.TaskCount}, Leader moved from calc: {leaderMovedFromLastCalculation:F1}, Recalc threshold: {recalculationDistance:F1}, Last failed: {_lastPathfindingFailed}, Needs new path: {needsNewPath}");
 
                 if (needsNewPath)
                 {
@@ -435,6 +437,7 @@ namespace BetterFollowbotLite.Core.Movement
                         if (pathWaypoints != null && pathWaypoints.Count > 1)
                         {
                             _lastPathfindingFailed = false;
+                            _lastPathCalculationPosition = followTarget.Pos; // Update position where we calculated this path
                             _core.LogMessage($"A* PATH: Close follow found path with {pathWaypoints.Count} waypoints");
 
                             // For close follow, go directly to the leader (last waypoint) to avoid zig-zagging
@@ -452,6 +455,7 @@ namespace BetterFollowbotLite.Core.Movement
                         else
                         {
                             _lastPathfindingFailed = true;
+                            _lastPathCalculationPosition = followTarget.Pos; // Still update position even for direct movement
                             _core.LogMessage($"A* PATH: Close follow pathfinding failed, using direct movement");
                             _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                         }
@@ -459,6 +463,7 @@ namespace BetterFollowbotLite.Core.Movement
                     else
                     {
                         _lastPathfindingFailed = true; // Terrain not loaded counts as a failure
+                        _lastPathCalculationPosition = followTarget.Pos; // Still update position even for direct movement
                         _core.LogMessage($"Close follow: Using direct movement (terrain not loaded)");
                         _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                     }

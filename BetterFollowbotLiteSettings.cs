@@ -60,6 +60,7 @@ public class BetterFollowbotLiteSettings : ISettings
     #region Smite Buff
 
     public ToggleNode smiteEnabled = new ToggleNode(false);
+    public RangeNode<int> smiteRange = new RangeNode<int>(100, 10, 1000);
 
     #endregion
 

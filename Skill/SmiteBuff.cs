@@ -159,8 +159,7 @@ namespace BetterFollowbotLite.Skills
             try
             {
                 // ReAgent-style validation checks
-                const int smiteRange = 250; // Smite has a 250 unit range
-                if (monster.DistancePlayer > smiteRange)
+                if (monster.DistancePlayer > _settings.smiteRange.Value)
                     return false;
 
                 if (!monster.HasComponent<Monster>() ||

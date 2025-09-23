@@ -192,9 +192,6 @@ namespace BetterFollowbotLite.Skills
                                         linkSkill.Cooldown = 100;
 
                                         _instance.LogMessage($"FLAME LINK: Linked to {partyElement.PlayerName} ({reason}, Distance: {distanceToCursor:F1})");
-
-                                        // Only link one party member per execution to avoid spam
-                                        break;
                                     }
                                 }
                             }

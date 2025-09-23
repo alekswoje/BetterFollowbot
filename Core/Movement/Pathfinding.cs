@@ -139,6 +139,8 @@ namespace BetterFollowbotLite.Core.Movement
 
         public List<Vector2i> GetPath(Vector3 startWorld, Vector3 targetWorld)
         {
+            _core.LogMessage($"A* DEBUG: GetPath called - Start: {startWorld}, Target: {targetWorld}");
+
             // Get grid coordinates from the Render components like Radar does
             var player = _core.GameController.Game.IngameState.Data.LocalPlayer;
             var playerRender = player?.GetComponent<Render>();
@@ -149,6 +151,7 @@ namespace BetterFollowbotLite.Core.Movement
             }
 
             var startGrid = new Vector2i((int)playerRender.GridPos().X, (int)playerRender.GridPos().Y);
+            _core.LogMessage($"A* DEBUG: Player grid pos: ({startGrid.X}, {startGrid.Y})");
 
             // For target, find the entity at the target position
             var targetEntity = _core.GameController.EntityListWrapper.OnlyValidEntities

@@ -84,34 +84,11 @@ namespace BetterFollowbotLite.Skill
                             .Where(monster => IsValidMonsterForMines(monster, minesRange))
                             .ToList();
 
-                        // Debug: Show all monsters and their rarities
-                        if (_settings.minesEnabled.Value) // Only log when enabled to avoid spam
+                        // Only log the count, no per-monster spam
+                        if (nearbyRareUniqueEnemies.Any())
                         {
-                            var allMonsters = _instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Monster].Take(10); // Check more monsters
-                            foreach (var monster in allMonsters)
-                            {
-                                try
-                                {
-                                    var monsterRarity = monster.Rarity switch
-                                    {
-                                        ExileCore.Shared.Enums.MonsterRarity.White => "Normal",
-                                        ExileCore.Shared.Enums.MonsterRarity.Magic => "Magic",
-                                        ExileCore.Shared.Enums.MonsterRarity.Rare => "Rare",
-                                        ExileCore.Shared.Enums.MonsterRarity.Unique => "Unique",
-                                        _ => "Unknown"
-                                    };
-                                    var distance = monster.DistancePlayer;
-                                    var isValid = IsValidMonsterForMines(monster, minesRange);
-                                    _instance.LogMessage($"MINES: Monster {monster.Path} - Rarity: {monsterRarity}, Distance: {distance:F1}, IsValid: {isValid}");
-                                }
-                                catch (Exception ex)
-                                {
-                                    _instance.LogMessage($"MINES: Error logging monster {monster?.Path}: {ex.Message}");
-                                }
-                            }
+                            _instance.LogMessage($"MINES: Found {nearbyRareUniqueEnemies.Count} rare/unique enemies within range (range: {minesRange})");
                         }
-
-                        _instance.LogMessage($"MINES: Found {nearbyRareUniqueEnemies.Count} rare/unique enemies within range (range: {minesRange}) from validated monsters");
 
                         if (nearbyRareUniqueEnemies.Any())
                         {

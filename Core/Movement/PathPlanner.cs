@@ -374,7 +374,6 @@ namespace BetterFollowbotLite.Core.Movement
                 _core.LogError($"PathPlanner.PlanPath Error: {e}");
             }
         }
-    }
 
     private void ClearTasksExceptSpecial()
     {
@@ -454,7 +453,7 @@ namespace BetterFollowbotLite.Core.Movement
         }
     }
 
-        private List<LabelOnGround> GetAllPortals(PartyElementWindow leaderPartyElement, bool forceSearch = false)
+    private List<LabelOnGround> GetAllPortals(PartyElementWindow leaderPartyElement, bool forceSearch = false)
         {
             try
             {

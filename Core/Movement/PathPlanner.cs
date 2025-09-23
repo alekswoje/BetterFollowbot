@@ -472,8 +472,10 @@ namespace BetterFollowbotLite.Core.Movement
                                             endWaypoint.Y * gridToWorldMultiplier,
                                             followTarget.Pos.Z
                                         );
-                                        _core.LogMessage($"A* PATH: Adding end waypoint: grid({endWaypoint.X},{endWaypoint.Y}) -> world({endWorldPos.X:F1},{endWorldPos.Y:F1},{endWorldPos.Z:F1})");
-                                        _taskManager.AddTask(new TaskNode(endWorldPos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                        // Use smaller completion distance for A* end waypoint to get closer to leader
+                                        var endCompletionDistance = Math.Min(_core.Settings.autoPilotPathfindingNodeDistance.Value, 50);
+                                        _core.LogMessage($"A* PATH: Adding end waypoint: grid({endWaypoint.X},{endWaypoint.Y}) -> world({endWorldPos.X:F1},{endWorldPos.Y:F1},{endWorldPos.Z:F1}), distance: {endCompletionDistance}");
+                                        _taskManager.AddTask(new TaskNode(endWorldPos, endCompletionDistance));
                                         waypointsAdded++;
                                     }
                                     else
@@ -493,8 +495,13 @@ namespace BetterFollowbotLite.Core.Movement
                                                 waypoint.Y * gridToWorldMultiplier, // Y is north-south position
                                                 followTarget.Pos.Z // Keep same height
                                             );
-                                            _core.LogMessage($"A* PATH: Adding waypoint {w+1}/{waypointsToAdd} (index {waypointIndex}/{pathWaypoints.Count}): grid({waypoint.X},{waypoint.Y}) -> world({worldPos.X:F1},{worldPos.Y:F1},{worldPos.Z:F1})");
-                                            _taskManager.AddTask(new TaskNode(worldPos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                            // For the final waypoint, use a smaller completion distance to get closer to leader
+                                            var completionDistance = (w == waypointsToAdd - 1) ?
+                                                Math.Min(_core.Settings.autoPilotPathfindingNodeDistance.Value, 50) : // Max 50 units for final waypoint
+                                                _core.Settings.autoPilotPathfindingNodeDistance.Value;
+
+                                            _core.LogMessage($"A* PATH: Adding waypoint {w+1}/{waypointsToAdd} (index {waypointIndex}/{pathWaypoints.Count}): grid({waypoint.X},{waypoint.Y}) -> world({worldPos.X:F1},{worldPos.Y:F1},{worldPos.Z:F1}), distance: {completionDistance}");
+                                            _taskManager.AddTask(new TaskNode(worldPos, completionDistance));
                                             waypointsAdded++;
                                         }
                                     }

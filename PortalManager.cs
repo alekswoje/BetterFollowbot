@@ -21,7 +21,7 @@ namespace BetterFollowbotLite
             {
                 new[]
                 {
-                    "portal", "arena portal", "the pit", "pit portal", "warden's quarters", "wardens quarters",
+                    "ascendancy chamber", "arena portal", "the pit", "pit portal", "warden's quarters", "wardens quarters",
                     "combat", "merveil's lair", "merveils lair", "the weaver's nest", "stairs", "pyramid apex"
                 }, "Arena"
             }
@@ -30,7 +30,7 @@ namespace BetterFollowbotLite
         // Close arena portals - these use a shorter distance threshold (500 units)
         private static readonly string[] CloseArenaPortals = new[]
         {
-            "door", 
+            "",
         };
 
         // Special portal names that should be treated as high-priority interzone portals
@@ -135,25 +135,6 @@ namespace BetterFollowbotLite
         public bool IsInPortalTransition => portalLocation == Vector3.One;
 
         /// <summary>
-        /// Checks if we're currently in a labyrinth area where party TP doesn't work
-        /// </summary>
-        public static bool IsInLabyrinthArea
-        {
-            get
-            {
-                try
-                {
-                    var rawName = BetterFollowbotLite.Instance.GameController.Area.CurrentArea.Area.RawName;
-                    return rawName != null && rawName.Contains("labyrinth", StringComparison.OrdinalIgnoreCase);
-                }
-                catch
-                {
-                    return false;
-                }
-            }
-        }
-
-        /// <summary>
         /// Sets the portal transition state
         /// </summary>
         public void SetPortalTransitionMode(bool active)
@@ -180,38 +161,6 @@ namespace BetterFollowbotLite
                     portalLocation = Vector3.One; // Use as a flag to indicate portal transition mode is active
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Portal transition mode activated - IsInPortalTransition: {IsInPortalTransition}");
                 }
-            }
-        }
-
-        /// <summary>
-        /// Finds the nearest portal/transition in labyrinth areas for following the leader
-        /// </summary>
-        public static LabelOnGround FindNearestLabyrinthPortal()
-        {
-            try
-            {
-                if (!IsInLabyrinthArea)
-                    return null;
-
-                // In labyrinth areas, find any portal-like object within reasonable distance
-                var portalLabels = BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels
-                    .Where(x =>
-                        x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
-                        x.ItemOnGround != null &&
-                        (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") ||
-                         x.ItemOnGround.Metadata.ToLower().Contains("portal") ||
-                         x.ItemOnGround.Metadata.ToLower().Contains("transition") ||
-                         x.ItemOnGround.Metadata.ToLower().Contains("labyrinth")) &&
-                        x.ItemOnGround.DistancePlayer < 150) // Within 150 units
-                    .OrderBy(x => x.ItemOnGround.DistancePlayer) // Nearest first
-                    .ToList();
-
-                return portalLabels?.FirstOrDefault();
-            }
-            catch (Exception ex)
-            {
-                BetterFollowbotLite.Instance.LogError($"PortalManager: Error finding nearest labyrinth portal: {ex.Message}");
-                return null;
             }
         }
 

@@ -457,15 +457,27 @@ namespace BetterFollowbotLite.Core.Movement
                 if (followTarget != null && followTarget.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                 {
                     var distanceFromLastTask = Vector3.Distance(_taskManager.Tasks.Last().WorldPosition, followTarget.Pos);
-                    // More responsive: reduce threshold by half for more frequent path updates
-                    var responsiveThreshold = _core.Settings.autoPilotPathfindingNodeDistance.Value / 2;
-                    if (distanceFromLastTask >= responsiveThreshold)
-                    {
-                        _core.LogMessage($"RESPONSIVENESS: Extending path with A* - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
+                    var currentMovementTaskCount = _taskManager.CountTasks(t => t.Type == TaskNodeType.Movement);
 
+                    // Only extend path if we're running low on waypoints OR target has moved significantly
+                    var extendThreshold = _core.Settings.autoPilotPathfindingNodeDistance.Value * 3; // Much higher threshold
+                    var shouldExtend = false;
+
+                    if (currentMovementTaskCount <= 5) // Almost out of waypoints
+                    {
+                        shouldExtend = true;
+                        _core.LogMessage($"PATH EXTENSION: Low on waypoints ({currentMovementTaskCount}) - extending path");
+                    }
+                    else if (distanceFromLastTask >= extendThreshold) // Target moved far from planned path
+                    {
+                        shouldExtend = true;
+                        _core.LogMessage($"PATH EXTENSION: Target moved far from path end - Distance: {distanceFromLastTask:F1}, Threshold: {extendThreshold:F1}");
+                    }
+
+                    if (shouldExtend)
+                    {
                         // Check if we already have too many tasks before extending
-                        var currentMovementTaskCount = _taskManager.CountTasks(t => t.Type == TaskNodeType.Movement);
-                        if (currentMovementTaskCount > 30) // Allow fewer tasks for extension
+                        if (currentMovementTaskCount > 50) // Higher limit for safety
                         {
                             _core.LogMessage($"PATH EXTENSION: Too many movement tasks ({currentMovementTaskCount}) - skipping extension");
                             return;
@@ -518,6 +530,10 @@ namespace BetterFollowbotLite.Core.Movement
                                 _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                             }
                         }
+                    }
+                    else
+                    {
+                        _core.LogMessage($"PATH EXTENSION: Not extending path - {currentMovementTaskCount} waypoints remaining, distance to target: {distanceFromLastTask:F1}");
                     }
                 }
                 else

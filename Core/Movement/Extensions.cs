@@ -54,3 +54,4 @@ public static class Extensions
                          + "$", RegexOptions.IgnoreCase | RegexOptions.Singleline);
     }
 }
+

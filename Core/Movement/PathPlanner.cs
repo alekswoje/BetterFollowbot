@@ -641,6 +641,16 @@ namespace BetterFollowbotLite.Core.Movement
             }
         }
 
+        private Vector3 GridToWorld(Vector2i grid)
+        {
+            const float GridToWorldMultiplier = 250f / 23f; // TileToWorldConversion / TileToGridConversion
+            return new Vector3(
+                grid.X * GridToWorldMultiplier,
+                _core.PlayerPosition.Y, // Keep same height as player
+                grid.Y * GridToWorldMultiplier
+            );
+        }
+
         private bool HasConflictingTransitionTasks()
         {
             return _taskManager.Tasks.Any(t =>

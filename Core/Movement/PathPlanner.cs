@@ -405,9 +405,21 @@ namespace BetterFollowbotLite.Core.Movement
                 var recalculationDistance = Math.Max(200, _core.Settings.autoPilotPathfindingNodeDistance.Value * 3);
                 var leaderMovement = lastTargetPosition != Vector3.Zero ? Vector3.Distance(lastTargetPosition, followTarget.Pos) : 0;
 
+                // Reset failure flag if leader moved significantly or if we're close enough that A* should work
+                var shouldResetFailureFlag = (lastTargetPosition != Vector3.Zero &&
+                                             Vector3.Distance(lastTargetPosition, followTarget.Pos) > recalculationDistance) ||
+                                            distanceToLeader < 300; // Reset if close enough for A* to work
+
+                if (_lastPathfindingFailed && shouldResetFailureFlag)
+                {
+                    _lastPathfindingFailed = false;
+                    _core.LogMessage($"CLOSE FOLLOW: Resetting pathfinding failure flag (leader moved: {leaderMovement:F1}, distance: {distanceToLeader:F1})");
+                }
+
                 // If last pathfinding failed, only recalculate when leader moves significantly
                 // If last pathfinding succeeded, allow recalculation when tasks are empty (for initial setup)
-                var needsNewPath = (_taskManager.TaskCount == 0 && !_lastPathfindingFailed) || // Initial setup only if not failed before
+                // Always allow recalculation if we have no tasks and are reasonably close (fallback to direct movement)
+                var needsNewPath = (_taskManager.TaskCount == 0 && (!_lastPathfindingFailed || distanceToLeader < 400)) || // Allow direct movement if close
                                  (lastTargetPosition != Vector3.Zero &&
                                   Vector3.Distance(lastTargetPosition, followTarget.Pos) > recalculationDistance);
 

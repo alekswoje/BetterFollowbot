@@ -89,7 +89,7 @@ namespace BetterFollowbotLite.Skills
             {
                 if (skill.Id == SkillInfo.smite.Id)
                 {
-                    // Custom cooldown check for smite that bypasses GCD since it's a buff skill
+                    // Less restrictive cooldown for smite buff (reduced from 100ms to 25ms)
                     if (SkillInfo.smite.Cooldown <= 0 &&
                         !(skill.RemainingUses <= 0 && skill.IsOnCooldown))
                     {
@@ -106,43 +106,20 @@ namespace BetterFollowbotLite.Skills
                             var hasSmiteBuff = smiteBuff != null;
                             var buffTimeLeft = smiteBuff?.Timer ?? 0;
 
-                            // Refresh if no buff or buff has less than 2 seconds left
-                            if (!hasSmiteBuff || buffTimeLeft < 2.0f)
+                            // More aggressive buff refresh: refresh if no buff OR buff has less than 4 seconds left (increased from 2)
+                            if (!hasSmiteBuff || buffTimeLeft < 4.0f)
                             {
-                                // Find valid monsters within 250 units of player (smite attack range) using ReAgent-style validation
-                                var targetMonster = _instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Monster]
-                                    .Where(monster => IsValidMonsterForSmite(monster))
-                                    .OrderBy(monster => monster.DistancePlayer) // Closest first
-                                    .FirstOrDefault();
-
-                                if (targetMonster != null)
+                                // Smite is a buff skill - just cast it without needing specific monster targets
+                                // The buff will automatically apply to nearby enemies
+                                var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
+                                if (skillKey != default(Keys))
                                 {
-                                    // Move mouse to monster position
-                                    var monsterScreenPos = _instance.GameController.IngameState.Camera.WorldToScreen(targetMonster.Pos);
-                                    Mouse.SetCursorPos(monsterScreenPos);
+                                    Keyboard.KeyPress(skillKey);
+                                    // Reduced cooldown from 100ms to 25ms for more frequent casting
+                                    SkillInfo.smite.Cooldown = 25;
+                                    _instance.LastTimeAny = DateTime.Now; // Update global cooldown
 
-                                    // Small delay to ensure mouse movement is registered
-                                    System.Threading.Thread.Sleep(50);
-
-                                    // Double-check mouse position is still valid
-                                    var currentMousePos = _instance.GetMousePosition();
-                                    var distanceFromTarget = Vector2.Distance(currentMousePos, monsterScreenPos);
-                                    if (distanceFromTarget < 50) // Within reasonable tolerance
-                                    {
-                                        // Activate the skill
-                                        var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
-                                        if (skillKey != default(Keys))
-                                        {
-                                            Keyboard.KeyPress(skillKey);
-                                        }
-                                        SkillInfo.smite.Cooldown = 100;
-                                        _instance.LastTimeAny = DateTime.Now; // Update global cooldown
-                                    }
-                                }
-                                else
-                                {
-                                    // No suitable targets found - dash to leader to get near monsters
-                                    _instance.DashToLeaderForSmite();
+                                    _instance.LogMessage($"SMITE: Cast successfully (Buff: {hasSmiteBuff}, TimeLeft: {buffTimeLeft:F1}s)");
                                 }
                             }
                         }
@@ -151,55 +128,5 @@ namespace BetterFollowbotLite.Skills
             }
         }
 
-        /// <summary>
-        /// Validates if a monster is valid for smite targeting (based on ReAgent logic)
-        /// </summary>
-        private bool IsValidMonsterForSmite(Entity monster)
-        {
-            try
-            {
-                // ReAgent-style validation checks
-                if (monster.DistancePlayer > _settings.smiteRange.Value)
-                    return false;
-
-                if (!monster.HasComponent<Monster>() ||
-                    !monster.HasComponent<Positioned>() ||
-                    !monster.HasComponent<Render>() ||
-                    !monster.HasComponent<Life>() ||
-                    !monster.HasComponent<ObjectMagicProperties>())
-                    return false;
-
-                if (!monster.IsAlive || !monster.IsHostile)
-                    return false;
-
-                // Check for hidden monster buff (like ReAgent does)
-                if (monster.TryGetComponent<Buffs>(out var buffs) && buffs.HasBuff("hidden_monster"))
-                    return false;
-
-                // Check if monster is on screen (can be targeted)
-                var screenPos = _instance.GameController.IngameState.Camera.WorldToScreen(monster.Pos);
-                var isOnScreen = _instance.GameController.Window.GetWindowRectangleTimeCache.Contains(screenPos);
-                if (!isOnScreen)
-                    return false;
-
-                // Additional checks for targetability
-                var targetable = monster.GetComponent<Targetable>();
-                if (targetable == null || !targetable.isTargetable)
-                    return false;
-
-                // Check if not invincible (cannot be damaged)
-                var stats = monster.GetComponent<Stats>();
-                if (stats?.StatDictionary?.ContainsKey(GameStat.CannotBeDamaged) == true &&
-                    stats.StatDictionary[GameStat.CannotBeDamaged] > 0)
-                    return false;
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _instance.LogError($"SMITE: Error validating monster {monster?.Path}: {ex.Message}");
-                return false;
-            }
-        }
     }
 }

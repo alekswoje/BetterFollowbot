@@ -21,7 +21,7 @@ namespace BetterFollowbotLite
             {
                 new[]
                 {
-                    "enter the arena", "arena portal", "the pit", "pit portal", "warden's quarters", "wardens quarters",
+                    "portal", "arena portal", "the pit", "pit portal", "warden's quarters", "wardens quarters",
                     "combat", "merveil's lair", "merveils lair", "the weaver's nest", "stairs", "pyramid apex"
                 }, "Arena"
             }

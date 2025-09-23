@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using BetterFollowbotLite.Interfaces;
 using ExileCore;
+using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
 using GameOffsets;
 using GameOffsets.Native;

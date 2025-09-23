@@ -23,7 +23,7 @@ namespace BetterFollowbotLite
                 {
                     "ascendancy chamber", "arena", "the pit", "warden's quarters", "passageway", "the ring of blades",
                     "combat", "merveil's lair", "merveils lair", "the weaver's nest", "stairs", "pyramid apex",
-                    "tower rooftop", "caldera of the king", "the black core"
+                    "tower rooftop", "caldera of the king", "the black core", "the black heart"
                 }, "Arena"
             }
         };

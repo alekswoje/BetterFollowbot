@@ -50,8 +50,8 @@ namespace BetterFollowbotLite.Skills
 
                 // If mouse is outside game window bounds, user is likely in ExileCore overlay
                 var mouseOutsideGame = gameWindowRect == null ||
-                    mousePos.X < gameWindowRect.Left || mousePos.X > gameWindowRect.Right ||
-                    mousePos.Y < gameWindowRect.Top || mousePos.Y > gameWindowRect.Bottom;
+                    mousePos.X < gameWindowRect.Value.X || mousePos.X > gameWindowRect.Value.X + gameWindowRect.Value.Width ||
+                    mousePos.Y < gameWindowRect.Value.Y || mousePos.Y > gameWindowRect.Value.Y + gameWindowRect.Value.Height;
 
                 // If not in foreground, definitely block (covers overlay scenarios)
                 var notInForeground = !_instance.GameController.IsForeGroundCache;
@@ -102,8 +102,8 @@ namespace BetterFollowbotLite.Skills
             {
                 if (skill.Id == SkillInfo.vaalHaste.Id)
                 {
-                    // Vaal skills require charges - check if we have any remaining uses
-                    if (skill.RemainingUses > 0)
+                    // Vaal skills - check if they can be used (includes charge validation)
+                    if (skill.CanBeUsed)
                     {
                         // Check if we don't already have the vaal haste buff
                         var hasVaalHasteBuff = _instance.Buffs.Exists(x => x.Name == "vaal_haste");
@@ -115,17 +115,17 @@ namespace BetterFollowbotLite.Skills
                             if (skillKey != default(Keys))
                             {
                                 Keyboard.KeyPress(skillKey);
-                                _instance.LogMessage($"VAAL HASTE: Used with {skill.RemainingUses} charges remaining");
+                                _instance.LogMessage($"VAAL HASTE: Used successfully");
                             }
                         }
                     }
                     else
                     {
-                        // Log when we skip due to no charges (occasionally to avoid spam)
+                        // Log when we skip (occasionally to avoid spam)
                         var timeSinceLastLog = (DateTime.Now - _instance.LastTimeAny).TotalSeconds;
-                        if (timeSinceLastLog > 30) // Log every 30 seconds when no charges
+                        if (timeSinceLastLog > 30) // Log every 30 seconds
                         {
-                            _instance.LogMessage($"VAAL HASTE: Skipped - no charges available (RemainingUses: {skill.RemainingUses})");
+                            _instance.LogMessage($"VAAL HASTE: Skipped - cannot be used");
                             _instance.LastTimeAny = DateTime.Now;
                         }
                     }
@@ -140,8 +140,8 @@ namespace BetterFollowbotLite.Skills
             {
                 if (skill.Id == SkillInfo.vaalDiscipline.Id)
                 {
-                    // Vaal skills require charges - check if we have any remaining uses
-                    if (skill.RemainingUses > 0)
+                    // Vaal skills - check if they can be used (includes charge validation)
+                    if (skill.CanBeUsed)
                     {
                         // Check if ES is below threshold for player or any party member
                         var playerEsPercentage = _instance.player.ESPercentage;
@@ -194,18 +194,18 @@ namespace BetterFollowbotLite.Skills
                                 if (skillKey != default(Keys))
                                 {
                                     Keyboard.KeyPress(skillKey);
-                                    _instance.LogMessage($"VAAL DISCIPLINE: Used with {skill.RemainingUses} charges remaining (ES below {threshold:P0})");
+                                    _instance.LogMessage($"VAAL DISCIPLINE: Used successfully (ES below {threshold:P0})");
                                 }
                             }
                         }
                     }
                     else
                     {
-                        // Log when we skip due to no charges (occasionally to avoid spam)
+                        // Log when we skip (occasionally to avoid spam)
                         var timeSinceLastLog = (DateTime.Now - _instance.LastTimeAny).TotalSeconds;
-                        if (timeSinceLastLog > 30) // Log every 30 seconds when no charges
+                        if (timeSinceLastLog > 30) // Log every 30 seconds
                         {
-                            _instance.LogMessage($"VAAL DISCIPLINE: Skipped - no charges available (RemainingUses: {skill.RemainingUses})");
+                            _instance.LogMessage($"VAAL DISCIPLINE: Skipped - cannot be used");
                             _instance.LastTimeAny = DateTime.Now;
                         }
                     }

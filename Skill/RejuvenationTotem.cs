@@ -51,8 +51,8 @@ namespace BetterFollowbotLite.Skills
 
                 // If mouse is outside game window bounds, user is likely in ExileCore overlay
                 var mouseOutsideGame = gameWindowRect == null ||
-                    mousePos.X < gameWindowRect.Left || mousePos.X > gameWindowRect.Right ||
-                    mousePos.Y < gameWindowRect.Top || mousePos.Y > gameWindowRect.Bottom;
+                    mousePos.X < gameWindowRect.Value.X || mousePos.X > gameWindowRect.Value.X + gameWindowRect.Value.Width ||
+                    mousePos.Y < gameWindowRect.Value.Y || mousePos.Y > gameWindowRect.Value.Y + gameWindowRect.Value.Height;
 
                 // If not in foreground, definitely block (covers overlay scenarios)
                 var notInForeground = !_instance.GameController.IsForeGroundCache;

@@ -22,6 +22,8 @@ namespace BetterFollowbotLite.Core.Movement
         private readonly ITaskManager _taskManager;
         private readonly PortalManager _portalManager;
 
+        private bool _lastPathfindingFailed;
+
         public PathPlanner(IFollowbotCore core, ILeaderDetector leaderDetector, ITaskManager taskManager, PortalManager portalManager)
         {
             _core = core ?? throw new ArgumentNullException(nameof(core));
@@ -402,11 +404,14 @@ namespace BetterFollowbotLite.Core.Movement
                 // For close follow, use a more reasonable recalculation distance
                 var recalculationDistance = Math.Max(200, _core.Settings.autoPilotPathfindingNodeDistance.Value * 3);
                 var leaderMovement = lastTargetPosition != Vector3.Zero ? Vector3.Distance(lastTargetPosition, followTarget.Pos) : 0;
-                var needsNewPath = _taskManager.TaskCount == 0 || // Always create initial path
+
+                // If last pathfinding failed, only recalculate when leader moves significantly
+                // If last pathfinding succeeded, allow recalculation when tasks are empty (for initial setup)
+                var needsNewPath = (_taskManager.TaskCount == 0 && !_lastPathfindingFailed) || // Initial setup only if not failed before
                                  (lastTargetPosition != Vector3.Zero &&
                                   Vector3.Distance(lastTargetPosition, followTarget.Pos) > recalculationDistance);
 
-                _core.LogMessage($"CLOSE FOLLOW: Distance to leader: {distanceToLeader:F1}, Tasks: {_taskManager.TaskCount}, Leader moved: {leaderMovement:F1}, Recalc threshold: {recalculationDistance:F1}, Needs new path: {needsNewPath}");
+                _core.LogMessage($"CLOSE FOLLOW: Distance to leader: {distanceToLeader:F1}, Tasks: {_taskManager.TaskCount}, Leader moved: {leaderMovement:F1}, Recalc threshold: {recalculationDistance:F1}, Last failed: {_lastPathfindingFailed}, Needs new path: {needsNewPath}");
 
                 if (needsNewPath)
                 {
@@ -418,6 +423,7 @@ namespace BetterFollowbotLite.Core.Movement
 
                         if (pathWaypoints != null && pathWaypoints.Count > 1)
                         {
+                            _lastPathfindingFailed = false;
                             _core.LogMessage($"A* PATH: Close follow found path with {pathWaypoints.Count} waypoints");
 
                             // For close follow, go directly to the leader (last waypoint) to avoid zig-zagging
@@ -434,12 +440,14 @@ namespace BetterFollowbotLite.Core.Movement
                         }
                         else
                         {
+                            _lastPathfindingFailed = true;
                             _core.LogMessage($"A* PATH: Close follow pathfinding failed, using direct movement");
                             _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                         }
                     }
                     else
                     {
+                        _lastPathfindingFailed = true; // Terrain not loaded counts as a failure
                         _core.LogMessage($"Close follow: Using direct movement (terrain not loaded)");
                         _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                     }

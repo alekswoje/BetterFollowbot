@@ -452,7 +452,7 @@ namespace BetterFollowbotLite.Core.Movement
                         // Run first scan to start building distance field
                         var firstScanPaths = _core.Pathfinding.RunFirstScan(startGrid, targetGrid).ToList();
 
-                        if (firstScanPaths.Any(p => p != null && p.Count > 0))
+                        if (firstScanPaths.Any(p => p != null && p.Any()))
                         {
                             _lastPathfindingFailed = false;
                             _lastPathCalculationPosition = followTarget.Pos;
@@ -462,7 +462,7 @@ namespace BetterFollowbotLite.Core.Movement
                             // Now get a shorter path using the direction field
                             var shortPath = _core.Pathfinding.FindPath(startGrid, targetGrid);
 
-                            if (shortPath != null && shortPath.Count > 0)
+                            if (shortPath != null && shortPath.Any())
                             {
                                 _core.LogMessage($"A* PATH: Close follow - direction field found path with {shortPath.Count} waypoints");
 

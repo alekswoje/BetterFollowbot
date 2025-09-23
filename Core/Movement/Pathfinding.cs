@@ -303,7 +303,7 @@ namespace BetterFollowbotLite.Core.Movement
 
             // For continuous pathfinding, don't use cache for long paths - only cache very short paths
             var cacheKey = $"{startGrid.X},{startGrid.Y}->{targetGrid.X},{targetGrid.Y}";
-            var distance = Vector2i.Distance(startGrid, targetGrid);
+            var distance = Math.Abs(startGrid.X - targetGrid.X) + Math.Abs(startGrid.Y - targetGrid.Y);
 
             if (distance < 10 && _pathCache.TryGetValue(cacheKey, out var cachedPath)) // Only cache very short paths
             {
@@ -417,7 +417,7 @@ namespace BetterFollowbotLite.Core.Movement
             _pathCache.Clear();
         }
 
-        private Vector2i WorldToGrid(Vector3 worldPos)
+        public Vector2i WorldToGrid(Vector3 worldPos)
         {
             // Convert world position to grid coordinates (similar to Radar's GridToWorldMultiplier)
             const float GridToWorldMultiplier = 250f / 23f; // TileToWorldConversion / TileToGridConversion

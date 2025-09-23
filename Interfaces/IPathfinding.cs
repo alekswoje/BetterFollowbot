@@ -56,5 +56,28 @@ namespace BetterFollowbotLite.Interfaces
         /// Clear the path cache
         /// </summary>
         void ClearPathCache();
+
+        /// <summary>
+        /// Convert world position to grid coordinates
+        /// </summary>
+        /// <param name="worldPos">World position</param>
+        /// <returns>Grid coordinates</returns>
+        Vector2i WorldToGrid(Vector3 worldPos);
+
+        /// <summary>
+        /// Run first scan to build distance field from target
+        /// </summary>
+        /// <param name="start">Start grid position</param>
+        /// <param name="target">Target grid position</param>
+        /// <returns>Enumerable of path segments</returns>
+        IEnumerable<List<Vector2i>> RunFirstScan(Vector2i start, Vector2i target);
+
+        /// <summary>
+        /// Find path using existing distance field
+        /// </summary>
+        /// <param name="start">Start grid position</param>
+        /// <param name="target">Target grid position</param>
+        /// <returns>List of grid waypoints</returns>
+        List<Vector2i> FindPath(Vector2i start, Vector2i target);
     }
 }

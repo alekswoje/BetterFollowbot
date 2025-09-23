@@ -31,7 +31,7 @@ namespace BetterFollowbotLite
         // Close arena portals - these use a shorter distance threshold (500 units)
         private static readonly string[] CloseArenaPortals = new[]
         {
-            "",
+            "the bowels of the beast",
         };
     
         // Special portal names that should be treated as high-priority interzone portals

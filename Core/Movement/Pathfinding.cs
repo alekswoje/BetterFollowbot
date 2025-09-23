@@ -29,9 +29,8 @@ namespace BetterFollowbotLite.Core.Movement
         private int _dimension2;
         private int _dimension1;
 
-        // A* pathfinding data structures
-        private ConcurrentDictionary<Vector2i, Dictionary<Vector2i, float>> _exactDistanceField = new();
-        private ConcurrentDictionary<Vector2i, byte[][]> _directionField = new();
+        // Path finding
+        private PathFinder _pathFinder;
         private ConcurrentDictionary<string, List<Vector2i>> _pathCache = new();
 
         public Pathfinding(IFollowbotCore core, ITerrainAnalyzer terrainAnalyzer)
@@ -84,6 +83,9 @@ namespace BetterFollowbotLite.Core.Movement
 
                 _processedTerrainTargetingData = BetterFollowbotLite.Instance.GameController.IngameState.Data.RawTerrainTargetingData;
 
+                // Initialize Radar-style PathFinder
+                _pathFinder = new PathFinder(_processedTerrainData, pathableValues);
+
                 _core.LogMessage("PATHFINDING: A* terrain data initialized successfully");
 
                 // Count walkable tiles for debugging
@@ -131,245 +133,7 @@ namespace BetterFollowbotLite.Core.Movement
 
         #endregion
 
-        #region A* Pathfinding Methods
 
-        private bool IsTilePathable(Vector2i tile)
-        {
-            if (tile.X < 0 || tile.X >= _dimension2)
-                return false;
-
-            if (tile.Y < 0 || tile.Y >= _dimension1)
-                return false;
-
-            return _grid[tile.Y][tile.X];
-        }
-
-        private static readonly List<Vector2i> NeighborOffsets = new List<Vector2i>
-        {
-            new Vector2i(0, 1),
-            new Vector2i(1, 1),
-            new Vector2i(1, 0),
-            new Vector2i(1, -1),
-            new Vector2i(0, -1),
-            new Vector2i(-1, -1),
-            new Vector2i(-1, 0),
-            new Vector2i(-1, 1),
-        };
-
-        private static IEnumerable<Vector2i> GetNeighbors(Vector2i tile)
-        {
-            return NeighborOffsets.Select(offset => tile + offset);
-        }
-
-        private IEnumerable<Vector2i> GetWalkableNeighbors(Vector2i tile)
-        {
-            return GetNeighbors(tile).Where(neighbor => IsTilePathable(neighbor));
-        }
-
-        /// <summary>
-        /// Finds the nearest walkable tile to the given position, expanding outward in a spiral pattern
-        /// </summary>
-        private Vector2i FindNearestWalkableTile(Vector2i startPosition)
-        {
-            // Check if the position itself is walkable first
-            if (IsTilePathable(startPosition))
-            {
-                return startPosition;
-            }
-
-            // Expand outward in a spiral pattern to find the nearest walkable tile
-            for (int range = 1; range < 50; range++) // Limit search to reasonable distance
-            {
-                // Check the perimeter of each expanding square
-                int minX = Math.Max(0, startPosition.X - range);
-                int maxX = Math.Min(_dimension2 - 1, startPosition.X + range);
-                int minY = Math.Max(0, startPosition.Y - range);
-                int maxY = Math.Min(_dimension1 - 1, startPosition.Y + range);
-
-                // Top and bottom edges
-                for (int x = minX; x <= maxX; x++)
-                {
-                    // Top edge
-                    var topPos = new Vector2i(x, minY);
-                    if (IsTilePathable(topPos))
-                    {
-                        return topPos;
-                    }
-                    // Bottom edge
-                    var bottomPos = new Vector2i(x, maxY);
-                    if (IsTilePathable(bottomPos))
-                    {
-                        return bottomPos;
-                    }
-                }
-
-                // Left and right edges (excluding corners already checked)
-                for (int y = minY + 1; y < maxY; y++)
-                {
-                    // Left edge
-                    var leftPos = new Vector2i(minX, y);
-                    if (IsTilePathable(leftPos))
-                    {
-                        return leftPos;
-                    }
-                    // Right edge
-                    var rightPos = new Vector2i(maxX, y);
-                    if (IsTilePathable(rightPos))
-                    {
-                        return rightPos;
-                    }
-                }
-            }
-
-            // No walkable tile found within search range
-            return Vector2i.Zero;
-        }
-
-        private static float GetExactDistance(Vector2i tile, Dictionary<Vector2i, float> dict)
-        {
-            return dict.GetValueOrDefault(tile, float.PositiveInfinity);
-        }
-
-        public List<Vector2i> FindPath(Vector2i start, Vector2i target)
-        {
-            if (_directionField.GetValueOrDefault(target) is { } directionField)
-            {
-                if (directionField[start.Y][start.X] == 0)
-                    return null;
-                var path = new List<Vector2i>();
-                var current = start;
-                while (current != target)
-                {
-                    var directionIndex = directionField[current.Y][current.X];
-                    if (directionIndex == 0)
-                        return null;
-
-                    var next = NeighborOffsets[directionIndex - 1] + current;
-                    // Validate that the next tile is actually walkable
-                    if (!IsTilePathable(next))
-                    {
-                        _core.LogMessage($"A* DEBUG: Path contains non-walkable tile at ({next.X}, {next.Y}) - path invalid");
-                        return null;
-                    }
-                    path.Add(next);
-                    current = next;
-                }
-                return path;
-            }
-            else
-            {
-                var exactDistanceField = _exactDistanceField[target];
-                if (float.IsPositiveInfinity(GetExactDistance(start, exactDistanceField)))
-                    return null;
-                var path = new List<Vector2i>();
-                var current = start;
-                while (current != target)
-                {
-                    var next = GetWalkableNeighbors(current).MinBy(x => GetExactDistance(x, exactDistanceField));
-                    if (next == default(Vector2i) || !IsTilePathable(next))
-                    {
-                        _core.LogMessage($"A* DEBUG: No valid walkable neighbor found from ({current.X}, {current.Y}) - path invalid");
-                        return null;
-                    }
-                    path.Add(next);
-                    current = next;
-                }
-                return path;
-            }
-        }
-
-        public IEnumerable<List<Vector2i>> RunFirstScan(Vector2i start, Vector2i target)
-        {
-            if (_directionField.ContainsKey(target))
-            {
-                yield break;
-            }
-
-            if (!_exactDistanceField.TryAdd(target, new Dictionary<Vector2i, float>()))
-            {
-                yield break;
-            }
-
-            var exactDistanceField = _exactDistanceField[target];
-            exactDistanceField[target] = 0;
-            var localBacktrackDictionary = new Dictionary<Vector2i, Vector2i>();
-            var queue = new BinaryHeap<float, Vector2i>();
-            queue.Add(0, target);
-
-            void TryEnqueueTile(Vector2i coord, Vector2i previous, float previousScore)
-            {
-                if (!IsTilePathable(coord))
-                    return;
-
-                if (localBacktrackDictionary.ContainsKey(coord))
-                    return;
-
-                localBacktrackDictionary.Add(coord, previous);
-                var exactDistance = previousScore + coord.DistanceF(previous);
-                exactDistanceField.TryAdd(coord, exactDistance);
-                queue.Add(exactDistance, coord);
-            }
-
-            var sw = Stopwatch.StartNew();
-
-            localBacktrackDictionary.Add(target, target);
-            var reversePath = new List<Vector2i>();
-            while (queue.TryRemoveTop(out var top))
-            {
-                var current = top.Value;
-                var currentDistance = top.Key;
-                if (reversePath.Count == 0 && current.Equals(start))
-                {
-                    reversePath.Add(current);
-                    var it = current;
-                    while (it != target && localBacktrackDictionary.TryGetValue(it, out var previous))
-                    {
-                        reversePath.Add(previous);
-                        it = previous;
-                    }
-
-                    yield return reversePath;
-                }
-
-                foreach (var neighbor in GetNeighbors(current))
-                {
-                    TryEnqueueTile(neighbor, current, currentDistance);
-                }
-
-                if (sw.ElapsedMilliseconds > 100)
-                {
-                    yield return reversePath;
-                    sw.Restart();
-                }
-            }
-
-            localBacktrackDictionary.Clear();
-
-            if (_dimension1 * _dimension2 < exactDistanceField.Count * (sizeof(int) * 2 + Unsafe.SizeOf<Vector2i>() + Unsafe.SizeOf<float>()))
-            {
-                var directionGrid = _grid
-                    .AsParallel().AsOrdered().Select((r, y) => r.Select((_, x) =>
-                    {
-                        var coordVec = new Vector2i(x, y);
-                        if (float.IsPositiveInfinity(GetExactDistance(coordVec, exactDistanceField)))
-                            return (byte)0;
-
-                        var neighbors = GetNeighbors(coordVec);
-                        var (closestNeighbor, clndistance) = neighbors.Select(n => (n, distance: GetExactDistance(n, exactDistanceField))).MinBy(p => p.distance);
-                        if (float.IsPositiveInfinity(clndistance))
-                            return (byte)0;
-
-                        var bestDirection = closestNeighbor - coordVec;
-                        return (byte)(1 + NeighborOffsets.IndexOf(bestDirection));
-                    }).ToArray())
-                    .ToArray();
-
-                _directionField[target] = directionGrid;
-                _exactDistanceField.TryRemove(target, out _);
-            }
-        }
-
-        #endregion
 
         #region Utility Methods
 
@@ -404,7 +168,22 @@ namespace BetterFollowbotLite.Core.Movement
 
             _core.LogMessage($"A* DEBUG: Finding path from grid ({startGrid.X}, {startGrid.Y}) to ({targetGrid.X}, {targetGrid.Y})");
 
-            // Check cache first - use both start and target positions as key
+            // Check bounds
+            if (startGrid.X < 0 || startGrid.X >= _dimension2 || startGrid.Y < 0 || startGrid.Y >= _dimension1 ||
+                targetGrid.X < 0 || targetGrid.X >= _dimension2 || targetGrid.Y < 0 || targetGrid.Y >= _dimension1)
+            {
+                _core.LogMessage($"A* DEBUG: Grid coordinates out of bounds - Start: ({startGrid.X}, {startGrid.Y}), Target: ({targetGrid.X}, {targetGrid.Y}), Dimensions: {_dimension2}x{_dimension1}");
+                return null;
+            }
+
+            // Check if start and target are the same
+            if (startGrid == targetGrid)
+            {
+                _core.LogMessage("A* DEBUG: Start and target positions are the same");
+                return new List<Vector2i>();
+            }
+
+            // Check cache first
             var cacheKey = $"{startGrid.X},{startGrid.Y}->{targetGrid.X},{targetGrid.Y}";
             if (_pathCache.TryGetValue(cacheKey, out var cachedPath))
             {
@@ -412,78 +191,40 @@ namespace BetterFollowbotLite.Core.Movement
                 return cachedPath;
             }
 
-            // Check if start and target are the same
-            if (startGrid == targetGrid)
+            // Use Radar-style path finding
+            if (_pathFinder == null)
             {
-                _core.LogMessage($"A* DEBUG: Start and target are the same, returning empty path");
-                return new List<Vector2i>();
+                _core.LogMessage("A* DEBUG: PathFinder not initialized");
+                return null;
             }
 
-            // Check if positions are walkable, and find nearest walkable tile if not
-            if (!IsTilePathable(startGrid))
+            // Run first scan to populate direction/exact distance fields
+            var scanResults = _pathFinder.RunFirstScan(startGrid, targetGrid).ToList();
+            if (scanResults.Any() && scanResults.First().Any())
             {
-                _core.LogMessage($"A* DEBUG: Start position ({startGrid.X}, {startGrid.Y}) is not walkable, finding nearest walkable tile...");
-                startGrid = FindNearestWalkableTile(startGrid);
-                if (startGrid == Vector2i.Zero)
-                {
-                    _core.LogMessage($"A* DEBUG: Could not find walkable tile near start position!");
-                    return null;
-                }
-                _core.LogMessage($"A* DEBUG: Using walkable start position ({startGrid.X}, {startGrid.Y})");
+                var path = scanResults.First();
+                _pathCache[cacheKey] = path;
+                _core.LogMessage($"A* DEBUG: Found path with {path.Count} waypoints");
+                return path;
             }
 
-            if (!IsTilePathable(targetGrid))
+            // If first scan didn't find a path, try direct FindPath
+            var directPath = _pathFinder.FindPath(startGrid, targetGrid);
+            if (directPath != null)
             {
-                _core.LogMessage($"A* DEBUG: Target position ({targetGrid.X}, {targetGrid.Y}) is not walkable, finding nearest walkable tile...");
-                targetGrid = FindNearestWalkableTile(targetGrid);
-                if (targetGrid == Vector2i.Zero)
-                {
-                    _core.LogMessage($"A* DEBUG: Could not find walkable tile near target position!");
-                    return null;
-                }
-                _core.LogMessage($"A* DEBUG: Using walkable target position ({targetGrid.X}, {targetGrid.Y})");
+                _pathCache[cacheKey] = directPath;
+                _core.LogMessage($"A* DEBUG: Found direct path with {directPath.Count} waypoints");
+                return directPath;
             }
 
-            _core.LogMessage($"A* DEBUG: Both positions are walkable, running first scan...");
-
-            // Run first scan if needed
-            var pathFound = false;
-            foreach (var path in RunFirstScan(startGrid, targetGrid))
-            {
-                if (path != null && path.Count > 0)
-                {
-                    _core.LogMessage($"A* DEBUG: First scan found path with {path.Count} waypoints");
-                    _pathCache[cacheKey] = path;
-                    pathFound = true;
-                    return path;
-                }
-            }
-
-            if (!pathFound)
-            {
-                _core.LogMessage($"A* DEBUG: First scan found no path, trying direction field...");
-            }
-
-            // Find path using direction field
-            var finalPath = FindPath(startGrid, targetGrid);
-            if (finalPath != null)
-            {
-                _core.LogMessage($"A* DEBUG: Direction field found path with {finalPath.Count} waypoints");
-                _pathCache[cacheKey] = finalPath;
-            }
-            else
-            {
-                _core.LogMessage($"A* DEBUG: No path found by any method");
-            }
-
-            return finalPath;
+            _core.LogMessage("A* DEBUG: No path found");
+            return null;
         }
 
         public void ClearPathCache()
         {
-            _directionField.Clear();
-            _exactDistanceField.Clear();
             _pathCache.Clear();
+            _pathFinder = null; // Force recreation of PathFinder
             _core.LogMessage("A* DEBUG: All path caches cleared");
         }
 

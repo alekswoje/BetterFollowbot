@@ -24,6 +24,7 @@ namespace BetterFollowbotLite.Core.Movement
 
         private bool _lastPathfindingFailed;
         private Vector3 _lastPathCalculationPosition; // Track where we last calculated a path
+        private DateTime _lastPathCalculationTime; // Track when we last tried to calculate a path
 
         public PathPlanner(IFollowbotCore core, ILeaderDetector leaderDetector, ITaskManager taskManager, PortalManager portalManager)
         {
@@ -31,6 +32,9 @@ namespace BetterFollowbotLite.Core.Movement
             _leaderDetector = leaderDetector ?? throw new ArgumentNullException(nameof(leaderDetector));
             _taskManager = taskManager ?? throw new ArgumentNullException(nameof(taskManager));
             _portalManager = portalManager ?? throw new ArgumentNullException(nameof(portalManager));
+
+            // Initialize timestamps
+            _lastPathCalculationTime = DateTime.MinValue;
         }
 
         /// <summary>
@@ -414,20 +418,28 @@ namespace BetterFollowbotLite.Core.Movement
                 if (_lastPathfindingFailed && shouldResetFailureFlag)
                 {
                     _lastPathfindingFailed = false;
-                    _lastPathCalculationPosition = Vector3.Zero; // Reset calculation position so we recalculate
+                    _lastPathCalculationTime = DateTime.MinValue; // Reset calculation time so we can try immediately
                     _core.LogMessage($"CLOSE FOLLOW: Resetting pathfinding failure flag (leader moved: {leaderMovement:F1}, distance: {distanceToLeader:F1})");
                 }
 
-                // Only recalculate when leader has moved significantly from last path calculation position
-                // OR when we have no tasks at all (initial setup)
+                // Smart recalculation logic:
+                // 1. Always recalculate if no tasks (initial state)
+                // 2. If last pathfinding failed, allow retry after short cooldown
+                // 3. If last pathfinding succeeded, only recalculate if leader moved significantly
+                var timeSinceLastCalculation = (DateTime.Now - _lastPathCalculationTime).TotalSeconds;
                 var leaderMovedFromLastCalculation = Vector3.Distance(_lastPathCalculationPosition, followTarget.Pos);
-                var needsNewPath = _taskManager.TaskCount == 0 || // Always recalculate if no tasks (initial state)
-                                 leaderMovedFromLastCalculation > recalculationDistance;
 
-                _core.LogMessage($"CLOSE FOLLOW: Distance to leader: {distanceToLeader:F1}, Tasks: {_taskManager.TaskCount}, Leader moved from calc: {leaderMovedFromLastCalculation:F1}, Recalc threshold: {recalculationDistance:F1}, Last failed: {_lastPathfindingFailed}, Needs new path: {needsNewPath}");
+                var needsNewPath = _taskManager.TaskCount == 0 || // Always recalculate if no tasks
+                                 (_lastPathfindingFailed && timeSinceLastCalculation > 1.0) || // Retry failed attempts after 1 second
+                                 (!_lastPathfindingFailed && leaderMovedFromLastCalculation > recalculationDistance); // Success requires significant movement
+
+                _core.LogMessage($"CLOSE FOLLOW: Distance to leader: {distanceToLeader:F1}, Tasks: {_taskManager.TaskCount}, Leader moved from calc: {leaderMovedFromLastCalculation:F1}, Time since calc: {timeSinceLastCalculation:F1}s, Recalc threshold: {recalculationDistance:F1}, Last failed: {_lastPathfindingFailed}, Needs new path: {needsNewPath}");
 
                 if (needsNewPath)
                 {
+                    // Update the last calculation time
+                    _lastPathCalculationTime = DateTime.Now;
+
                     // Try A* pathfinding first if terrain is loaded
                     if (_core.Pathfinding.IsTerrainLoaded)
                     {
@@ -455,7 +467,7 @@ namespace BetterFollowbotLite.Core.Movement
                         else
                         {
                             _lastPathfindingFailed = true;
-                            _lastPathCalculationPosition = followTarget.Pos; // Still update position even for direct movement
+                            // Don't update _lastPathCalculationPosition for failed attempts - allows retry sooner
                             _core.LogMessage($"A* PATH: Close follow pathfinding failed, using direct movement");
                             _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                         }
@@ -463,7 +475,7 @@ namespace BetterFollowbotLite.Core.Movement
                     else
                     {
                         _lastPathfindingFailed = true; // Terrain not loaded counts as a failure
-                        _lastPathCalculationPosition = followTarget.Pos; // Still update position even for direct movement
+                        // Don't update _lastPathCalculationPosition for terrain not loaded - allows retry when terrain loads
                         _core.LogMessage($"Close follow: Using direct movement (terrain not loaded)");
                         _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                     }

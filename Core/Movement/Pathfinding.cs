@@ -87,6 +87,12 @@ namespace BetterFollowbotLite.Core.Movement
 
                 _grid = _processedTerrainData.Select(x => x.Select(y => pv.Contains(y)).ToArray()).ToArray();
 
+                // Set dimensions based on actual terrain data, not calculated metadata
+                _dimension1 = _processedTerrainData.Length;      // rows
+                _dimension2 = _processedTerrainData[0].Length;   // columns
+
+                _core.LogMessage($"PATHFINDING: Updated terrain dimensions - Cols: {_dimension2}, Rows: {_dimension1}");
+
                 _processedTerrainTargetingData = BetterFollowbotLite.Instance.GameController.IngameState.Data.RawTerrainTargetingData;
 
                 // Initialize Radar-style PathFinder
@@ -169,7 +175,7 @@ namespace BetterFollowbotLite.Core.Movement
 
         public List<Vector2i> GetPath(Vector3 startWorld, Vector3 targetWorld)
         {
-            _core.LogMessage($"A* DEBUG: GetPath called - Start: {startWorld}, Target: {targetWorld}");
+            _core.LogMessage($"A* DEBUG: GetPath called - Start: {startWorld}, Target: {targetWorld}, PathFinder null: {_pathFinder == null}");
 
             // Get grid coordinates from the Render components like Radar does
             var player = _core.GameController.Game.IngameState.Data.LocalPlayer;
@@ -208,6 +214,27 @@ namespace BetterFollowbotLite.Core.Movement
             {
                 _core.LogMessage($"A* DEBUG: Grid coordinates out of bounds - Start: ({startGrid.X}, {startGrid.Y}), Target: ({targetGrid.X}, {targetGrid.Y}), Dimensions: {_dimension2}x{_dimension1}");
                 return null;
+            }
+
+            // Check if start and target positions are walkable
+            if (_grid != null && startGrid.Y < _grid.Length && startGrid.X < _grid[startGrid.Y].Length)
+            {
+                bool startWalkable = _grid[startGrid.Y][startGrid.X];
+                _core.LogMessage($"A* DEBUG: Start position ({startGrid.X}, {startGrid.Y}) walkable: {startWalkable}");
+            }
+            else
+            {
+                _core.LogMessage($"A* DEBUG: Cannot check start position walkability - grid is null or coordinates out of range");
+            }
+
+            if (_grid != null && targetGrid.Y < _grid.Length && targetGrid.X < _grid[targetGrid.Y].Length)
+            {
+                bool targetWalkable = _grid[targetGrid.Y][targetGrid.X];
+                _core.LogMessage($"A* DEBUG: Target position ({targetGrid.X}, {targetGrid.Y}) walkable: {targetWalkable}");
+            }
+            else
+            {
+                _core.LogMessage($"A* DEBUG: Cannot check target position walkability - grid is null or coordinates out of range");
             }
 
             // Check if start and target are the same
@@ -257,6 +284,7 @@ namespace BetterFollowbotLite.Core.Movement
 
         public void ClearPathCache()
         {
+            _core.LogMessage("A* DEBUG: ClearPathCache called - clearing caches and PathFinder");
             _pathCache.Clear();
             _pathFinder = null; // Force recreation of PathFinder
             _core.LogMessage("A* DEBUG: All path caches cleared");

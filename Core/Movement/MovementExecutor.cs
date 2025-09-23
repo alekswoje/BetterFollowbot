@@ -98,19 +98,27 @@ namespace BetterFollowbotLite.Core.Movement
 
                     if (!shouldDashToLeader && !shouldTerrainDash)
                     {
+                        // CRITICAL FIX: Movement tasks must position cursor BEFORE pressing move key
+                        // This prevents the bot from moving in random directions when cursor is not pointing towards target
                         try
                         {
                             movementScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
+                            // Position cursor towards the movement target BEFORE pressing move key
+                            Mouse.SetCursorPosHuman(movementScreenPos);
+                            _core.LogMessage($"Movement task: Cursor positioned to ({movementScreenPos.X:F1}, {movementScreenPos.Y:F1}) for movement target");
                         }
                         catch (Exception e)
                         {
                             screenPosError = true;
+                            _core.LogError($"Movement task: Cursor positioning error: {e}");
                         }
 
                         if (!screenPosError)
                         {
                             try
                             {
+                                // Give cursor positioning time to settle before pressing move key
+                                System.Threading.Thread.Sleep(50);
                                 Input.KeyDown(_core.Settings.autoPilotMoveKey);
                                 _core.LogMessage("Movement task: Move key down pressed, waiting");
                             }
@@ -269,9 +277,13 @@ namespace BetterFollowbotLite.Core.Movement
                                 targetScreenPos.X <= _core.GameController.Window.GetWindowRectangle().Width &&
                                 targetScreenPos.Y <= _core.GameController.Window.GetWindowRectangle().Height)
                             {
-                                // Position cursor and immediately execute dash
-                                Mouse.SetCursorPos(targetScreenPos);
-                                System.Threading.Thread.Sleep(25); // Small delay for cursor to settle
+                                // CRITICAL FIX: Use proper cursor positioning method with smoothing and delays
+                                // This prevents the dash from going in wrong direction due to cursor positioning timing issues
+                                Mouse.SetCursorPosHuman(targetScreenPos);
+                                _core.LogMessage($"Dash task: Cursor positioned to ({targetScreenPos.X:F1}, {targetScreenPos.Y:F1})");
+
+                                // Give cursor positioning more time to settle before dash
+                                System.Threading.Thread.Sleep(75); // Increased from 25ms to ensure cursor settles
 
                                 _core.LogMessage("Dash task: Cursor positioned, executing dash");
 
@@ -368,57 +380,62 @@ namespace BetterFollowbotLite.Core.Movement
                 // Get the player's screen position
                 var playerScreenPos = Helper.WorldToValidScreenPosition(_core.PlayerPosition);
 
-                // Get the target's screen position - handle off-screen targets
+                // Get the target's screen position
                 var targetScreenPos = Helper.WorldToValidScreenPosition(targetPosition);
 
-                // If target is off-screen, calculate direction based on world positions
-                if (targetScreenPos.X < 0 || targetScreenPos.Y < 0 ||
-                    targetScreenPos.X > _core.GameController.Window.GetWindowRectangle().Width ||
-                    targetScreenPos.Y > _core.GameController.Window.GetWindowRectangle().Height)
+                // Calculate distance from player to target in world space
+                var worldDistanceToTarget = Vector3.Distance(_core.PlayerPosition, targetPosition);
+
+                // If target is very close (within 20 units), cursor direction doesn't matter much
+                if (worldDistanceToTarget < 20)
+                    return true;
+
+                // Check if target is on-screen
+                var windowRect = _core.GameController.Window.GetWindowRectangle();
+                var isTargetOnScreen = targetScreenPos.X >= 0 && targetScreenPos.Y >= 0 &&
+                                     targetScreenPos.X <= windowRect.Width &&
+                                     targetScreenPos.Y <= windowRect.Height;
+
+                if (!isTargetOnScreen)
                 {
                     // For off-screen targets, calculate direction from world positions
                     var playerWorldPos = _core.PlayerPosition;
                     var directionToTarget = targetPosition - playerWorldPos;
-
-                    if (directionToTarget.Length() < 10) // Target is very close in world space
-                        return true;
-
                     directionToTarget = Vector3.Normalize(directionToTarget);
 
-                    // Calculate direction from player to mouse in world space (approximation)
+                    // Calculate direction from player to mouse in screen space (approximation for off-screen)
                     var mouseDirection = new Vector3(mouseScreenPos.X - playerScreenPos.X, mouseScreenPos.Y - playerScreenPos.Y, 0);
                     if (mouseDirection.Length() > 0)
                         mouseDirection = Vector3.Normalize(mouseDirection);
 
-                    // Check if mouse direction roughly matches target direction (within 45 degrees)
+                    // Check if mouse direction roughly matches target direction (within 60 degrees for off-screen targets)
                     var dotProduct = Vector3.Dot(mouseDirection, new Vector3(directionToTarget.X, directionToTarget.Y, 0));
-                    return dotProduct > 0.7f; // ~45 degrees
+                    return dotProduct > 0.5f; // ~60 degrees - more lenient for off-screen targets
                 }
                 else
                 {
                     // Target is on-screen, check if mouse is pointing towards it
-                    var directionToTarget = targetScreenPos - mouseScreenPos;
-
-                    // If mouse is very close to target on screen, consider it pointing towards target
-                    if (directionToTarget.Length() < 50)
-                        return true;
-
-                    // Check if mouse is generally pointing towards target direction
                     var mouseFromPlayer = mouseScreenPos - playerScreenPos;
                     var targetFromPlayer = targetScreenPos - playerScreenPos;
 
+                    // If mouse is very close to target on screen, consider it pointing towards target
+                    if (Vector2.Distance(mouseScreenPos, targetScreenPos) < 75)
+                        return true;
+
+                    // Check if mouse is generally pointing towards target direction
                     if (mouseFromPlayer.Length() > 0 && targetFromPlayer.Length() > 0)
                     {
                         var dotProduct = Vector2.Dot(Vector2.Normalize(mouseFromPlayer), Vector2.Normalize(targetFromPlayer));
-                        return dotProduct > 0.7f; // ~45 degrees
+                        return dotProduct > 0.8f; // ~35 degrees - more strict for on-screen targets
                     }
                 }
 
                 return false;
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                _core.LogError($"IsCursorPointingTowardsTarget error: {ex.Message}");
+                return false; // Default to false on error to force cursor repositioning
             }
         }
     }

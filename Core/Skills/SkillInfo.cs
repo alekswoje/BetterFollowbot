@@ -513,7 +513,7 @@ internal static class SkillInfo
                     break;
                 case "protective_link":
                     protectiveLink.Id = skill.Id;
-                    protectiveLink.BuffName = "protective_link_source";
+                    protectiveLink.BuffName = "bulwark_link_source";
                     break;
                 case "smite":
                     smite.Id = skill.Id;

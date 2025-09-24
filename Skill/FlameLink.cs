@@ -103,7 +103,7 @@ namespace BetterFollowbotLite.Skills
             // Process Protective Link if enabled
             if (_settings.protectiveLinkEnabled)
             {
-                ProcessLinkSkill(SkillInfo.protectiveLink, "protective_link_target", "protective_link");
+                ProcessLinkSkill(SkillInfo.protectiveLink, "bulwark_link_target", "protective_link");
             }
         }
 

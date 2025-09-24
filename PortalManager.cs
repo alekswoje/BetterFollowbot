@@ -26,6 +26,7 @@ namespace BetterFollowbotLite
                     "tower rooftop", "caldera of the king", "the black core", "the black heart", "sanctum of innocence",
                     "the chamber of innocence", "tukohama's keep", "the karui fortress", "prison rooftop",
                     "valley of the fire drinker", "the cloven pass", "valley of the soul drinker", "the spawning ground",
+                    "passage"
                 }, "Arena"
             }
         };

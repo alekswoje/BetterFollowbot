@@ -26,7 +26,7 @@ namespace BetterFollowbotLite
                     "tower rooftop", "caldera of the king", "the black core", "the black heart", "sanctum of innocence",
                     "the chamber of innocence", "tukohama's keep", "the karui fortress", "prison rooftop",
                     "valley of the fire drinker", "the cloven pass", "valley of the soul drinker", "the spawning ground",
-                    "passage", "the brine king's throne", "maligaro's workshop"
+                    "passage", "the brine king's throne", 
                 }, "Arena"
             }
         };
@@ -35,6 +35,7 @@ namespace BetterFollowbotLite
         private static readonly string[] CloseArenaPortals = new[]
         {
             "the bowels of the beast", "shavronne's arena", "maligaro's arena", "deodre's arena", "cathedral apex",
+            "maligaro's workshop"
         };
     
         // Special portal names that should be treated as high-priority interzone portals

@@ -91,6 +91,10 @@ namespace BetterFollowbotLite.Skills
             if (_instance.GameController?.Area?.CurrentArea?.IsHideout == true && _settings.disableSkillsInHideout)
                 return;
 
+            // Check individual skill cooldown
+            if (!_instance.CanUseSkill("SummonSkeletons"))
+                return;
+
             try
             {
                 if (_settings.summonSkeletonsEnabled.Value && _instance.Gcd())
@@ -138,6 +142,7 @@ namespace BetterFollowbotLite.Skills
                                         if (skillKey != default(Keys))
                                         {
                                             Keyboard.KeyPress(skillKey);
+                                            _instance.RecordSkillUse("SummonSkeletons");
                                         }
                                         _instance.LastTimeAny = DateTime.Now; // Update global cooldown
                                     }

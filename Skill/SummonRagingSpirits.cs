@@ -107,6 +107,10 @@ namespace BetterFollowbotLite.Skills
             if (_instance.GameController?.Area?.CurrentArea?.IsHideout == true && _settings.disableSkillsInHideout)
                 return;
 
+            // Check individual skill cooldown
+            if (!_instance.CanUseSkill("SummonRagingSpirits"))
+                return;
+
             try
             {
 
@@ -166,6 +170,7 @@ namespace BetterFollowbotLite.Skills
                                     if (skillKey != Keys.None)
                                     {
                                         Keyboard.KeyPress(skillKey);
+                                        _instance.RecordSkillUse("SummonRagingSpirits");
                                     }
                                     _instance.LastTimeAny = DateTime.Now; // Update global cooldown
                                 }

@@ -86,6 +86,10 @@ namespace BetterFollowbotLite.Skills
             if (_instance.GameController?.Area?.CurrentArea?.IsHideout == true && _settings.disableSkillsInHideout)
                 return;
 
+            // Check individual skill cooldown
+            if (!_instance.CanUseSkill("AuraBlessing"))
+                return;
+
             // Loop through all skills to find Holy Relic and Zealotry skills
             foreach (var skill in _instance.skills)
             {
@@ -117,6 +121,7 @@ namespace BetterFollowbotLite.Skills
                             if (skillKey != default(Keys))
                             {
                                 Keyboard.KeyPress(skillKey);
+                                _instance.RecordSkillUse("AuraBlessing");
                             }
                             SkillInfo.holyRelict.Cooldown = 200; // 2 second cooldown to prevent double-spawning
                         }
@@ -148,6 +153,7 @@ namespace BetterFollowbotLite.Skills
                     if (missingAura && hasMinion)
                     {
                         Keyboard.KeyPress(_instance.GetSkillInputKey(skill.SkillSlotIndex));
+                        _instance.RecordSkillUse("AuraBlessing");
                     }
                 }
             }

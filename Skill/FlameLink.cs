@@ -94,6 +94,10 @@ namespace BetterFollowbotLite.Skills
             if (_instance.GameController?.Area?.CurrentArea?.IsHideout == true && _settings.disableSkillsInHideout)
                 return;
 
+            // Check individual skill cooldown
+            if (!_instance.CanUseSkill("Links"))
+                return;
+
             // Process Flame Link if enabled
             if (_settings.flameLinkEnabled)
             {
@@ -200,6 +204,7 @@ namespace BetterFollowbotLite.Skills
                                 if (skillKey != default(Keys))
                                 {
                                     Keyboard.KeyPress(skillKey);
+                                    _instance.RecordSkillUse("Links");
                                 }
 
                                 // Update our internal timer

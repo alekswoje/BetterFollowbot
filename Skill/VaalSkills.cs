@@ -86,6 +86,10 @@ namespace BetterFollowbotLite.Skills
             if (_instance.GameController?.Area?.CurrentArea?.IsHideout == true && _settings.disableSkillsInHideout)
                 return;
 
+            // Check individual skill cooldown
+            if (!_instance.CanUseSkill("VaalSkills"))
+                return;
+
             // Handle Vaal Haste
             if (_settings.vaalHasteEnabled)
             {
@@ -119,6 +123,7 @@ namespace BetterFollowbotLite.Skills
                             if (skillKey != default(Keys))
                             {
                                 Keyboard.KeyPress(skillKey);
+                                _instance.RecordSkillUse("VaalSkills");
                                 _instance.LogMessage($"VAAL HASTE: Used successfully");
                             }
                         }
@@ -198,6 +203,7 @@ namespace BetterFollowbotLite.Skills
                                 if (skillKey != default(Keys))
                                 {
                                     Keyboard.KeyPress(skillKey);
+                                    _instance.RecordSkillUse("VaalSkills");
                                     _instance.LogMessage($"VAAL DISCIPLINE: Used successfully (ES below {threshold:P0})");
                                 }
                             }

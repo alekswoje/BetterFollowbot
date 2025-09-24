@@ -86,6 +86,10 @@ namespace BetterFollowbotLite.Skill
             if (_instance.GameController?.Area?.CurrentArea?.IsHideout == true && _settings.disableSkillsInHideout)
                 return;
 
+            // Check individual skill cooldown
+            if (!_instance.CanUseSkill("Warcries"))
+                return;
+
             // Handle all warcries
             HandleWarcries();
         }
@@ -112,6 +116,7 @@ namespace BetterFollowbotLite.Skill
                     {
                         Keyboard.KeyPress(skillKey);
                         var warcryName = GetWarcryName(skill);
+                        _instance.RecordSkillUse("Warcries");
                         _instance.LogMessage($"WARCRY: Used {warcryName} successfully");
                     }
                 }

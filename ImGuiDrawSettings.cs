@@ -358,6 +358,8 @@ internal class ImGuiDrawSettings
                     BetterFollowbotLite.Instance.Settings.minesStormblastEnabled.Value);
                 BetterFollowbotLite.Instance.Settings.minesPyroclastEnabled.Value = ImGuiExtension.Checkbox("Pyroclast",
                     BetterFollowbotLite.Instance.Settings.minesPyroclastEnabled.Value);
+                BetterFollowbotLite.Instance.Settings.maxMines.Value = ImGuiExtension.IntSlider("Max Mines",
+                    BetterFollowbotLite.Instance.Settings.maxMines);
             }
         }
         catch (Exception e)
@@ -496,6 +498,12 @@ internal class ImGuiDrawSettings
 
                 ImGui.Text("When enabled, skills will be blocked in hideouts for safety.");
                 ImGui.Text("Disable this to test skills in hideouts.");
+                
+                ImGui.Separator();
+                ImGui.Text("Skill Cooldown:");
+                BetterFollowbotLite.Instance.Settings.skillCooldown.Value = 
+                    ImGuiExtension.FloatSlider("Individual Skill Cooldown (seconds)", BetterFollowbotLite.Instance.Settings.skillCooldown);
+                ImGui.Text($"Each skill can be used every {BetterFollowbotLite.Instance.Settings.skillCooldown.Value:F2}s");
             }
         }
         catch (Exception e)

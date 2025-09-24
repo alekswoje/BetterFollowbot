@@ -63,6 +63,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     private DateTime lastAutoPilotUpdateLogTime = DateTime.MinValue;
     private Entity lastFollowTarget;
     private bool lastHadGrace;
+    private Dictionary<string, DateTime> skillLastUsedTimes = new Dictionary<string, DateTime>();
     internal Entity localPlayer;
     internal Life player;
     internal Vector3 playerPosition;
@@ -341,6 +342,25 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         return (DateTime.Now - LastTimeAny).TotalMilliseconds > Delay;
     }
 
+    /// <summary>
+    /// Checks if a skill can be used based on its individual cooldown
+    /// </summary>
+    public bool CanUseSkill(string skillName)
+    {
+        if (!skillLastUsedTimes.ContainsKey(skillName))
+            return true;
+
+        var timeSinceLastUse = DateTime.Now - skillLastUsedTimes[skillName];
+        return timeSinceLastUse.TotalSeconds >= Settings.skillCooldown.Value;
+    }
+
+    /// <summary>
+    /// Records that a skill was used for cooldown tracking
+    /// </summary>
+    public void RecordSkillUse(string skillName)
+    {
+        skillLastUsedTimes[skillName] = DateTime.Now;
+    }
 
     internal Keys GetSkillInputKey(int index)
     {

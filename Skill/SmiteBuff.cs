@@ -88,6 +88,10 @@ namespace BetterFollowbotLite.Skills
             if (_instance.GameController?.Area?.CurrentArea?.IsHideout == true && _settings.disableSkillsInHideout)
                 return;
 
+            // Check individual skill cooldown
+            if (!_instance.CanUseSkill("SmiteBuff"))
+                return;
+
             // Loop through all skills to find Smite skill
             foreach (var skill in _instance.skills)
             {
@@ -119,6 +123,7 @@ namespace BetterFollowbotLite.Skills
                                 if (skillKey != default(Keys))
                                 {
                                     Keyboard.KeyPress(skillKey);
+                                    _instance.RecordSkillUse("SmiteBuff");
                                     // Reduced cooldown from 100ms to 25ms for more frequent casting
                                     SkillInfo.smite.Cooldown = 25;
                                     _instance.LastTimeAny = DateTime.Now; // Update global cooldown

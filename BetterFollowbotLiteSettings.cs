@@ -96,6 +96,7 @@ public class BetterFollowbotLiteSettings : ISettings
     public TextNode minesLeaderDistance = new TextNode("500");
     public ToggleNode minesStormblastEnabled = new ToggleNode(true);
     public ToggleNode minesPyroclastEnabled = new ToggleNode(true);
+    public RangeNode<int> maxMines = new RangeNode<int>(15, 1, 50);
 
     #endregion
 
@@ -142,6 +143,7 @@ public class BetterFollowbotLiteSettings : ISettings
     #region General Settings
 
     public ToggleNode disableSkillsInHideout = new ToggleNode(true);
+    public RangeNode<float> skillCooldown = new RangeNode<float>(0.2f, 0.05f, 1.0f);
 
     #endregion
 

@@ -91,6 +91,10 @@ namespace BetterFollowbotLite.Skill
             if (_instance.GameController?.Area?.CurrentArea?.IsHideout == true && _settings.disableSkillsInHideout)
                 return;
 
+            // Check individual skill cooldown
+            if (!_instance.CanUseSkill("Mines"))
+                return;
+
             // Always log that Execute was called for debugging
             _instance.LogMessage($"MINES: Execute called (Enabled: {_settings.minesEnabled.Value})");
 
@@ -153,6 +157,14 @@ namespace BetterFollowbotLite.Skill
 
                         if (nearbyRareUniqueEnemies.Any())
                         {
+                            // Check mine count limit
+                            var currentMineCount = GetCurrentMineCount();
+                            if (currentMineCount >= _settings.maxMines.Value)
+                            {
+                                _instance.LogMessage($"MINES: Mine count limit reached ({currentMineCount}/{_settings.maxMines.Value}), not throwing more mines");
+                                return false;
+                            }
+
                             // Check if we're close to the party leader
                             var shouldThrowMine = false;
                             Entity leaderEntity = null;
@@ -253,6 +265,7 @@ namespace BetterFollowbotLite.Skill
                                     if (skillKey != default(Keys))
                                     {
                                         Keyboard.KeyPress(skillKey);
+                                        _instance.RecordSkillUse("Mines");
                                     }
                                     mineSkill.Cooldown = 100; // Set cooldown to prevent spam
                                     _instance.LastTimeAny = DateTime.Now;
@@ -275,6 +288,27 @@ namespace BetterFollowbotLite.Skill
             }
 
             return false; // Skill was not executed
+        }
+
+        /// <summary>
+        /// Gets the current count of mines on the ground
+        /// </summary>
+        private int GetCurrentMineCount()
+        {
+            try
+            {
+                // Count mine entities on the ground
+                var mineEntities = _instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Mine]
+                    .Where(mine => mine != null && mine.IsValid && mine.IsAlive)
+                    .ToList();
+
+                return mineEntities.Count;
+            }
+            catch (Exception e)
+            {
+                _instance.LogMessage($"MINES: Error counting mines - {e.Message}");
+                return 0;
+            }
         }
 
         /// <summary>

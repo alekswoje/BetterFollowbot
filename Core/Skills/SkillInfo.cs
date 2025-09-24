@@ -517,6 +517,7 @@ internal static class SkillInfo
                 case "pyroclastmine":
                 case "PyroclastMine":
                 case "PyroclastMineAltX":
+                case "PryoclastMineOfSabotage":
                     pyroclastMine.Id = skill.Id;
                     BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Pyroclast Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;

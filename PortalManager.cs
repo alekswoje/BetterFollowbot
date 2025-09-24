@@ -42,6 +42,26 @@ namespace BetterFollowbotLite
         // This is auto-generated from PortalTypeMappings for consistency
         private static readonly string[] SpecialPortalNames = PortalTypeMappings.Keys.SelectMany(keywords => keywords).ToArray();
 
+        // Areas that cannot use party teleport and require special portal handling
+        private static readonly string[] SpecialAreas = new[]
+        {
+            "maligaro's sanctum",
+            "maligaros sanctum", 
+            "maligaro's arena",
+            "maligaros arena",
+            "shavronne's arena",
+            "shavronnes arena",
+            "deodre's arena",
+            "deodres arena",
+            "the bowels of the beast",
+            "cathedral apex",
+            "prison rooftop",
+            "valley of the fire drinker",
+            "valley of the soul drinker",
+            "the spawning ground",
+            "the cloven pass"
+        };
+
         // Distance thresholds for leader distance - portals are only taken if leader is MORE than this distance away
         private const float CloseArenaPortalDistance = 300f; // Close portals (Pit, Warden's Quarters, Stairs)
         private const float RegularArenaPortalDistance = 1350; // Regular arena portals
@@ -87,6 +107,100 @@ namespace BetterFollowbotLite
         public static float GetPortalDistanceThreshold(string portalLabel)
         {
             return IsCloseArenaPortal(portalLabel) ? CloseArenaPortalDistance : RegularArenaPortalDistance;
+        }
+
+        /// <summary>
+        /// Checks if an area name is a special area that cannot use party teleport
+        /// </summary>
+        public static bool IsSpecialArea(string areaName)
+        {
+            if (string.IsNullOrEmpty(areaName)) return false;
+            return SpecialAreas.Any(specialArea =>
+                areaName.Contains(specialArea, StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>
+        /// Finds portals that match a specific area name (for special areas that can't use party teleport)
+        /// </summary>
+        public static LabelOnGround FindMatchingPortal(string targetAreaName)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(targetAreaName))
+                    return null;
+
+                BetterFollowbotLite.Instance.LogMessage($"SPECIAL AREA: Looking for portals matching '{targetAreaName}'");
+
+                // Get all portal-like objects
+                var allPortalLabels = BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
+                        x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible && x.ItemOnGround != null &&
+                        (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") ||
+                         x.ItemOnGround.Metadata.ToLower().Contains("portal") ||
+                         x.ItemOnGround.Metadata.ToLower().Contains("transition")))
+                    .ToList();
+
+                if (allPortalLabels == null || allPortalLabels.Count == 0)
+                {
+                    BetterFollowbotLite.Instance.LogMessage("SPECIAL AREA: No portal objects found");
+                    return null;
+                }
+
+                // Look for portals that match the target area name
+                var matchingPortals = allPortalLabels.Where(x =>
+                {
+                    try
+                    {
+                        var labelText = x.Label?.Text?.ToLower() ?? "";
+                        var targetAreaLower = targetAreaName.ToLower();
+
+                        // Check if portal label contains the target area name
+                        var matchesArea = labelText.Contains(targetAreaLower) || targetAreaLower.Contains(labelText);
+                        
+                        // Also check for common variations
+                        var areaVariations = new[]
+                        {
+                            targetAreaLower,
+                            targetAreaLower.Replace("'s", "s"),
+                            targetAreaLower.Replace("s", "'s"),
+                            targetAreaLower.Replace(" ", ""),
+                            targetAreaLower.Replace(" ", "_"),
+                            targetAreaLower.Replace(" ", "-")
+                        };
+
+                        var matchesVariation = areaVariations.Any(variation => 
+                            labelText.Contains(variation) || variation.Contains(labelText));
+
+                        if (matchesArea || matchesVariation)
+                        {
+                            BetterFollowbotLite.Instance.LogMessage($"SPECIAL AREA: Found matching portal '{x.Label?.Text}' for area '{targetAreaName}'");
+                        }
+
+                        return matchesArea || matchesVariation;
+                    }
+                    catch (Exception ex)
+                    {
+                        BetterFollowbotLite.Instance.LogError($"SPECIAL AREA: Error checking portal '{x.Label?.Text}': {ex.Message}");
+                        return false;
+                    }
+                }).OrderBy(x => x.ItemOnGround.DistancePlayer).ToList();
+
+                if (matchingPortals.Count > 0)
+                {
+                    var selectedPortal = matchingPortals.First();
+                    BetterFollowbotLite.Instance.LogMessage($"SPECIAL AREA: Selected portal '{selectedPortal.Label?.Text}' at distance {selectedPortal.ItemOnGround.DistancePlayer:F1}");
+                    return selectedPortal;
+                }
+                else
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"SPECIAL AREA: No portals found matching '{targetAreaName}'");
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                BetterFollowbotLite.Instance.LogError($"SPECIAL AREA: Error finding matching portal: {ex.Message}");
+                return null;
+            }
         }
 
 

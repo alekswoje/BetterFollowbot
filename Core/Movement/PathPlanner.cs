@@ -309,7 +309,7 @@ namespace BetterFollowbotLite.Core.Movement
                         {
                             _core.LogMessage($"ZONE TRANSITION: Leader in different zone via party element - Current: '{_core.GameController.Area.CurrentArea.DisplayName}', Leader: '{leaderPartyElement.ZoneName}'");
 
-                            // Prioritize party teleport over portal clicking (but not in labyrinth areas)
+                            // Prioritize party teleport over portal clicking (but not in labyrinth areas or special areas)
                             if (!HasConflictingTransitionTasks())
                             {
                                 // SPECIAL CASE: Labyrinth areas don't support party TP
@@ -317,6 +317,22 @@ namespace BetterFollowbotLite.Core.Movement
                                 if (PortalManager.IsInLabyrinthArea && !_core.GameController?.Area?.CurrentArea?.DisplayName?.Contains("Aspirants' Plaza") == true)
                                 {
                                     _core.LogMessage("ZONE TRANSITION: In labyrinth area, party TP not available - this is normal");
+                                }
+                                // SPECIAL CASE: Special areas like Maligaro's Sanctum don't support party TP
+                                else if (PortalManager.IsSpecialArea(leaderPartyElement.ZoneName))
+                                {
+                                    _core.LogMessage($"ZONE TRANSITION: Leader in special area '{leaderPartyElement.ZoneName}' - party TP not available, using matching portal search");
+                                    var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName);
+                                    if (matchingPortal != null)
+                                    {
+                                        _core.LogMessage($"ZONE TRANSITION: Found matching portal '{matchingPortal.Label?.Text}' for special area '{leaderPartyElement.ZoneName}'");
+                                        _taskManager.AddTask(new TaskNode(matchingPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                                        _core.LogMessage("ZONE TRANSITION: Special area portal transition task added to queue");
+                                    }
+                                    else
+                                    {
+                                        _core.LogMessage($"ZONE TRANSITION: No matching portals found for special area '{leaderPartyElement.ZoneName}'");
+                                    }
                                 }
                                 else
                                 {
@@ -407,6 +423,31 @@ namespace BetterFollowbotLite.Core.Movement
                                     else
                                     {
                                         _core.LogMessage("ZONE TRANSITION: No portals found in labyrinth area after large movement");
+                                    }
+                                }
+                                // SPECIAL CASE: Special areas like Maligaro's Sanctum don't support party TP - use matching portals
+                                else if (leaderPartyElement != null && PortalManager.IsSpecialArea(leaderPartyElement.ZoneName))
+                                {
+                                    _core.LogMessage($"ZONE TRANSITION: Leader in special area '{leaderPartyElement.ZoneName}' - using matching portal search instead of party TP");
+                                    var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName);
+                                    if (matchingPortal != null)
+                                    {
+                                        // Only create transition task if there isn't already one pending
+                                        var hasExistingTransitionTask = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition);
+                                        if (!hasExistingTransitionTask)
+                                        {
+                                            _core.LogMessage($"ZONE TRANSITION: Found matching portal '{matchingPortal.Label?.Text}' for special area '{leaderPartyElement.ZoneName}'");
+                                            _taskManager.AddTask(new TaskNode(matchingPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                                            _core.LogMessage("ZONE TRANSITION: Special area portal transition task added to queue");
+                                        }
+                                        else
+                                        {
+                                            _core.LogMessage($"ZONE TRANSITION: Transition task already exists, skipping special area portal creation for '{matchingPortal.Label?.Text}'");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        _core.LogMessage($"ZONE TRANSITION: No matching portals found for special area '{leaderPartyElement.ZoneName}'");
                                     }
                                 }
                                 else

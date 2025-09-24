@@ -83,6 +83,10 @@ namespace BetterFollowbotLite.Skills
             if (_instance.GameController?.Area?.CurrentArea?.IsTown == true)
                 return;
 
+            // Block skill execution in hideouts (if setting is enabled)
+            if (_instance.GameController?.Area?.CurrentArea?.IsHideout == true && _settings.disableSkillsInHideout)
+                return;
+
             try
             {
                 // Loop through all skills to find the rejuvenation totem skill

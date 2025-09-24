@@ -87,6 +87,10 @@ namespace BetterFollowbotLite.Skill
             if (_instance.GameController?.Area?.CurrentArea?.IsTown == true)
                 return;
 
+            // Block skill execution in hideouts (if setting is enabled)
+            if (_instance.GameController?.Area?.CurrentArea?.IsHideout == true && _settings.disableSkillsInHideout)
+                return;
+
             // Always log that Execute was called for debugging
             _instance.LogMessage($"MINES: Execute called (Enabled: {_settings.minesEnabled.Value})");
 

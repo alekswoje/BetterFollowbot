@@ -727,8 +727,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
             #region Automation Execution
 
-            // Block skill execution in hideouts but allow automations to continue
-            if (GameController.Area.CurrentArea.IsHideout)
+            // Block skill execution in hideouts but allow automations to continue (if setting is enabled)
+            if (GameController.Area.CurrentArea.IsHideout && Settings.disableSkillsInHideout)
             {
                 // Only execute automations (party joiner, gem leveler, etc.) but skip skills in hideouts
                 automationManager?.ExecuteAutomations();

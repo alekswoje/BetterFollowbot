@@ -464,6 +464,25 @@ internal class ImGuiDrawSettings
             BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE UI ERROR: {e.Message}");
         }
 
+        try
+        {
+            // General Settings
+            ImGui.PushStyleColor(ImGuiCol.Header, green);
+            ImGui.PushID(38);
+            if (ImGui.TreeNodeEx("General Settings", collapsingHeaderFlags))
+            {
+                BetterFollowbotLite.Instance.Settings.disableSkillsInHideout.Value =
+                    ImGuiExtension.Checkbox("Disable Skills in Hideouts", BetterFollowbotLite.Instance.Settings.disableSkillsInHideout.Value);
+
+                ImGui.Text("When enabled, skills will be blocked in hideouts for safety.");
+                ImGui.Text("Disable this to test skills in hideouts.");
+            }
+        }
+        catch (Exception e)
+        {
+            BetterFollowbotLite.Instance.LogMessage($"GENERAL SETTINGS UI ERROR: {e.Message}");
+        }
+
         //ImGui.End();
     }
 }

@@ -1247,9 +1247,8 @@ namespace BetterFollowbotLite;
                         BetterFollowbotLite.Instance.Graphics.DrawText("PRIORITY", new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 65), SharpDX.Color.Yellow);
                     }
 
-                    // Show where we will actually click (world position converted to screen)
-                    var clickScreenPos = BetterFollowbotLite.Instance.GameController.IngameState.Camera.WorldToScreen(portal.ItemOnGround.Pos);
-                    var clickPos = new System.Numerics.Vector2(clickScreenPos.X, clickScreenPos.Y);
+                    // Show where we will actually click (UI button center)
+                    var clickPos = new System.Numerics.Vector2(labelRect.Center.X, labelRect.Center.Y);
 
                     // Draw a small cross at the click position
                     const int crossSize = 5;

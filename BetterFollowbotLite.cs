@@ -724,8 +724,20 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
             #region Automation Execution
 
-            // Execute all registered automation features through the automation manager
-            automationManager?.ExecuteAll();
+            // Block skill execution in hideouts
+            if (GameController.Area.CurrentArea.IsHideout)
+            {
+                // Skip skill execution in hideouts but allow AutoPilot to continue working
+                if (Settings.debugMode)
+                {
+                    LogMessage("SKILL EXECUTION: Blocked in hideout - skills disabled for safety");
+                }
+            }
+            else
+            {
+                // Execute all registered automation features through the automation manager
+                automationManager?.ExecuteAll();
+            }
 
             #endregion
             if (GameController.Area.CurrentArea.IsHideout || GameController.Area.CurrentArea.IsTown ||

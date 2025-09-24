@@ -297,9 +297,12 @@ namespace BetterFollowbotLite.Skill
         {
             try
             {
-                // Count mine entities on the ground
-                var mineEntities = _instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Mine]
-                    .Where(mine => mine != null && mine.IsValid && mine.IsAlive)
+                // Count mine entities by searching through all entities and checking their path/name
+                var mineEntities = _instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Monster]
+                    .Where(entity => entity != null && entity.IsValid && entity.IsAlive && 
+                           (entity.Path?.ToLower().Contains("mine") == true || 
+                            entity.Path?.ToLower().Contains("stormblast") == true ||
+                            entity.Path?.ToLower().Contains("pyroclast") == true))
                     .ToList();
 
                 return mineEntities.Count;

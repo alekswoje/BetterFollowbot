@@ -80,6 +80,36 @@ namespace BetterFollowbotLite.Automation
         }
 
         /// <summary>
+        /// Executes only skills (used when in hideouts to block skills but allow automations)
+        /// </summary>
+        public void ExecuteSkills()
+        {
+            // Execute all enabled skills
+            foreach (var skill in _skills)
+            {
+                if (skill.IsEnabled)
+                {
+                    skill.Execute();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Executes only automation features (used when in hideouts to allow automations but block skills)
+        /// </summary>
+        public void ExecuteAutomations()
+        {
+            // Execute all enabled automation features
+            foreach (var automation in _automations)
+            {
+                if (automation.IsEnabled)
+                {
+                    automation.Execute();
+                }
+            }
+        }
+
+        /// <summary>
         /// Gets all registered skills
         /// </summary>
         public IReadOnlyList<ISkill> Skills => _skills.AsReadOnly();

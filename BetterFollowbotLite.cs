@@ -45,6 +45,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     private SmiteBuff smiteBuff;
     private VaalSkills vaalSkillsAutomation;
     private Mines mines;
+    private Warcries warcries;
     private RespawnHandler respawnHandler;
     private GemLeveler gemLeveler;
     private PartyJoiner partyJoiner;
@@ -102,6 +103,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         smiteBuff = new SmiteBuff(this, Settings);
         vaalSkillsAutomation = new VaalSkills(this, Settings);
         mines = new Mines(this, Settings);
+        warcries = new Warcries(this, Settings);
 
         respawnHandler = new RespawnHandler(this, Settings);
         gemLeveler = new GemLeveler(this, Settings);
@@ -117,6 +119,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         automationManager.RegisterSkill(smiteBuff);
         automationManager.RegisterSkill(vaalSkillsAutomation);
         automationManager.RegisterSkill(mines);
+        automationManager.RegisterSkill(warcries);
 
         automationManager.RegisterAutomation(respawnHandler);
         automationManager.RegisterAutomation(gemLeveler);
@@ -724,13 +727,15 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
             #region Automation Execution
 
-            // Block skill execution in hideouts
+            // Block skill execution in hideouts but allow automations to continue
             if (GameController.Area.CurrentArea.IsHideout)
             {
-                // Skip skill execution in hideouts but allow AutoPilot to continue working
+                // Only execute automations (party joiner, gem leveler, etc.) but skip skills in hideouts
+                automationManager?.ExecuteAutomations();
+                
                 if (Settings.debugMode)
                 {
-                    LogMessage("SKILL EXECUTION: Blocked in hideout - skills disabled for safety");
+                    LogMessage("SKILL EXECUTION: Blocked in hideout - only automations allowed for safety");
                 }
             }
             else
@@ -855,4 +860,4 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
             TcpTableOwnerModuleAll
         }
     }
-}
+} 

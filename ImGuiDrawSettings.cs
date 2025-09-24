@@ -245,6 +245,91 @@ internal class ImGuiDrawSettings
 
         try
         {
+            // Warcries
+            bool warcriesEnabled = BetterFollowbotLite.Instance.Settings.warcriesEnabled.Value;
+            ImGui.PushStyleColor(ImGuiCol.Header, warcriesEnabled ? green : red);
+            ImGui.PushID(37);
+            if (ImGui.TreeNodeEx("Warcries", collapsingHeaderFlags))
+            {
+                // Master enable/disable for all warcries
+                bool masterWarcryEnabled = BetterFollowbotLite.Instance.Settings.warcriesEnabled.Value;
+                bool newMasterState = ImGuiExtension.Checkbox("Enable Warcries", masterWarcryEnabled);
+
+                if (newMasterState != masterWarcryEnabled)
+                {
+                    BetterFollowbotLite.Instance.Settings.warcriesEnabled.Value = newMasterState;
+                }
+
+                if (warcriesEnabled)
+                {
+                    ImGui.Indent();
+                    
+                    // Individual warcry checkboxes
+                    bool ancestralCryValue = BetterFollowbotLite.Instance.Settings.ancestralCryEnabled.Value;
+                    if (ImGuiExtension.Checkbox("Ancestral Cry", ancestralCryValue) != ancestralCryValue)
+                    {
+                        BetterFollowbotLite.Instance.Settings.ancestralCryEnabled.Value = !ancestralCryValue;
+                    }
+
+                    bool infernalCryValue = BetterFollowbotLite.Instance.Settings.infernalCryEnabled.Value;
+                    if (ImGuiExtension.Checkbox("Infernal Cry", infernalCryValue) != infernalCryValue)
+                    {
+                        BetterFollowbotLite.Instance.Settings.infernalCryEnabled.Value = !infernalCryValue;
+                    }
+
+                    bool generalsCryValue = BetterFollowbotLite.Instance.Settings.generalsCryEnabled.Value;
+                    if (ImGuiExtension.Checkbox("General's Cry", generalsCryValue) != generalsCryValue)
+                    {
+                        BetterFollowbotLite.Instance.Settings.generalsCryEnabled.Value = !generalsCryValue;
+                    }
+
+                    bool intimidatingCryValue = BetterFollowbotLite.Instance.Settings.intimidatingCryEnabled.Value;
+                    if (ImGuiExtension.Checkbox("Intimidating Cry", intimidatingCryValue) != intimidatingCryValue)
+                    {
+                        BetterFollowbotLite.Instance.Settings.intimidatingCryEnabled.Value = !intimidatingCryValue;
+                    }
+
+                    bool rallyingCryValue = BetterFollowbotLite.Instance.Settings.rallyingCryEnabled.Value;
+                    if (ImGuiExtension.Checkbox("Rallying Cry", rallyingCryValue) != rallyingCryValue)
+                    {
+                        BetterFollowbotLite.Instance.Settings.rallyingCryEnabled.Value = !rallyingCryValue;
+                    }
+
+                    bool vengefulCryValue = BetterFollowbotLite.Instance.Settings.vengefulCryEnabled.Value;
+                    if (ImGuiExtension.Checkbox("Vengeful Cry", vengefulCryValue) != vengefulCryValue)
+                    {
+                        BetterFollowbotLite.Instance.Settings.vengefulCryEnabled.Value = !vengefulCryValue;
+                    }
+
+                    bool enduringCryValue = BetterFollowbotLite.Instance.Settings.enduringCryEnabled.Value;
+                    if (ImGuiExtension.Checkbox("Enduring Cry", enduringCryValue) != enduringCryValue)
+                    {
+                        BetterFollowbotLite.Instance.Settings.enduringCryEnabled.Value = !enduringCryValue;
+                    }
+
+                    bool seismicCryValue = BetterFollowbotLite.Instance.Settings.seismicCryEnabled.Value;
+                    if (ImGuiExtension.Checkbox("Seismic Cry", seismicCryValue) != seismicCryValue)
+                    {
+                        BetterFollowbotLite.Instance.Settings.seismicCryEnabled.Value = !seismicCryValue;
+                    }
+
+                    bool battlemagesCryValue = BetterFollowbotLite.Instance.Settings.battlemagesCryEnabled.Value;
+                    if (ImGuiExtension.Checkbox("Battlemage's Cry", battlemagesCryValue) != battlemagesCryValue)
+                    {
+                        BetterFollowbotLite.Instance.Settings.battlemagesCryEnabled.Value = !battlemagesCryValue;
+                    }
+
+                    ImGui.Unindent();
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            // Error handling without logging
+        }
+
+        try
+        {
             // Mines
             ImGui.PushStyleColor(ImGuiCol.Header, BetterFollowbotLite.Instance.Settings.minesEnabled ? green : red);
             ImGui.PushID(31);

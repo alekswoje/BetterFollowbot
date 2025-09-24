@@ -72,6 +72,21 @@ public class BetterFollowbotLiteSettings : ISettings
 
     #endregion
 
+    #region Warcries
+
+    public ToggleNode warcriesEnabled = new ToggleNode(false);
+    public ToggleNode ancestralCryEnabled = new ToggleNode(false);
+    public ToggleNode infernalCryEnabled = new ToggleNode(false);
+    public ToggleNode generalsCryEnabled = new ToggleNode(false);
+    public ToggleNode intimidatingCryEnabled = new ToggleNode(false);
+    public ToggleNode rallyingCryEnabled = new ToggleNode(false);
+    public ToggleNode vengefulCryEnabled = new ToggleNode(false);
+    public ToggleNode enduringCryEnabled = new ToggleNode(false);
+    public ToggleNode seismicCryEnabled = new ToggleNode(false);
+    public ToggleNode battlemagesCryEnabled = new ToggleNode(false);
+
+    #endregion
+
     #region Mines
 
     public ToggleNode minesEnabled = new ToggleNode(false);
@@ -118,6 +133,12 @@ public class BetterFollowbotLiteSettings : ISettings
     #region Auto Join Party & Accept Trade
 
     public ToggleNode autoJoinPartyEnabled = new ToggleNode(false);
+
+    #endregion
+
+    #region General Settings
+
+    public ToggleNode disableSkillsInHideout = new ToggleNode(true);
 
     #endregion
 

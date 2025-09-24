@@ -84,7 +84,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         var portalManager = new PortalManager();
         var pathPlanner = new Core.Movement.PathPlanner(this, leaderDetector, taskManager, portalManager);
 
-        autoPilot = new AutoPilot(leaderDetector, taskManager, pathfinding, null, pathPlanner);
+        autoPilot = new AutoPilot(leaderDetector, taskManager, pathfinding, null, pathPlanner, portalManager);
         movementExecutor = new MovementExecutor(this, taskManager, pathfinding, autoPilot);
         autoPilot.SetMovementExecutor(movementExecutor);
 

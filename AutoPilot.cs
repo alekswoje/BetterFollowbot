@@ -60,14 +60,14 @@ namespace BetterFollowbotLite;
         /// <summary>
         /// Constructor for AutoPilot
         /// </summary>
-    public AutoPilot(ILeaderDetector leaderDetector, ITaskManager taskManager, IPathfinding pathfinding, IMovementExecutor movementExecutor, PathPlanner pathPlanner)
+    public AutoPilot(ILeaderDetector leaderDetector, ITaskManager taskManager, IPathfinding pathfinding, IMovementExecutor movementExecutor, PathPlanner pathPlanner, PortalManager portalManager)
         {
         _leaderDetector = leaderDetector ?? throw new ArgumentNullException(nameof(leaderDetector));
         _taskManager = taskManager ?? throw new ArgumentNullException(nameof(taskManager));
         _pathfinding = pathfinding ?? throw new ArgumentNullException(nameof(pathfinding));
         _movementExecutor = movementExecutor; // Allow null for circular dependency resolution
         _pathPlanner = pathPlanner ?? throw new ArgumentNullException(nameof(pathPlanner));
-            portalManager = new PortalManager();
+        this.portalManager = portalManager ?? throw new ArgumentNullException(nameof(portalManager));
         }
 
     /// <summary>

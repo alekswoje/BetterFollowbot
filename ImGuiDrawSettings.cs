@@ -144,17 +144,30 @@ internal class ImGuiDrawSettings
 
         try
         {
-            // Flame Link
-            ImGui.PushStyleColor(ImGuiCol.Header, BetterFollowbotLite.Instance.Settings.flameLinkEnabled ? green : red);
+            // Links
+            bool linksEnabled = BetterFollowbotLite.Instance.Settings.linksEnabled || 
+                               BetterFollowbotLite.Instance.Settings.flameLinkEnabled || 
+                               BetterFollowbotLite.Instance.Settings.protectiveLinkEnabled;
+            ImGui.PushStyleColor(ImGuiCol.Header, linksEnabled ? green : red);
             ImGui.PushID(28);
-            if (ImGui.TreeNodeEx("Flame Link", collapsingHeaderFlags))
+            if (ImGui.TreeNodeEx("Links", collapsingHeaderFlags))
             {
-                BetterFollowbotLite.Instance.Settings.flameLinkEnabled.Value = ImGuiExtension.Checkbox("Enabled",
+                BetterFollowbotLite.Instance.Settings.linksEnabled.Value = ImGuiExtension.Checkbox("Enable Links",
+                    BetterFollowbotLite.Instance.Settings.linksEnabled.Value);
+                
+                ImGui.Separator();
+                ImGui.Text("Flame Link:");
+                BetterFollowbotLite.Instance.Settings.flameLinkEnabled.Value = ImGuiExtension.Checkbox("  Flame Link",
                     BetterFollowbotLite.Instance.Settings.flameLinkEnabled.Value);
                 BetterFollowbotLite.Instance.Settings.flameLinkRange.Value =
-                    ImGuiExtension.IntSlider("Range", BetterFollowbotLite.Instance.Settings.flameLinkRange);
+                    ImGuiExtension.IntSlider("  Range", BetterFollowbotLite.Instance.Settings.flameLinkRange);
                 BetterFollowbotLite.Instance.Settings.flameLinkTimeThreshold.Value =
-                    ImGuiExtension.IntSlider("Recast Timer", BetterFollowbotLite.Instance.Settings.flameLinkTimeThreshold);
+                    ImGuiExtension.IntSlider("  Recast Timer", BetterFollowbotLite.Instance.Settings.flameLinkTimeThreshold);
+                
+                ImGui.Separator();
+                ImGui.Text("Protective Link:");
+                BetterFollowbotLite.Instance.Settings.protectiveLinkEnabled.Value = ImGuiExtension.Checkbox("  Protective Link",
+                    BetterFollowbotLite.Instance.Settings.protectiveLinkEnabled.Value);
             }
         }
         catch (Exception e)
@@ -431,6 +444,13 @@ internal class ImGuiDrawSettings
 
                 // Show current status
                 ImGui.Text($"Status: {(isGemsEnabled ? "Enabled" : "Disabled")}");
+
+                // Cooldown setting
+                ImGui.Separator();
+                ImGui.Text("Gem Leveling Cooldown:");
+                BetterFollowbotLite.Instance.Settings.gemLevelingCooldown.Value = 
+                    ImGuiExtension.FloatSlider("Cooldown (seconds)", BetterFollowbotLite.Instance.Settings.gemLevelingCooldown);
+                ImGui.Text($"Current: {BetterFollowbotLite.Instance.Settings.gemLevelingCooldown.Value:F2}s between gem levels");
 
                 if (ImGui.Button("Test Toggle"))
                 {

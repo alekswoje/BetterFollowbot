@@ -113,11 +113,11 @@ namespace BetterFollowbotLite.Automation
                                                 continue; // Skip gems with unknown status
                                             }
 
-                                            // Check cooldown between gem leveling (1 second minimum)
+                                            // Check cooldown between gem leveling (configurable)
                                             var timeSinceLastLevel = DateTime.Now - _lastGemLevelTime;
-                                            if (timeSinceLastLevel.TotalSeconds < 1.0)
+                                            if (timeSinceLastLevel.TotalSeconds < _settings.gemLevelingCooldown.Value)
                                             {
-                                                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Waiting for cooldown, {1.0 - timeSinceLastLevel.TotalSeconds:F1}s remaining");
+                                                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Waiting for cooldown, {_settings.gemLevelingCooldown.Value - timeSinceLastLevel.TotalSeconds:F2}s remaining");
                                                 return; // Wait for cooldown
                                             }
 

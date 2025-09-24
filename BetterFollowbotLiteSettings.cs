@@ -51,7 +51,9 @@ public class BetterFollowbotLiteSettings : ISettings
 
     #region Link Skills
 
+    public ToggleNode linksEnabled = new ToggleNode(false);
     public ToggleNode flameLinkEnabled = new ToggleNode(false);
+    public ToggleNode protectiveLinkEnabled = new ToggleNode(false);
     public RangeNode<int> flameLinkRange = new RangeNode<int>(40, 10, 100);
     public RangeNode<int> flameLinkTimeThreshold = new RangeNode<int>(4, 1, 10);
 
@@ -127,6 +129,7 @@ public class BetterFollowbotLiteSettings : ISettings
     #region Auto Level Gems
 
     public ToggleNode autoLevelGemsEnabled = new ToggleNode(false);
+    public RangeNode<float> gemLevelingCooldown = new RangeNode<float>(0.25f, 0.1f, 2.0f);
 
     #endregion
 

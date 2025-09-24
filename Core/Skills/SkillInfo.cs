@@ -541,6 +541,13 @@ internal static class SkillInfo
                              skill.InternalName.ToLower().Contains("pyroclastminealtx"))
                     {
                         BetterFollowbotLite.Instance?.LogMessage($"POTENTIAL MINE SKILL: {skill.InternalName} - ID: {skill.Id}");
+                        
+                        // Set the skill ID for pyroclast mine if it contains pyroclast
+                        if (skill.InternalName.ToLower().Contains("pyroclast"))
+                        {
+                            pyroclastMine.Id = skill.Id;
+                            BetterFollowbotLite.Instance?.LogMessage($"AUTO-DETECTED: Pyroclast Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                        }
                     }
                     break;
             }

@@ -118,12 +118,15 @@ namespace BetterFollowbotLite.Skill
             try
             {
                 // Check if we have either stormblast or pyroclast mine skills enabled
+                // Use more flexible detection for pyroclast mine
                 var hasStormblastMine = _settings.minesStormblastEnabled && skill.Id == SkillInfo.stormblastMine.Id;
-                var hasPyroclastMine = _settings.minesPyroclastEnabled && skill.Id == SkillInfo.pyroclastMine.Id;
+                var hasPyroclastMine = _settings.minesPyroclastEnabled && 
+                    (skill.Id == SkillInfo.pyroclastMine.Id || 
+                     skill.InternalName?.ToLower().Contains("pyroclast") == true);
 
                 if (hasStormblastMine || hasPyroclastMine)
                 {
-                    _instance.LogMessage($"MINES: Found {(hasStormblastMine ? "Stormblast" : "Pyroclast")} mine skill (ID: {skill.Id})");
+                    _instance.LogMessage($"MINES: Found {(hasStormblastMine ? "Stormblast" : "Pyroclast")} mine skill (ID: {skill.Id}, InternalName: {skill.InternalName})");
 
                     // Check cooldown
                     var mineSkill = hasStormblastMine ? SkillInfo.stormblastMine : SkillInfo.pyroclastMine;

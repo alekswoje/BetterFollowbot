@@ -287,35 +287,57 @@ namespace BetterFollowbotLite.Core.Movement
                             }
                             else
                             {
-                                var tpButton = GetTpButton(leaderPartyElement);
-                                if (!tpButton.Equals(Vector2.Zero))
+                                // FIRST: Check for portals that match the leader's area name
+                                _core.LogMessage("ZONE TRANSITION: Checking for portals matching leader's area name first");
+                                var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName);
+                                if (matchingPortal != null)
                                 {
-                                    _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
-                                    AutoPilot.IsTeleportInProgress = true;
-                                    _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
-                                }
-                                else
-                                {
-                                    _core.LogMessage("ZONE TRANSITION: Party teleport button not available, falling back to portal search");
-                                    var portal = GetBestPortalLabel(leaderPartyElement);
-                                    if (portal != null)
+                                    // Only create transition task if there isn't already one pending
+                                    var hasExistingTransitionTask = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition);
+                                    if (!hasExistingTransitionTask)
                                     {
-                                        // Only create transition task if there isn't already one pending
-                                        var hasExistingTransitionTask = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition);
-                                        if (!hasExistingTransitionTask)
-                                        {
-                                            _core.LogMessage($"ZONE TRANSITION: Found portal '{portal.Label?.Text}' leading to leader zone '{leaderPartyElement.ZoneName}'");
-                                            _taskManager.AddTask(new TaskNode(portal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
-                                            _core.LogMessage("ZONE TRANSITION: Portal transition task added to queue");
-                                        }
-                                        else
-                                        {
-                                            _core.LogMessage($"ZONE TRANSITION: Transition task already exists, skipping portal creation for '{portal.Label?.Text}'");
-                                        }
+                                        _core.LogMessage($"ZONE TRANSITION: Found matching portal '{matchingPortal.Label?.Text}' for leader area '{leaderPartyElement.ZoneName}'");
+                                        _taskManager.AddTask(new TaskNode(matchingPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                                        _core.LogMessage("ZONE TRANSITION: Matching portal transition task added to queue");
                                     }
                                     else
                                     {
-                                        _core.LogMessage("ZONE TRANSITION: No teleport button or portal available, cannot follow through transition");
+                                        _core.LogMessage($"ZONE TRANSITION: Transition task already exists, skipping matching portal creation for '{matchingPortal.Label?.Text}'");
+                                    }
+                                }
+                                else
+                                {
+                                    _core.LogMessage("ZONE TRANSITION: No matching portals found, falling back to party teleport button");
+                                    var tpButton = GetTpButton(leaderPartyElement);
+                                    if (!tpButton.Equals(Vector2.Zero))
+                                    {
+                                        _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
+                                        AutoPilot.IsTeleportInProgress = true;
+                                        _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
+                                    }
+                                    else
+                                    {
+                                        _core.LogMessage("ZONE TRANSITION: Party teleport button not available, falling back to general portal search");
+                                        var portal = GetBestPortalLabel(leaderPartyElement);
+                                        if (portal != null)
+                                        {
+                                            // Only create transition task if there isn't already one pending
+                                            var hasExistingTransitionTask = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition);
+                                            if (!hasExistingTransitionTask)
+                                            {
+                                                _core.LogMessage($"ZONE TRANSITION: Found portal '{portal.Label?.Text}' leading to leader zone '{leaderPartyElement.ZoneName}'");
+                                                _taskManager.AddTask(new TaskNode(portal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                                                _core.LogMessage("ZONE TRANSITION: Portal transition task added to queue");
+                                            }
+                                            else
+                                            {
+                                                _core.LogMessage($"ZONE TRANSITION: Transition task already exists, skipping portal creation for '{portal.Label?.Text}'");
+                                            }
+                                        }
+                                        else
+                                        {
+                                            _core.LogMessage("ZONE TRANSITION: No teleport button or portal available, cannot follow through transition");
+                                        }
                                     }
                                 }
                             }
@@ -361,17 +383,30 @@ namespace BetterFollowbotLite.Core.Movement
                                 }
                                 else
                                 {
-                                    var tpButton = GetTpButton(leaderPartyElement);
-                                    if (!tpButton.Equals(Vector2.Zero))
+                                    // FIRST: Check for portals that match the leader's area name
+                                    _core.LogMessage("ZONE TRANSITION: Checking for portals matching leader's area name first (null entity case)");
+                                    var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName);
+                                    if (matchingPortal != null)
                                     {
-                                        _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
-                                        AutoPilot.IsTeleportInProgress = true;
-                                        _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
-                                        _core.LogMessage("ZONE TRANSITION: Party teleport task added to queue");
+                                        _core.LogMessage($"ZONE TRANSITION: Found matching portal '{matchingPortal.Label?.Text}' for leader area '{leaderPartyElement.ZoneName}' (null entity case)");
+                                        _taskManager.AddTask(new TaskNode(matchingPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                                        _core.LogMessage("ZONE TRANSITION: Matching portal transition task added to queue (null entity case)");
                                     }
                                     else
                                     {
-                                        _core.LogMessage("ZONE TRANSITION: Party teleport button not available for null entity transition");
+                                        _core.LogMessage("ZONE TRANSITION: No matching portals found, falling back to party teleport button (null entity case)");
+                                        var tpButton = GetTpButton(leaderPartyElement);
+                                        if (!tpButton.Equals(Vector2.Zero))
+                                        {
+                                            _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
+                                            AutoPilot.IsTeleportInProgress = true;
+                                            _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
+                                            _core.LogMessage("ZONE TRANSITION: Party teleport task added to queue");
+                                        }
+                                        else
+                                        {
+                                            _core.LogMessage("ZONE TRANSITION: Party teleport button not available for null entity transition");
+                                        }
                                     }
                                 }
                             }

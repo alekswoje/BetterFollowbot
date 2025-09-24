@@ -734,11 +734,7 @@ namespace BetterFollowbotLite.Core.Movement
                     (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") ||
                      x.ItemOnGround.Metadata.ToLower().Contains("portal") ||
                      x.ItemOnGround.Metadata.ToLower().Contains("transition") ||
-                     PortalManager.IsSpecialPortal(x.Label?.Text?.ToLower() ?? "")) &&
-                    // Exclude chests and containers that might match portal keywords
-                    !x.Label?.Text?.ToLower().Contains("chest") == true &&
-                    !x.ItemOnGround.Metadata.ToLower().Contains("chest") &&
-                    !x.ItemOnGround.Metadata.ToLower().Contains("container"))
+                     PortalManager.IsSpecialPortal(x.Label?.Text?.ToLower() ?? "")))
                     .ToList();
 
                 return portalLabels ?? new List<LabelOnGround>();
@@ -766,11 +762,7 @@ namespace BetterFollowbotLite.Core.Movement
                     (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") ||
                      x.ItemOnGround.Metadata.ToLower().Contains("portal") ||
                      x.ItemOnGround.Metadata.ToLower().Contains("transition") ||
-                     PortalManager.IsSpecialPortal(x.Label?.Text?.ToLower() ?? "")) &&
-                    // Exclude chests and containers that might match portal keywords
-                    !x.Label?.Text?.ToLower().Contains("chest") == true &&
-                    !x.ItemOnGround.Metadata.ToLower().Contains("chest") &&
-                    !x.ItemOnGround.Metadata.ToLower().Contains("container"))
+                     PortalManager.IsSpecialPortal(x.Label?.Text?.ToLower() ?? "")))
                     .ToList();
 
                 if (portalLabels == null || portalLabels.Count == 0)

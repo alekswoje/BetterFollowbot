@@ -207,15 +207,9 @@ namespace BetterFollowbotLite.Core.Movement
 
                     if (!isOnScreen)
                     {
-                        _core.LogMessage("TRANSITION: Portal is not on screen, moving closer to portal position");
-
-                        // Create a movement task to get closer to the portal
-                        var movementTask = new TaskNode(portalWorldPos, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Movement);
-                        _taskManager.AddTask(movementTask);
-
-                        _core.LogMessage($"TRANSITION: Created movement task to approach portal at {portalWorldPos}");
-
-                        shouldTransitionAndContinue = false; // Don't continue with transition until we're closer
+                        _core.LogMessage("TRANSITION: Portal is not on screen, cannot click it!");
+                        _taskManager.RemoveTask(currentTask);
+                        shouldTransitionAndContinue = false;
                         break;
                     }
 

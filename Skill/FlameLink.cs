@@ -107,7 +107,7 @@ namespace BetterFollowbotLite.Skills
             }
         }
 
-        private void ProcessLinkSkill(Skill linkSkill, string targetBuffName, string linkType)
+        private void ProcessLinkSkill(Core.Skills.Skill linkSkill, string targetBuffName, string linkType)
         {
             // Find the skill in the player's skills
             var skill = _instance.skills.FirstOrDefault(s => s.Id == linkSkill.Id);

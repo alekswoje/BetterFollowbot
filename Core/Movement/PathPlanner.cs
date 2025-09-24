@@ -260,6 +260,31 @@ namespace BetterFollowbotLite.Core.Movement
                                     _core.LogMessage("ZONE TRANSITION: No portals found in labyrinth area, cannot follow through transition");
                                 }
                             }
+                            // SPECIAL CASE: Special areas like Maligaro's Sanctum don't support party TP - use matching portals
+                            else if (PortalManager.IsSpecialArea(leaderPartyElement.ZoneName))
+                            {
+                                _core.LogMessage($"ZONE TRANSITION: Leader in special area '{leaderPartyElement.ZoneName}' - using matching portal search instead of party TP");
+                                var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName);
+                                if (matchingPortal != null)
+                                {
+                                    // Only create transition task if there isn't already one pending
+                                    var hasExistingTransitionTask = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition);
+                                    if (!hasExistingTransitionTask)
+                                    {
+                                        _core.LogMessage($"ZONE TRANSITION: Found matching portal '{matchingPortal.Label?.Text}' for special area '{leaderPartyElement.ZoneName}'");
+                                        _taskManager.AddTask(new TaskNode(matchingPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                                        _core.LogMessage("ZONE TRANSITION: Special area portal transition task added to queue");
+                                    }
+                                    else
+                                    {
+                                        _core.LogMessage($"ZONE TRANSITION: Transition task already exists, skipping special area portal creation for '{matchingPortal.Label?.Text}'");
+                                    }
+                                }
+                                else
+                                {
+                                    _core.LogMessage($"ZONE TRANSITION: No matching portals found for special area '{leaderPartyElement.ZoneName}'");
+                                }
+                            }
                             else
                             {
                                 var tpButton = GetTpButton(leaderPartyElement);

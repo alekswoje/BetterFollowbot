@@ -82,5 +82,20 @@ namespace BetterFollowbotLite.Interfaces
         /// Get monster count within distance by rarity
         /// </summary>
         int GetMonsterWithin(float maxDistance, MonsterRarity rarity);
+
+        /// <summary>
+        /// Check if leader is in the same zone as the player
+        /// </summary>
+        bool IsLeaderInSameZone();
+
+        /// <summary>
+        /// Set post-respawn waiting state
+        /// </summary>
+        void SetWaitingForLeaderAfterRespawn(bool waiting);
+
+        /// <summary>
+        /// Check if we should block transition tasks due to post-respawn waiting
+        /// </summary>
+        bool ShouldBlockTransitionTasks();
     }
 }

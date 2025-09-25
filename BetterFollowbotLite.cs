@@ -246,7 +246,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     }
 
     // Method to check if leader is in the same zone as the player
-    internal bool IsLeaderInSameZone()
+    public bool IsLeaderInSameZone()
     {
         try
         {
@@ -265,7 +265,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     }
 
     // Method to set post-respawn waiting state (called by RespawnHandler)
-    internal void SetWaitingForLeaderAfterRespawn(bool waiting)
+    public void SetWaitingForLeaderAfterRespawn(bool waiting)
     {
         _waitingForLeaderAfterRespawn = waiting;
         if (waiting)
@@ -280,7 +280,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     }
 
     // Method to check if we should block transition tasks due to post-respawn waiting
-    internal bool ShouldBlockTransitionTasks()
+    public bool ShouldBlockTransitionTasks()
     {
         if (!_waitingForLeaderAfterRespawn || !Settings.waitForLeaderAfterRespawn) return false;
         

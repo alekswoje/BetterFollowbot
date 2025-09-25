@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
-using BetterFollowbotLite.Core.TaskManagement;
-using BetterFollowbotLite.Interfaces;
+using BetterFollowbot.Core.TaskManagement;
+using BetterFollowbot.Interfaces;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
@@ -10,7 +10,7 @@ using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
 
-namespace BetterFollowbotLite.Core.Movement
+namespace BetterFollowbot.Core.Movement
 {
     /// <summary>
     /// Handles execution of different types of movement tasks

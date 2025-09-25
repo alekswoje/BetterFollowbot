@@ -6,7 +6,7 @@ using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
 using SharpDX;
 
-namespace BetterFollowbotLite.Interfaces
+namespace BetterFollowbot.Interfaces
 {
     /// <summary>
     /// Core interface for the main followbot functionality
@@ -16,7 +16,7 @@ namespace BetterFollowbotLite.Interfaces
         /// <summary>
         /// Plugin settings
         /// </summary>
-        BetterFollowbotLiteSettings Settings { get; }
+        BetterFollowbotSettings Settings { get; }
 
         /// <summary>
         /// Current player position

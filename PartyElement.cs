@@ -4,7 +4,7 @@ using System.Linq;
 using ExileCore.PoEMemory;
 using ExileCore.PoEMemory.MemoryObjects;
 
-namespace BetterFollowbotLite;
+namespace BetterFollowbot;
 
 public static class PartyElements
 {
@@ -14,7 +14,7 @@ public static class PartyElements
 
         try
         {
-            var baseWindow = BetterFollowbotLite.Instance.GameController.IngameState.IngameUi.Children[child];
+            var baseWindow = BetterFollowbot.Instance.GameController.IngameState.IngameUi.Children[child];
             if (baseWindow != null)
             {
                 var partyList = baseWindow.Children[0]?.Children[0]?.Children;
@@ -36,7 +36,7 @@ public static class PartyElements
 
         try
         {
-            var baseWindow = BetterFollowbotLite.Instance.GameController?.IngameState?.IngameUi?.PartyElement;
+            var baseWindow = BetterFollowbot.Instance.GameController?.IngameState?.IngameUi?.PartyElement;
             var partElementList = baseWindow?.Children?[0]?.Children?[0]?.Children;
             if (partElementList != null)
             {
@@ -52,7 +52,7 @@ public static class PartyElements
                             Element = partyElement,
                             //party element swirly tp thingo, if in another area it becomes child 4 as child 3 becomes the area string
                             TpButton = partyElement.Children[partyElement.ChildCount == 4 ? 3 : 2],
-                            ZoneName = (partyElement.ChildCount == 4) ? partyElement.Children[2].Text : BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName
+                            ZoneName = (partyElement.ChildCount == 4) ? partyElement.Children[2].Text : BetterFollowbot.Instance.GameController?.Area.CurrentArea.DisplayName
                         };
 
                         playersInParty.Add(newElement);

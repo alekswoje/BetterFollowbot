@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace BetterFollowbotLite.Core.Movement;
+namespace BetterFollowbot.Core.Movement;
 
 public class BinaryHeap<TKey, TValue>
 {

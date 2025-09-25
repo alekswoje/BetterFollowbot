@@ -12,11 +12,11 @@ using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
-using BetterFollowbotLite.Interfaces;
-using BetterFollowbotLite.Core.TaskManagement;
-using BetterFollowbotLite.Core.Movement;
+using BetterFollowbot.Interfaces;
+using BetterFollowbot.Core.TaskManagement;
+using BetterFollowbot.Core.Movement;
 
-namespace BetterFollowbotLite;
+namespace BetterFollowbot;
 
     public class AutoPilot
     {
@@ -36,25 +36,15 @@ namespace BetterFollowbotLite;
         /// </summary>
         private bool IsBlockingUiOpen()
         {
-            try
-            {
-                // Check common blocking UI elements
-                var stashOpen = BetterFollowbotLite.Instance.GameController?.IngameState?.IngameUi?.StashElement?.IsVisibleLocal == true;
-                var npcDialogOpen = BetterFollowbotLite.Instance.GameController?.IngameState?.IngameUi?.NpcDialog?.IsVisible == true;
-                var sellWindowOpen = BetterFollowbotLite.Instance.GameController?.IngameState?.IngameUi?.SellWindow?.IsVisible == true;
-                var purchaseWindowOpen = BetterFollowbotLite.Instance.GameController?.IngameState?.IngameUi?.PurchaseWindow?.IsVisible == true;
-                var inventoryOpen = BetterFollowbotLite.Instance.GameController?.IngameState?.IngameUi?.InventoryPanel?.IsVisible == true;
-                var skillTreeOpen = BetterFollowbotLite.Instance.GameController?.IngameState?.IngameUi?.TreePanel?.IsVisible == true;
-                var atlasOpen = BetterFollowbotLite.Instance.GameController?.IngameState?.IngameUi?.Atlas?.IsVisible == true;
+            return UIBlockingUtility.IsAnyBlockingUIOpen();
+        }
 
-                // Note: Map is non-obstructing in PoE, so we don't check it
-                return stashOpen || npcDialogOpen || sellWindowOpen || purchaseWindowOpen || inventoryOpen || skillTreeOpen || atlasOpen;
-            }
-            catch
-            {
-                // If we can't check UI state, err on the side of caution
-                return true;
-            }
+        /// <summary>
+        /// Validates if a portal is actually a real portal using entity type
+        /// </summary>
+        private bool IsValidPortal(LabelOnGround portal)
+        {
+            return PortalManager.IsValidPortal(portal);
         }
 
         /// <summary>
@@ -103,13 +93,13 @@ namespace BetterFollowbotLite;
             lastTargetPosition = target.Pos;
             // Clear path cache when switching targets
             _pathfinding.ClearPathCache();
-            BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Set follow target '{target.GetComponent<Player>()?.PlayerName ?? "Unknown"}' at position: {target.Pos}");
+            BetterFollowbot.Instance.LogMessage($"AUTOPILOT: Set follow target '{target.GetComponent<Player>()?.PlayerName ?? "Unknown"}' at position: {target.Pos}");
         }
         else
         {
             // Clear path cache when clearing target
             _pathfinding.ClearPathCache();
-            BetterFollowbotLite.Instance.LogMessage("AUTOPILOT: Cleared follow target");
+            BetterFollowbot.Instance.LogMessage("AUTOPILOT: Cleared follow target");
         }
     }
 
@@ -131,7 +121,7 @@ namespace BetterFollowbotLite;
                 if (distanceMoved > 500)
                 {
                     var updateDuration = DateTime.Now - updateStartTime;
-                    BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Follow target moved {distanceMoved:F0} units (possible zone transition) from {lastTargetPosition} to {newPosition} (update took {updateDuration.TotalMilliseconds:F0}ms)");
+                    BetterFollowbot.Instance.LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Follow target moved {distanceMoved:F0} units (possible zone transition) from {lastTargetPosition} to {newPosition} (update took {updateDuration.TotalMilliseconds:F0}ms)");
                 }
                 else if (newPosition != lastTargetPosition)
                 {
@@ -146,7 +136,7 @@ namespace BetterFollowbotLite;
             var totalUpdateDuration = DateTime.Now - updateStartTime;
             if (totalUpdateDuration.TotalMilliseconds > 10)
             {
-                BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Position update completed in {totalUpdateDuration.TotalMilliseconds:F0}ms");
+                BetterFollowbot.Instance.LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Position update completed in {totalUpdateDuration.TotalMilliseconds:F0}ms");
             }
         }
         else if (followTarget != null && !followTarget.IsValid)
@@ -155,7 +145,7 @@ namespace BetterFollowbotLite;
             var retryTarget = _leaderDetector.FindLeaderEntity();
             if (retryTarget != null && retryTarget.IsValid)
             {
-                BetterFollowbotLite.Instance.LogMessage("AUTOPILOT: Follow target was invalid but found again, continuing");
+                BetterFollowbot.Instance.LogMessage("AUTOPILOT: Follow target was invalid but found again, continuing");
                 followTarget = retryTarget;
                 // Update lastTargetPosition to the new valid position
                 if (followTarget.Pos != null)
@@ -165,7 +155,7 @@ namespace BetterFollowbotLite;
             }
             else
             {
-                BetterFollowbotLite.Instance.LogMessage("AUTOPILOT: Follow target became invalid and retry failed, clearing");
+                BetterFollowbot.Instance.LogMessage("AUTOPILOT: Follow target became invalid and retry failed, clearing");
                 followTarget = null;
                 lastTargetPosition = Vector3.Zero;
             }
@@ -193,15 +183,15 @@ namespace BetterFollowbotLite;
     {
         try
         {
-            var mouseScreenPos = BetterFollowbotLite.Instance.GetMousePosition();
-            var playerScreenPos = Helper.WorldToValidScreenPosition(BetterFollowbotLite.Instance.playerPosition);
+            var mouseScreenPos = BetterFollowbot.Instance.GetMousePosition();
+            var playerScreenPos = Helper.WorldToValidScreenPosition(BetterFollowbot.Instance.playerPosition);
             var targetScreenPos = Helper.WorldToValidScreenPosition(targetPosition);
 
             if (targetScreenPos.X < 0 || targetScreenPos.Y < 0 ||
-                targetScreenPos.X > BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width ||
-                targetScreenPos.Y > BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height)
+                targetScreenPos.X > BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().Width ||
+                targetScreenPos.Y > BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().Height)
             {
-                var playerWorldPos = BetterFollowbotLite.Instance.playerPosition;
+                var playerWorldPos = BetterFollowbot.Instance.playerPosition;
                 var directionToTarget = targetPosition - playerWorldPos;
 
                 if (directionToTarget.Length() < 10)
@@ -242,7 +232,7 @@ namespace BetterFollowbotLite;
         }
         catch (Exception e)
         {
-            BetterFollowbotLite.Instance.LogMessage($"IsCursorPointingTowardsTarget error: {e.Message}");
+            BetterFollowbot.Instance.LogMessage($"IsCursorPointingTowardsTarget error: {e.Message}");
             return false;
         }
     }
@@ -267,7 +257,7 @@ namespace BetterFollowbotLite;
             if (followTarget == null || _taskManager.TaskCount == 0)
                 return false;
 
-            var playerMovement = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, lastPlayerPosition);
+            var playerMovement = Vector3.Distance(BetterFollowbot.Instance.playerPosition, lastPlayerPosition);
 
             if (playerMovement > 300f)
             {
@@ -278,8 +268,8 @@ namespace BetterFollowbotLite;
 
             if (_taskManager.TaskCount > 0 && _taskManager.Tasks[0].WorldPosition != null)
             {
-                Vector3 botPos = BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition;
-                Vector3 playerPos = BetterFollowbotLite.Instance.playerPosition;
+                Vector3 botPos = BetterFollowbot.Instance.localPlayer?.Pos ?? BetterFollowbot.Instance.playerPosition;
+                Vector3 playerPos = BetterFollowbot.Instance.playerPosition;
                 Vector3 currentTaskTarget = _taskManager.Tasks[0].WorldPosition;
 
                 Vector3 botToTask = currentTaskTarget - botPos;
@@ -301,7 +291,7 @@ namespace BetterFollowbotLite;
                 }
             }
 
-            var distanceToCurrentPlayer = Vector3.Distance(BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition, lastTargetPosition);
+            var distanceToCurrentPlayer = Vector3.Distance(BetterFollowbot.Instance.localPlayer?.Pos ?? BetterFollowbot.Instance.playerPosition, lastTargetPosition);
             if (distanceToCurrentPlayer > 400f)
             {
                 lastPathClearTime = DateTime.Now;
@@ -324,13 +314,13 @@ namespace BetterFollowbotLite;
             if (_taskManager.TaskCount == 0 || followTarget == null)
                 return 1.0f;
 
-            float directDistance = Vector3.Distance(BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition, followTarget?.Pos ?? BetterFollowbotLite.Instance.playerPosition);
+            float directDistance = Vector3.Distance(BetterFollowbot.Instance.localPlayer?.Pos ?? BetterFollowbot.Instance.playerPosition, followTarget?.Pos ?? BetterFollowbot.Instance.playerPosition);
 
             if (directDistance < 30f)
                 return 1.0f;
 
             float pathDistance = 0f;
-            Vector3 currentPos = BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition;
+            Vector3 currentPos = BetterFollowbot.Instance.localPlayer?.Pos ?? BetterFollowbot.Instance.playerPosition;
 
             foreach (var task in _taskManager.Tasks)
             {
@@ -373,8 +363,8 @@ namespace BetterFollowbotLite;
 
             if (_taskManager.TaskCount >= 1 && _taskManager.Tasks[0].WorldPosition != null)
             {
-                Vector3 botPos = BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition;
-                Vector3 playerPos = BetterFollowbotLite.Instance.playerPosition;
+                Vector3 botPos = BetterFollowbot.Instance.localPlayer?.Pos ?? BetterFollowbot.Instance.playerPosition;
+                Vector3 playerPos = BetterFollowbot.Instance.playerPosition;
                 Vector3 pathTarget = _taskManager.Tasks[0].WorldPosition;
 
                 Vector3 botToPath = pathTarget - botPos;
@@ -430,24 +420,24 @@ namespace BetterFollowbotLite;
             // SPECIAL CASE: Labyrinth areas - use different logic since party TP doesn't work
             if (PortalManager.IsInLabyrinthArea)
             {
-                BetterFollowbotLite.Instance.LogMessage("PORTAL SEARCH: In labyrinth area, using nearest portal logic");
+                BetterFollowbot.Instance.LogMessage("PORTAL SEARCH: In labyrinth area, using nearest portal logic");
                 var nearestPortal = PortalManager.FindNearestLabyrinthPortal();
                 if (nearestPortal != null)
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL SEARCH: Found nearest labyrinth portal: {nearestPortal.Label?.Text ?? "Unknown"} at distance {nearestPortal.ItemOnGround.DistancePlayer:F1}");
+                    BetterFollowbot.Instance.LogMessage($"PORTAL SEARCH: Found nearest labyrinth portal: {nearestPortal.Label?.Text ?? "Unknown"} at distance {nearestPortal.ItemOnGround.DistancePlayer:F1}");
                     return nearestPortal;
                 }
                 else
                 {
-                    BetterFollowbotLite.Instance.LogMessage("PORTAL SEARCH: No portals found in labyrinth area");
+                    BetterFollowbot.Instance.LogMessage("PORTAL SEARCH: No portals found in labyrinth area");
                     return null;
                 }
             }
 
-            var currentZoneName = BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName;
+            var currentZoneName = BetterFollowbot.Instance.GameController?.Area.CurrentArea.DisplayName;
             var leaderZoneName = leaderPartyElement.ZoneName;
-            var isHideout = (bool)BetterFollowbotLite.Instance?.GameController?.Area?.CurrentArea?.IsHideout;
-            var realLevel = BetterFollowbotLite.Instance.GameController?.Area?.CurrentArea?.RealLevel ?? 0;
+            var isHideout = (bool)BetterFollowbot.Instance?.GameController?.Area?.CurrentArea?.IsHideout;
+            var realLevel = BetterFollowbot.Instance.GameController?.Area?.CurrentArea?.RealLevel ?? 0;
             var zonesAreDifferent = !leaderPartyElement.ZoneName.Equals(currentZoneName);
 
             // Search for portals in various conditions:
@@ -462,33 +452,30 @@ namespace BetterFollowbotLite;
             if (!shouldSearchForPortals && !zonesAreDifferent && leaderPartyElement != null)
             {
                 // Check if there are any special portals visible that we should prioritize
-                var visiblePortals = BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
+                var visiblePortals = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
                     x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
                     PortalManager.IsSpecialPortal(x.Label?.Text?.ToLower() ?? "")).ToList();
 
                 if (visiblePortals != null && visiblePortals.Count > 0)
                 {
                     shouldSearchForPortals = true;
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL SEARCH: Found {visiblePortals.Count} special portals, enabling portal search");
+                    BetterFollowbot.Instance.LogMessage($"PORTAL SEARCH: Found {visiblePortals.Count} special portals, enabling portal search");
                 }
             }
 
             if (shouldSearchForPortals)
             {
-                // Get all portal-like objects, including arena portals which might not have standard portal metadata
-                var allPortalLabels = BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
+                // Get all portal-like objects using clean entity type filtering
+                var allPortalLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
                         x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible && x.ItemOnGround != null &&
-                        (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") ||
-                         x.ItemOnGround.Metadata.ToLower().Contains("portal") ||
-                         x.ItemOnGround.Metadata.ToLower().Contains("transition") ||
-                         PortalManager.IsSpecialPortal(x.Label?.Text?.ToLower() ?? ""))) // Include any objects with special portal labels
+                        IsValidPortal(x))
                     .ToList();
 
-                BetterFollowbotLite.Instance.LogMessage($"PORTAL SEARCH: Found {allPortalLabels.Count} portal objects on ground");
+                BetterFollowbot.Instance.LogMessage($"PORTAL SEARCH: Found {allPortalLabels.Count} portal objects on ground");
                 foreach (var portal in allPortalLabels.Take(5)) // Log first 5 to avoid spam
                 {
                     var label = portal.Label?.Text ?? "NULL";
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL SEARCH: Portal label '{label}' at {portal.ItemOnGround.Pos}");
+                    BetterFollowbot.Instance.LogMessage($"PORTAL SEARCH: Portal label '{label}' at {portal.ItemOnGround.Pos}");
                 }
 
                 if (allPortalLabels == null || allPortalLabels.Count == 0)
@@ -509,7 +496,7 @@ namespace BetterFollowbotLite;
                         // Debug logging for portal detection
                         if (isArenaPortal || isSpecialPortal)
                         {
-                            BetterFollowbotLite.Instance.LogMessage($"PORTAL DETECT: '{x.Label?.Text}' - Arena: {isArenaPortal}, Special: {isSpecialPortal}, ZoneMatch: {matchesLeaderZone}, ZonesDifferent: {zonesAreDifferent}");
+                            BetterFollowbot.Instance.LogMessage($"PORTAL DETECT: '{x.Label?.Text}' - Arena: {isArenaPortal}, Special: {isSpecialPortal}, ZoneMatch: {matchesLeaderZone}, ZonesDifferent: {zonesAreDifferent}");
                         }
 
                         // Prioritize arena portals for inter-zone transitions, otherwise use normal logic
@@ -538,12 +525,12 @@ namespace BetterFollowbotLite;
                     var selectedPortal = matchingPortals.First();
                     var selectedLabel = selectedPortal.Label?.Text ?? "Unknown";
                     var portalType = PortalManager.GetSpecialPortalType(selectedLabel.ToLower());
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL SELECT: Chose '{selectedLabel}' (Type: {portalType}) from {matchingPortals.Count} matching portals");
+                    BetterFollowbot.Instance.LogMessage($"PORTAL SELECT: Chose '{selectedLabel}' (Type: {portalType}) from {matchingPortals.Count} matching portals");
                     return selectedPortal;
                 }
                 else
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL SELECT: No matching portals found (checked {allPortalLabels.Count} total portals)");
+                    BetterFollowbot.Instance.LogMessage($"PORTAL SELECT: No matching portals found (checked {allPortalLabels.Count} total portals)");
                 }
 
                 return null;
@@ -612,7 +599,7 @@ namespace BetterFollowbotLite;
             if (leaderPartyElement == null)
                 return Vector2.Zero;
 
-            var windowOffset = BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().TopLeft;
+            var windowOffset = BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().TopLeft;
             var elemCenter = (Vector2) leaderPartyElement?.TpButton?.GetClientRectCache.Center;
             var finalPos = new Vector2(elemCenter.X + windowOffset.X, elemCenter.Y + windowOffset.Y);
 
@@ -627,7 +614,7 @@ namespace BetterFollowbotLite;
     {
         try
         {
-            var ui = BetterFollowbotLite.Instance.GameController?.IngameState?.IngameUi?.PopUpWindow;
+            var ui = BetterFollowbot.Instance.GameController?.IngameState?.IngameUi?.PopUpWindow;
 
             if (ui.Children[0].Children[0].Children[0].Text.Equals("Are you sure you want to teleport to this player's location?"))
                 return ui.Children[0].Children[0].Children[3].Children[0];
@@ -650,7 +637,7 @@ namespace BetterFollowbotLite;
         var terrainInitStart = DateTime.Now;
         _pathfinding.InitializeTerrain();
         var terrainInitTime = DateTime.Now - terrainInitStart;
-        BetterFollowbotLite.Instance.LogMessage($"TERRAIN INIT: Terrain initialization completed in {terrainInitTime.TotalMilliseconds:F2}ms");
+        BetterFollowbot.Instance.LogMessage($"TERRAIN INIT: Terrain initialization completed in {terrainInitTime.TotalMilliseconds:F2}ms");
     }
 
     public void StartCoroutine()
@@ -661,17 +648,17 @@ namespace BetterFollowbotLite;
     {
         while (true)
         {
-            if (!BetterFollowbotLite.Instance.Settings.Enable.Value || !BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value || BetterFollowbotLite.Instance.localPlayer == null || !BetterFollowbotLite.Instance.localPlayer.IsAlive ||
-                !BetterFollowbotLite.Instance.GameController.IsForeGroundCache || IsBlockingUiOpen() || BetterFollowbotLite.Instance.GameController.IsLoading || !BetterFollowbotLite.Instance.GameController.InGame)
+            if (!BetterFollowbot.Instance.Settings.Enable.Value || !BetterFollowbot.Instance.Settings.autoPilotEnabled.Value || BetterFollowbot.Instance.localPlayer == null || !BetterFollowbot.Instance.localPlayer.IsAlive ||
+                !BetterFollowbot.Instance.GameController.IsForeGroundCache || IsBlockingUiOpen() || BetterFollowbot.Instance.GameController.IsLoading || !BetterFollowbot.Instance.GameController.InGame)
             {
                 // Log check failures that might cause delays
-                if (!BetterFollowbotLite.Instance.GameController.IsForeGroundCache)
+                if (!BetterFollowbot.Instance.GameController.IsForeGroundCache)
                 {
-                    BetterFollowbotLite.Instance.LogMessage("FOREGROUND CHECK: Game not in foreground - blocking task execution");
+                    BetterFollowbot.Instance.LogMessage("FOREGROUND CHECK: Game not in foreground - blocking task execution");
                 }
                 if (IsBlockingUiOpen() && (DateTime.Now - _lastMenuCheckLog).TotalSeconds > 5)
                 {
-                    BetterFollowbotLite.Instance.LogMessage("UI CHECK: Blocking UI is open - blocking task execution");
+                    BetterFollowbot.Instance.LogMessage("UI CHECK: Blocking UI is open - blocking task execution");
                     _lastMenuCheckLog = DateTime.Now;
                 }
                 await Task.Delay(100);
@@ -679,11 +666,11 @@ namespace BetterFollowbotLite;
             }
 
             // ADDITIONAL SAFEGUARD: Don't execute tasks during zone loading or when game state is unstable
-            if (BetterFollowbotLite.Instance.GameController.IsLoading ||
-                BetterFollowbotLite.Instance.GameController.Area.CurrentArea == null ||
-                string.IsNullOrEmpty(BetterFollowbotLite.Instance.GameController.Area.CurrentArea.DisplayName))
+            if (BetterFollowbot.Instance.GameController.IsLoading ||
+                BetterFollowbot.Instance.GameController.Area.CurrentArea == null ||
+                string.IsNullOrEmpty(BetterFollowbot.Instance.GameController.Area.CurrentArea.DisplayName))
             {
-                BetterFollowbotLite.Instance.LogMessage("TASK EXECUTION: Blocking task execution during zone loading");
+                BetterFollowbot.Instance.LogMessage("TASK EXECUTION: Blocking task execution during zone loading");
                 await Task.Delay(200); // Wait longer during zone loading
                 continue;
             }
@@ -701,12 +688,12 @@ namespace BetterFollowbotLite;
                     try
                     {
                         currentTask = teleportTasks.First();
-                        BetterFollowbotLite.Instance.LogMessage($"PRIORITY: Processing teleport task {currentTask.Type} instead of {_taskManager.Tasks.First().Type}");
+                        BetterFollowbot.Instance.LogMessage($"PRIORITY: Processing teleport task {currentTask.Type} instead of {_taskManager.Tasks.First().Type}");
                     }
                     catch (Exception e)
                     {
                         taskAccessError = true;
-                        BetterFollowbotLite.Instance.LogMessage($"PRIORITY: Error accessing teleport task - {e.Message}");
+                        BetterFollowbot.Instance.LogMessage($"PRIORITY: Error accessing teleport task - {e.Message}");
                     }
                 }
                 else
@@ -736,10 +723,10 @@ namespace BetterFollowbotLite;
                 }
 
                 // Log task execution start
-                BetterFollowbotLite.Instance.LogMessage($"TASK EXECUTION: Starting {currentTask.Type} task at {currentTask.WorldPosition} (Queue size: {_taskManager.TaskCount})");
+                BetterFollowbot.Instance.LogMessage($"TASK EXECUTION: Starting {currentTask.Type} task at {currentTask.WorldPosition} (Queue size: {_taskManager.TaskCount})");
 
-                var taskDistance = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, currentTask.WorldPosition);
-                var playerDistanceMoved = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, lastPlayerPosition);
+                var taskDistance = Vector3.Distance(BetterFollowbot.Instance.playerPosition, currentTask.WorldPosition);
+                var playerDistanceMoved = Vector3.Distance(BetterFollowbot.Instance.playerPosition, lastPlayerPosition);
 
                 // Check if we should clear path for better responsiveness to player movement
                 if (ShouldClearPathForResponsiveness())
@@ -751,9 +738,9 @@ namespace BetterFollowbotLite;
                     // FORCE IMMEDIATE PATH CREATION - Don't wait for UpdateAutoPilotLogic
                     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
-                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
+                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbot.Instance.playerPosition, FollowTargetPosition);
 
-                        if (instantDistanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotDashDistance && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Use configured dash distance
+                        if (instantDistanceToLeader > BetterFollowbot.Instance.Settings.autoPilotDashDistance && BetterFollowbot.Instance.Settings.autoPilotDashEnabled) // Use configured dash distance
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
@@ -767,7 +754,7 @@ namespace BetterFollowbotLite;
                         }
                         else
                         {
-                            _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbot.Instance.Settings.autoPilotPathfindingNodeDistance));
                         }
                     }
                     
@@ -784,9 +771,9 @@ namespace BetterFollowbotLite;
                     // FORCE IMMEDIATE PATH CREATION - Don't wait for UpdateAutoPilotLogic
                     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
-                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
+                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbot.Instance.playerPosition, FollowTargetPosition);
 
-                        if (instantDistanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotDashDistance && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Use configured dash distance
+                        if (instantDistanceToLeader > BetterFollowbot.Instance.Settings.autoPilotDashDistance && BetterFollowbot.Instance.Settings.autoPilotDashEnabled) // Use configured dash distance
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
@@ -800,7 +787,7 @@ namespace BetterFollowbotLite;
                         }
                         else
                         {
-                            _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            _taskManager.AddTask(new TaskNode(FollowTargetPosition, BetterFollowbot.Instance.Settings.autoPilotPathfindingNodeDistance));
                         }
                     }
                     
@@ -809,10 +796,10 @@ namespace BetterFollowbotLite;
 
                 //We are using a same map transition and have moved significnatly since last tick. Mark the transition task as done.
                 if (currentTask.Type == TaskNodeType.Transition &&
-                    playerDistanceMoved >= BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
+                    playerDistanceMoved >= BetterFollowbot.Instance.Settings.autoPilotClearPathDistance.Value)
                 {
                     _taskManager.RemoveTask(currentTask);
-                    lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
+                    lastPlayerPosition = BetterFollowbot.Instance.playerPosition;
                     continue;
                 }
 
@@ -843,8 +830,8 @@ namespace BetterFollowbotLite;
                 if (currentTask.Type == TaskNodeType.Movement)
                 {
                     // SIMPLIFIED OVERRIDE: Just check if target is far from current player position
-                    var playerPos = BetterFollowbotLite.Instance.playerPosition;
-                    var botPos = BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition;
+                    var playerPos = BetterFollowbot.Instance.playerPosition;
+                    var botPos = BetterFollowbot.Instance.localPlayer?.Pos ?? BetterFollowbot.Instance.playerPosition;
                     var targetPos = currentTask.WorldPosition;
                     
                     // Calculate direction from bot to target vs bot to player
@@ -920,7 +907,7 @@ namespace BetterFollowbotLite;
                 if (currentTask != null && currentTask.AttemptCount > 20)
                 {
                     // Remove task if it's been attempted too many times
-                    BetterFollowbotLite.Instance.LogMessage($"Task timeout - Too many attempts ({currentTask.AttemptCount}), removing task");
+                    BetterFollowbot.Instance.LogMessage($"Task timeout - Too many attempts ({currentTask.AttemptCount}), removing task");
                     _taskManager.RemoveTask(currentTask);
                 }
 
@@ -937,12 +924,12 @@ namespace BetterFollowbotLite;
                     if (shouldDashToLeader)
                     {
                         Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(FollowTargetPosition));
-                        BetterFollowbotLite.Instance.LogMessage("Movement task: Dash mouse positioned, pressing key");
+                        BetterFollowbot.Instance.LogMessage("Movement task: Dash mouse positioned, pressing key");
                         if (instantPathOptimization)
                         {
                             // INSTANT MODE: Skip delays for immediate path correction
                             // Removed excessive INSTANT PATH OPTIMIZATION logging
-                            Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
+                            Keyboard.KeyPress(BetterFollowbot.Instance.Settings.autoPilotDashKey);
                             _movementExecutor.UpdateLastDashTime(DateTime.Now); // Record dash time for cooldown
                             instantPathOptimization = false; // Reset flag after use
                         }
@@ -950,7 +937,7 @@ namespace BetterFollowbotLite;
                         {
                             // Normal delays
                             await Task.Delay(random.Next(25) + 30);
-                            Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
+                            Keyboard.KeyPress(BetterFollowbot.Instance.Settings.autoPilotDashKey);
                             _movementExecutor.UpdateLastDashTime(DateTime.Now); // Record dash time for cooldown
                             await Task.Delay(random.Next(25) + 30);
                         }
@@ -974,15 +961,15 @@ namespace BetterFollowbotLite;
                         // LAST CHANCE CHECK: Before executing movement, check if player has turned around
                         if (ShouldClearPathForResponsiveness())
                         {
-                            BetterFollowbotLite.Instance.LogMessage("LAST CHANCE 180 CHECK: Player direction changed before movement execution, aborting current task");
+                            BetterFollowbot.Instance.LogMessage("LAST CHANCE 180 CHECK: Player direction changed before movement execution, aborting current task");
                             _taskManager.ClearTasksPreservingTransitions();
                             hasUsedWp = false; // Allow waypoint usage again
  // Skip this movement and recalculate
                             continue;
                         }
 
-                        BetterFollowbotLite.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
-                        BetterFollowbotLite.Instance.LogMessage($"Movement task: Move key: {BetterFollowbotLite.Instance.Settings.autoPilotMoveKey}");
+                        BetterFollowbot.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
+                        BetterFollowbot.Instance.LogMessage($"Movement task: Move key: {BetterFollowbot.Instance.Settings.autoPilotMoveKey}");
                         Mouse.SetCursorPosHuman(movementScreenPos);
                         
                         if (instantPathOptimization)
@@ -1003,63 +990,63 @@ namespace BetterFollowbotLite;
 
                     if (shouldTransitionAndContinue)
                     {
-                        BetterFollowbotLite.Instance.LogMessage("TRANSITION: Starting portal click sequence");
+                        BetterFollowbot.Instance.LogMessage("TRANSITION: Starting portal click sequence");
 
                         // Move mouse to portal position with multiple attempts
-                        BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Moving mouse to portal position ({transitionPos.X:F1}, {transitionPos.Y:F1})");
+                        BetterFollowbot.Instance.LogMessage($"TRANSITION: Moving mouse to portal position ({transitionPos.X:F1}, {transitionPos.Y:F1})");
 
                         // First attempt
                         Mouse.SetCursorPosHuman(transitionPos);
                         await Task.Delay(100);
 
-                        var mousePosAfterMove = BetterFollowbotLite.Instance.GetMousePosition();
-                        BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Mouse position after first move - X: {mousePosAfterMove.X:F1}, Y: {mousePosAfterMove.Y:F1}");
+                        var mousePosAfterMove = BetterFollowbot.Instance.GetMousePosition();
+                        BetterFollowbot.Instance.LogMessage($"TRANSITION: Mouse position after first move - X: {mousePosAfterMove.X:F1}, Y: {mousePosAfterMove.Y:F1}");
 
                         // Check if close enough (within 30 pixels)
                         var distanceFromTarget = Math.Sqrt(Math.Pow(mousePosAfterMove.X - transitionPos.X, 2) + Math.Pow(mousePosAfterMove.Y - transitionPos.Y, 2));
                         if (distanceFromTarget > 30)
                         {
                             // Second attempt with direct Windows API
-                            BetterFollowbotLite.Instance.LogMessage($"TRANSITION: First move failed ({distanceFromTarget:F1} pixels), trying direct Windows API");
+                            BetterFollowbot.Instance.LogMessage($"TRANSITION: First move failed ({distanceFromTarget:F1} pixels), trying direct Windows API");
                             System.Windows.Forms.Cursor.Position = new System.Drawing.Point((int)transitionPos.X, (int)transitionPos.Y);
                             await Task.Delay(100);
 
-                            mousePosAfterMove = BetterFollowbotLite.Instance.GetMousePosition();
+                            mousePosAfterMove = BetterFollowbot.Instance.GetMousePosition();
                             distanceFromTarget = Math.Sqrt(Math.Pow(mousePosAfterMove.X - transitionPos.X, 2) + Math.Pow(mousePosAfterMove.Y - transitionPos.Y, 2));
-                            BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Mouse position after second move - X: {mousePosAfterMove.X:F1}, Y: {mousePosAfterMove.Y:F1}");
+                            BetterFollowbot.Instance.LogMessage($"TRANSITION: Mouse position after second move - X: {mousePosAfterMove.X:F1}, Y: {mousePosAfterMove.Y:F1}");
 
                             if (distanceFromTarget > 30)
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Mouse movement failed - {distanceFromTarget:F1} pixels from target, skipping click");
+                                BetterFollowbot.Instance.LogMessage($"TRANSITION: Mouse movement failed - {distanceFromTarget:F1} pixels from target, skipping click");
                                 await Task.Delay(200);
                                 continue;
                             }
                         }
 
                         // Perform the click with additional logging
-                        BetterFollowbotLite.Instance.LogMessage("TRANSITION: Performing left click on portal");
+                        BetterFollowbot.Instance.LogMessage("TRANSITION: Performing left click on portal");
 
                         Mouse.LeftClick();
 
                         // Wait for transition to start
-                        BetterFollowbotLite.Instance.LogMessage("TRANSITION: Waiting for transition to process");
+                        BetterFollowbot.Instance.LogMessage("TRANSITION: Waiting for transition to process");
                         await Task.Delay(300);
 
-                        BetterFollowbotLite.Instance.LogMessage("TRANSITION: Portal click sequence completed");
+                        BetterFollowbot.Instance.LogMessage("TRANSITION: Portal click sequence completed");
 
                         // Reset portal transition mode after clicking a portal
                         // This prevents the bot from getting stuck in portal transition mode
                         portalManager.SetPortalTransitionMode(false);
-                        BetterFollowbotLite.Instance.LogMessage("TRANSITION: Portal transition mode reset after portal click");
+                        BetterFollowbot.Instance.LogMessage("TRANSITION: Portal transition mode reset after portal click");
 
                         continue;
                     }
 
                     if (shouldClaimWaypointAndContinue)
                     {
-                        if (Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, currentTask.WorldPosition) > 150)
+                        if (Vector3.Distance(BetterFollowbot.Instance.playerPosition, currentTask.WorldPosition) > 150)
                         {
-                            await Task.Delay(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency);
+                            await Task.Delay(BetterFollowbot.Instance.Settings.autoPilotInputFrequency);
                             Mouse.SetCursorPosAndLeftClickHuman(waypointScreenPos, 100);
                             await Task.Delay(1000);
                         }
@@ -1071,7 +1058,7 @@ namespace BetterFollowbotLite;
                         // LAST CHANCE CHECK: Before executing dash, check if player has turned around
                         if (ShouldClearPathForResponsiveness())
                         {
-                            BetterFollowbotLite.Instance.LogMessage("LAST CHANCE 180 CHECK: Player direction changed before dash execution, aborting current task");
+                            BetterFollowbot.Instance.LogMessage("LAST CHANCE 180 CHECK: Player direction changed before dash execution, aborting current task");
                             _taskManager.ClearTasksPreservingTransitions();
                             hasUsedWp = false; // Allow waypoint usage again
  // Skip this dash and recalculate
@@ -1079,18 +1066,18 @@ namespace BetterFollowbotLite;
                         }
 
                         Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(currentTask.WorldPosition));
-                        BetterFollowbotLite.Instance.LogMessage("Dash: Mouse positioned, pressing dash key");
+                        BetterFollowbot.Instance.LogMessage("Dash: Mouse positioned, pressing dash key");
                         
                         // IMMEDIATE OVERRIDE CHECK: After positioning cursor, check if we need to override
                         if (ShouldClearPathForResponsiveness(true)) // Use aggressive override timing
                         {
-                            BetterFollowbotLite.Instance.LogMessage("IMMEDIATE OVERRIDE: 180 detected after dash positioning - overriding with new position!");
+                            BetterFollowbot.Instance.LogMessage("IMMEDIATE OVERRIDE: 180 detected after dash positioning - overriding with new position!");
                             _taskManager.ClearTasksPreservingTransitions();
                             hasUsedWp = false; // Allow waypoint usage again
                             
                             // INSTANT OVERRIDE: Position cursor towards player and dash there instead
-                            var playerPos = BetterFollowbotLite.Instance.playerPosition;
-                            var botPos = BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition;
+                            var playerPos = BetterFollowbot.Instance.playerPosition;
+                            var botPos = BetterFollowbot.Instance.localPlayer?.Pos ?? BetterFollowbot.Instance.playerPosition;
                             
                             // Calculate a position closer to the player for dash correction
                             var directionToPlayer = playerPos - botPos;
@@ -1100,16 +1087,16 @@ namespace BetterFollowbotLite;
                                 var correctionTarget = botPos + (directionToPlayer * 400f); // Dash 400 units towards player
                                 
                                 var correctScreenPos = Helper.WorldToValidScreenPosition(correctionTarget);
-                                BetterFollowbotLite.Instance.LogMessage($"DEBUG: Dash override - Old position: {currentTask.WorldPosition}, Player position: {playerPos}");
-                                BetterFollowbotLite.Instance.LogMessage($"DEBUG: Dash override - Correction target: {correctionTarget}");
+                                BetterFollowbot.Instance.LogMessage($"DEBUG: Dash override - Old position: {currentTask.WorldPosition}, Player position: {playerPos}");
+                                BetterFollowbot.Instance.LogMessage($"DEBUG: Dash override - Correction target: {correctionTarget}");
                                 Mouse.SetCursorPosHuman(correctScreenPos);
-                                Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
+                                Keyboard.KeyPress(BetterFollowbot.Instance.Settings.autoPilotDashKey);
                                 _movementExecutor.UpdateLastDashTime(DateTime.Now); // Record dash time for cooldown
-                                BetterFollowbotLite.Instance.LogMessage("DASH OVERRIDE: Dashed towards player position to override old dash");
+                                BetterFollowbot.Instance.LogMessage("DASH OVERRIDE: Dashed towards player position to override old dash");
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage("DEBUG: Dash override skipped - player too close to bot");
+                                BetterFollowbot.Instance.LogMessage("DEBUG: Dash override skipped - player too close to bot");
                             }
                             continue;
                         }
@@ -1118,7 +1105,7 @@ namespace BetterFollowbotLite;
                         {
                             // INSTANT MODE: Skip delays for immediate path correction
                             // Removed excessive INSTANT PATH OPTIMIZATION logging
-                            Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
+                            Keyboard.KeyPress(BetterFollowbot.Instance.Settings.autoPilotDashKey);
                             _movementExecutor.UpdateLastDashTime(DateTime.Now); // Record dash time for cooldown
                             instantPathOptimization = false; // Reset flag after use
                         }
@@ -1126,7 +1113,7 @@ namespace BetterFollowbotLite;
                         {
                             // Normal delays
                             await Task.Delay(random.Next(25) + 30);
-                            Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
+                            Keyboard.KeyPress(BetterFollowbot.Instance.Settings.autoPilotDashKey);
                             _movementExecutor.UpdateLastDashTime(DateTime.Now); // Record dash time for cooldown
                             await Task.Delay(random.Next(25) + 30);
                         }
@@ -1141,7 +1128,7 @@ namespace BetterFollowbotLite;
                         Mouse.LeftClick();
                         await Task.Delay(100); // Reduced from 200ms, need some time for dialog
                         // CRITICAL: Move mouse to center of screen after teleport confirm to prevent unwanted movement
-                        var screenCenter = new Vector2(BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width / 2, BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height / 2);
+                        var screenCenter = new Vector2(BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().Width / 2, BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().Height / 2);
                         Mouse.SetCursorPos(screenCenter);
                         await Task.Delay(200); // Reduced from 1000ms, still need time for teleport
                         continue;
@@ -1155,7 +1142,7 @@ namespace BetterFollowbotLite;
                         Mouse.LeftClick();
                         await Task.Delay(50); // Reduced from 200ms
                         // CRITICAL: Move mouse to center of screen after teleport button to prevent unwanted movement
-                        var screenCenter = new Vector2(BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width / 2, BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height / 2);
+                        var screenCenter = new Vector2(BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().Width / 2, BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().Height / 2);
                         Mouse.SetCursorPos(screenCenter);
                         await Task.Delay(100); // Reduced from 200ms
                         continue;
@@ -1163,7 +1150,7 @@ namespace BetterFollowbotLite;
                 }
             }
 
-            lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
+            lastPlayerPosition = BetterFollowbot.Instance.playerPosition;
             await Task.Delay(50);
         }
     }
@@ -1176,7 +1163,7 @@ namespace BetterFollowbotLite;
             var leaderPartyElement = _leaderDetector.GetLeaderPartyElement();
             var followTarget = _leaderDetector.FindLeaderEntity();
 
-            lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
+            lastPlayerPosition = BetterFollowbot.Instance.playerPosition;
 
             // Allow PlanPath to run even with null followTarget for zone transitions
             // PlanPath handles null followTarget gracefully
@@ -1187,30 +1174,30 @@ namespace BetterFollowbotLite;
         }
         catch (Exception e)
         {
-            BetterFollowbotLite.Instance.LogError($"UpdateAutoPilotLogic Error: {e}");
+            BetterFollowbot.Instance.LogError($"UpdateAutoPilotLogic Error: {e}");
         }
     }
 
     public void Render()
     {
-        if (BetterFollowbotLite.Instance.Settings.autoPilotToggleKey.PressedOnce())
+        if (BetterFollowbot.Instance.Settings.autoPilotToggleKey.PressedOnce())
         {
-            BetterFollowbotLite.Instance.Settings.autoPilotEnabled.SetValueNoEvent(!BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value);
+            BetterFollowbot.Instance.Settings.autoPilotEnabled.SetValueNoEvent(!BetterFollowbot.Instance.Settings.autoPilotEnabled.Value);
             _taskManager.ClearTasks();
         }
 
-        if (BetterFollowbotLite.Instance.Settings.autoPilotEnabled)
+        if (BetterFollowbot.Instance.Settings.autoPilotEnabled)
         {
             // AutoPilot runs continuously when enabled
         }
 
-        if (!BetterFollowbotLite.Instance.Settings.autoPilotEnabled || BetterFollowbotLite.Instance.GameController.IsLoading || !BetterFollowbotLite.Instance.GameController.InGame)
+        if (!BetterFollowbot.Instance.Settings.autoPilotEnabled || BetterFollowbot.Instance.GameController.IsLoading || !BetterFollowbot.Instance.GameController.InGame)
             return;
 
         try
         {
             var portalLabels =
-                BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
+                BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
                     x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
                     x.ItemOnGround != null &&
                     (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") ||
@@ -1223,28 +1210,28 @@ namespace BetterFollowbotLite;
                 var portalLabel = portal.Label?.Text ?? "Unknown";
                 var labelRect = portal.Label.GetClientRectCache;
 
-                BetterFollowbotLite.Instance.Graphics.DrawLine(labelRect.TopLeft, labelRect.TopRight, 2f, SharpDX.Color.Firebrick);
-                BetterFollowbotLite.Instance.Graphics.DrawLine(labelRect.TopRight, labelRect.BottomRight, 2f, SharpDX.Color.Firebrick);
-                BetterFollowbotLite.Instance.Graphics.DrawLine(labelRect.BottomRight, labelRect.BottomLeft, 2f, SharpDX.Color.Firebrick);
-                BetterFollowbotLite.Instance.Graphics.DrawLine(labelRect.BottomLeft, labelRect.TopLeft, 2f, SharpDX.Color.Firebrick);
+                BetterFollowbot.Instance.Graphics.DrawLine(labelRect.TopLeft, labelRect.TopRight, 2f, SharpDX.Color.Firebrick);
+                BetterFollowbot.Instance.Graphics.DrawLine(labelRect.TopRight, labelRect.BottomRight, 2f, SharpDX.Color.Firebrick);
+                BetterFollowbot.Instance.Graphics.DrawLine(labelRect.BottomRight, labelRect.BottomLeft, 2f, SharpDX.Color.Firebrick);
+                BetterFollowbot.Instance.Graphics.DrawLine(labelRect.BottomLeft, labelRect.TopLeft, 2f, SharpDX.Color.Firebrick);
 
                 var labelPos = new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 20);
-                BetterFollowbotLite.Instance.Graphics.DrawText($"Portal: {portalLabel}", labelPos, SharpDX.Color.Yellow);
+                BetterFollowbot.Instance.Graphics.DrawText($"Portal: {portalLabel}", labelPos, SharpDX.Color.Yellow);
 
-                var distance = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, portal.ItemOnGround.Pos);
+                var distance = Vector3.Distance(BetterFollowbot.Instance.playerPosition, portal.ItemOnGround.Pos);
                 var distancePos = new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 35);
-                BetterFollowbotLite.Instance.Graphics.DrawText($"{distance:F1}m", distancePos, SharpDX.Color.Cyan);
+                BetterFollowbot.Instance.Graphics.DrawText($"{distance:F1}m", distancePos, SharpDX.Color.Cyan);
 
                 if (PortalManager.IsSpecialPortal(portalLabel))
                 {
                     var portalType = PortalManager.GetSpecialPortalType(portalLabel);
                     var color = portalType == "Arena" ? SharpDX.Color.Red : SharpDX.Color.OrangeRed;
-                    BetterFollowbotLite.Instance.Graphics.DrawText(portalType, new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 50), color);
+                    BetterFollowbot.Instance.Graphics.DrawText(portalType, new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 50), color);
 
                     // Add extra highlighting for arena portals
                     if (portalType == "Arena")
                     {
-                        BetterFollowbotLite.Instance.Graphics.DrawText("PRIORITY", new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 65), SharpDX.Color.Yellow);
+                        BetterFollowbot.Instance.Graphics.DrawText("PRIORITY", new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 65), SharpDX.Color.Yellow);
                     }
 
                     // Show where we will actually click (UI button center)
@@ -1252,16 +1239,16 @@ namespace BetterFollowbotLite;
 
                     // Draw a small cross at the click position
                     const int crossSize = 5;
-                    BetterFollowbotLite.Instance.Graphics.DrawLine(
+                    BetterFollowbot.Instance.Graphics.DrawLine(
                         clickPos - new System.Numerics.Vector2(crossSize, 0),
                         clickPos + new System.Numerics.Vector2(crossSize, 0),
                         2f, SharpDX.Color.Green);
-                    BetterFollowbotLite.Instance.Graphics.DrawLine(
+                    BetterFollowbot.Instance.Graphics.DrawLine(
                         clickPos - new System.Numerics.Vector2(0, crossSize),
                         clickPos + new System.Numerics.Vector2(0, crossSize),
                         2f, SharpDX.Color.Green);
 
-                    BetterFollowbotLite.Instance.Graphics.DrawText("CLICK", new System.Numerics.Vector2(clickPos.X + 8, clickPos.Y - 8), SharpDX.Color.Green);
+                    BetterFollowbot.Instance.Graphics.DrawText("CLICK", new System.Numerics.Vector2(clickPos.X + 8, clickPos.Y - 8), SharpDX.Color.Green);
                 }
             }
         }
@@ -1270,15 +1257,15 @@ namespace BetterFollowbotLite;
             //ignore
         }
 
-        BetterFollowbotLite.Instance.Graphics.DrawText("AutoPilot: Active", new System.Numerics.Vector2(350, 120));
-        BetterFollowbotLite.Instance.Graphics.DrawText("Task: Async", new System.Numerics.Vector2(350, 140));
-        BetterFollowbotLite.Instance.Graphics.DrawText("Leader: " + (followTarget != null ? "Found" : "Null"), new System.Numerics.Vector2(350, 160));
+        BetterFollowbot.Instance.Graphics.DrawText("AutoPilot: Active", new System.Numerics.Vector2(350, 120));
+        BetterFollowbot.Instance.Graphics.DrawText("Task: Async", new System.Numerics.Vector2(350, 140));
+        BetterFollowbot.Instance.Graphics.DrawText("Leader: " + (followTarget != null ? "Found" : "Null"), new System.Numerics.Vector2(350, 160));
 
         var transitionTasks = _taskManager.Tasks.Where(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
         if (transitionTasks.Any())
         {
             var currentTransitionTask = transitionTasks.First();
-            BetterFollowbotLite.Instance.Graphics.DrawText($"Transition: {currentTransitionTask.Type}", new System.Numerics.Vector2(350, 180), SharpDX.Color.Yellow);
+            BetterFollowbot.Instance.Graphics.DrawText($"Transition: {currentTransitionTask.Type}", new System.Numerics.Vector2(350, 180), SharpDX.Color.Yellow);
         }
 
         try
@@ -1288,24 +1275,24 @@ namespace BetterFollowbotLite;
             var cachedTasks = _taskManager.Tasks;
             if (cachedTasks?.Count > 0)
             {
-                BetterFollowbotLite.Instance.Graphics.DrawText(
+                BetterFollowbot.Instance.Graphics.DrawText(
                     "Current Task: " + cachedTasks[0].Type,
                     new Vector2(500, 160));
                 foreach (var task in cachedTasks.TakeWhile(task => task?.WorldPosition != null))
                 {
                     if (taskCount == 0)
                     {
-                        BetterFollowbotLite.Instance.Graphics.DrawLine(
-                            Helper.WorldToValidScreenPosition(BetterFollowbotLite.Instance.playerPosition),
+                        BetterFollowbot.Instance.Graphics.DrawLine(
+                            Helper.WorldToValidScreenPosition(BetterFollowbot.Instance.playerPosition),
                             Helper.WorldToValidScreenPosition(task.WorldPosition), 2f, SharpDX.Color.Pink);
-                        dist = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, task.WorldPosition);
-                        BetterFollowbotLite.Instance.Graphics.DrawText(
+                        dist = Vector3.Distance(BetterFollowbot.Instance.playerPosition, task.WorldPosition);
+                        BetterFollowbot.Instance.Graphics.DrawText(
                             "Distance: " + dist.ToString("F2") + "m",
                             new Vector2(500, 180));
                     }
                     taskCount++;
                 }
-                BetterFollowbotLite.Instance.Graphics.DrawText(
+                BetterFollowbot.Instance.Graphics.DrawText(
                     "Task Count: " + cachedTasks.Count,
                     new System.Numerics.Vector2(500, 140));
             }

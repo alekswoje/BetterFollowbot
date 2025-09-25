@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
 using System.Windows.Forms;
-using BetterFollowbotLite.Interfaces;
-using BetterFollowbotLite.Core.Skills;
+using BetterFollowbot.Interfaces;
+using BetterFollowbot.Core.Skills;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -10,14 +10,14 @@ using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
 
-namespace BetterFollowbotLite.Skill
+namespace BetterFollowbot.Skill
 {
     internal class Warcries : ISkill
     {
-        private readonly BetterFollowbotLite _instance;
-        private readonly BetterFollowbotLiteSettings _settings;
+        private readonly BetterFollowbot _instance;
+        private readonly BetterFollowbotSettings _settings;
 
-        public Warcries(BetterFollowbotLite instance, BetterFollowbotLiteSettings settings)
+        public Warcries(BetterFollowbot instance, BetterFollowbotSettings settings)
         {
             _instance = instance;
             _settings = settings;

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
 
-namespace BetterFollowbotLite.Core.Skills;
+namespace BetterFollowbot.Core.Skills;
 
 internal static class SkillInfo
 {
@@ -198,20 +198,20 @@ internal static class SkillInfo
         }
 
         if (actorSkill.RemainingUses <= 0 && actorSkill.IsOnCooldown) return false;
-        if (!BetterFollowbotLite.Instance.Gcd())
+        if (!BetterFollowbot.Instance.Gcd())
             return false;
 
         if (!actorSkill.Stats.TryGetValue(GameStat.ManaCost, out var manaCost))
             manaCost = 0;
 
-        if (BetterFollowbotLite.Instance.player.CurMana >= manaCost)
+        if (BetterFollowbot.Instance.player.CurMana >= manaCost)
             return true;
-        if (!BetterFollowbotLite.Instance.localPlayer.Stats.TryGetValue(GameStat.VirtualEnergyShieldProtectsMana,
+        if (!BetterFollowbot.Instance.localPlayer.Stats.TryGetValue(GameStat.VirtualEnergyShieldProtectsMana,
                 out var hasEldritchBattery))
             hasEldritchBattery = 0;
 
         //Include CurMana along with CurES
-        return hasEldritchBattery > 0 && (BetterFollowbotLite.Instance.player.CurES + BetterFollowbotLite.Instance.player.CurMana) >= manaCost;
+        return hasEldritchBattery > 0 && (BetterFollowbot.Instance.player.CurES + BetterFollowbot.Instance.player.CurMana) >= manaCost;
     }
 
     internal static bool ManageCooldown(Skill skill)
@@ -235,7 +235,7 @@ internal static class SkillInfo
             return;
         _lastUpdate = DateTime.Now;
         CachedAuraSkills = new List<Skill>();
-        foreach (var skill in BetterFollowbotLite.Instance.skills)
+        foreach (var skill in BetterFollowbot.Instance.skills)
         {
             switch (skill.InternalName)
             {
@@ -365,7 +365,7 @@ internal static class SkillInfo
                     break;
                 case "summon_holy_relic":
                     holyRelict.Id = skill.Id;
-                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Holy Relic - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Holy Relic - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
                 case "berserk":
                     berserk.Id = skill.Id;
@@ -419,7 +419,7 @@ internal static class SkillInfo
                 case "zealotry":
                     auraZealotry.Id = skill.Id;
                     auraZealotry.BuffName = "player_aura_spell_damage";
-                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Zealotry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Zealotry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     if (skill.Stats.TryGetValue(GameStat.SkillIsBlessingSkill, out isBlessing))
                     {
                         if (isBlessing > 0)
@@ -522,18 +522,18 @@ internal static class SkillInfo
                 case "vaal_haste":
                     vaalHaste.Id = skill.Id;
                     vaalHaste.BuffName = "vaal_haste";
-                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Vaal Haste - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Vaal Haste - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
                 case "discipline":
                     vaalDiscipline.Id = skill.Id;
                     vaalDiscipline.BuffName = "vaal_discipline";
-                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Vaal Discipline - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Vaal Discipline - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
                 case "stormblast_mine":
                 case "stormblastmine":
                 case "StormblastMine":
                     stormblastMine.Id = skill.Id;
-                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Stormblast Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Stormblast Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
                 case "pyroclast_mine":
                 case "pyroclastmine":
@@ -541,44 +541,44 @@ internal static class SkillInfo
                 case "PyroclastMineAltX":
                 case "PryoclastMineOfSabotage":
                     pyroclastMine.Id = skill.Id;
-                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Pyroclast Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Pyroclast Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
                 case "rejuvenation_totem":
                     rejuvenationTotem.Id = skill.Id;
                     rejuvenationTotem.BuffName = "totem_aura_life_regen";
-                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Rejuvenation Totem - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Rejuvenation Totem - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
                 case "ancestral_cry":
                     ancestralCry.Id = skill.Id;
-                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Ancestral Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Ancestral Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
                 case "infernal_cry":
                     infernalCry.Id = skill.Id;
-                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Infernal Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Infernal Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
                 case "generals_cry":
                     generalsCry.Id = skill.Id;
-                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: General's Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: General's Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
                 case "intimidating_cry":
                     intimidatingCry.Id = skill.Id;
-                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Intimidating Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Intimidating Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
                 case "rallying_cry":
                     rallyingCry.Id = skill.Id;
-                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Rallying Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Rallying Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
                 case "vengeful_cry":
                     vengefulCry.Id = skill.Id;
-                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Vengeful Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Vengeful Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
                 case "seismic_cry":
                     seismicCry.Id = skill.Id;
-                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Seismic Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Seismic Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
                 case "battlemages_cry":
                     battlemagesCry.Id = skill.Id;
-                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Battlemage's Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Battlemage's Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
                 default:
                     // Log Vaal skills that might have different names
@@ -586,7 +586,7 @@ internal static class SkillInfo
                         skill.InternalName.ToLower().Contains("haste") ||
                         skill.InternalName.ToLower().Contains("discipline"))
                     {
-                        BetterFollowbotLite.Instance?.LogMessage($"POTENTIAL VAAL SKILL: {skill.InternalName} - ID: {skill.Id}");
+                        BetterFollowbot.Instance?.LogMessage($"POTENTIAL VAAL SKILL: {skill.InternalName} - ID: {skill.Id}");
                     }
                     // Log mine skills that might have different names
                     else if (skill.InternalName.ToLower().Contains("mine") ||
@@ -594,66 +594,66 @@ internal static class SkillInfo
                              skill.InternalName.ToLower().Contains("pyroclast") ||
                              skill.InternalName.ToLower().Contains("pyroclastminealtx"))
                     {
-                        BetterFollowbotLite.Instance?.LogMessage($"POTENTIAL MINE SKILL: {skill.InternalName} - ID: {skill.Id}");
+                        BetterFollowbot.Instance?.LogMessage($"POTENTIAL MINE SKILL: {skill.InternalName} - ID: {skill.Id}");
                         
                         // Set the skill ID for pyroclast mine if it contains pyroclast
                         if (skill.InternalName.ToLower().Contains("pyroclast"))
                         {
                             pyroclastMine.Id = skill.Id;
-                            BetterFollowbotLite.Instance?.LogMessage($"AUTO-DETECTED: Pyroclast Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                            BetterFollowbot.Instance?.LogMessage($"AUTO-DETECTED: Pyroclast Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
                         }
                     }
                     // Log warcry skills that might have different names
                     else if (skill.InternalName.ToLower().Contains("cry"))
                     {
-                        BetterFollowbotLite.Instance?.LogMessage($"POTENTIAL WARCRY SKILL: {skill.InternalName} - ID: {skill.Id}");
+                        BetterFollowbot.Instance?.LogMessage($"POTENTIAL WARCRY SKILL: {skill.InternalName} - ID: {skill.Id}");
                         
                         // Auto-detect specific warcries
                         var skillNameLower = skill.InternalName?.ToLower() ?? "";
                         if (skillNameLower.Contains("ancestral") && skillNameLower.Contains("cry"))
                         {
                             ancestralCry.Id = skill.Id;
-                            BetterFollowbotLite.Instance?.LogMessage($"AUTO-DETECTED: Ancestral Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                            BetterFollowbot.Instance?.LogMessage($"AUTO-DETECTED: Ancestral Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                         }
                         else if (skillNameLower.Contains("infernal") && skillNameLower.Contains("cry"))
                         {
                             infernalCry.Id = skill.Id;
-                            BetterFollowbotLite.Instance?.LogMessage($"AUTO-DETECTED: Infernal Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                            BetterFollowbot.Instance?.LogMessage($"AUTO-DETECTED: Infernal Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                         }
                         else if (skillNameLower.Contains("general") && skillNameLower.Contains("cry"))
                         {
                             generalsCry.Id = skill.Id;
-                            BetterFollowbotLite.Instance?.LogMessage($"AUTO-DETECTED: General's Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                            BetterFollowbot.Instance?.LogMessage($"AUTO-DETECTED: General's Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                         }
                         else if (skillNameLower.Contains("intimidating") && skillNameLower.Contains("cry"))
                         {
                             intimidatingCry.Id = skill.Id;
-                            BetterFollowbotLite.Instance?.LogMessage($"AUTO-DETECTED: Intimidating Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                            BetterFollowbot.Instance?.LogMessage($"AUTO-DETECTED: Intimidating Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                         }
                         else if (skillNameLower.Contains("rallying") && skillNameLower.Contains("cry"))
                         {
                             rallyingCry.Id = skill.Id;
-                            BetterFollowbotLite.Instance?.LogMessage($"AUTO-DETECTED: Rallying Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                            BetterFollowbot.Instance?.LogMessage($"AUTO-DETECTED: Rallying Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                         }
                         else if (skillNameLower.Contains("vengeful") && skillNameLower.Contains("cry"))
                         {
                             vengefulCry.Id = skill.Id;
-                            BetterFollowbotLite.Instance?.LogMessage($"AUTO-DETECTED: Vengeful Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                            BetterFollowbot.Instance?.LogMessage($"AUTO-DETECTED: Vengeful Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                         }
                         else if (skillNameLower.Contains("enduring") && skillNameLower.Contains("cry"))
                         {
                             enduringCry.Id = skill.Id;
-                            BetterFollowbotLite.Instance?.LogMessage($"AUTO-DETECTED: Enduring Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                            BetterFollowbot.Instance?.LogMessage($"AUTO-DETECTED: Enduring Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                         }
                         else if (skillNameLower.Contains("seismic") && skillNameLower.Contains("cry"))
                         {
                             seismicCry.Id = skill.Id;
-                            BetterFollowbotLite.Instance?.LogMessage($"AUTO-DETECTED: Seismic Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                            BetterFollowbot.Instance?.LogMessage($"AUTO-DETECTED: Seismic Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                         }
                         else if (skillNameLower.Contains("battlemage") && skillNameLower.Contains("cry"))
                         {
                             battlemagesCry.Id = skill.Id;
-                            BetterFollowbotLite.Instance?.LogMessage($"AUTO-DETECTED: Battlemage's Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                            BetterFollowbot.Instance?.LogMessage($"AUTO-DETECTED: Battlemage's Cry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                         }
                     }
                     break;

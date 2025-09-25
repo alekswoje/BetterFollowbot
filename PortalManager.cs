@@ -7,7 +7,7 @@ using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
 
-namespace BetterFollowbotLite
+namespace BetterFollowbot
 {
     /// <summary>
     /// Manages all portal-related functionality for the bot
@@ -90,6 +90,35 @@ namespace BetterFollowbotLite
         }
 
         /// <summary>
+        /// Validates if a portal is actually a real portal using entity type
+        /// </summary>
+        public static bool IsValidPortal(LabelOnGround portal)
+        {
+            try
+            {
+                if (portal?.ItemOnGround == null) return false;
+
+                var entityType = portal.ItemOnGround.Type;
+                
+                // Use entity type for reliable portal detection
+                if (entityType.ToString() == "TownPortal" || entityType.ToString() == "AreaTransition")
+                {
+                    return true;
+                }
+
+                // Check for special portals (arena portals, etc.) that might not have standard types
+                var labelText = portal.Label?.Text?.ToLower() ?? "";
+                var isSpecialPortal = IsSpecialPortal(labelText);
+                
+                return isSpecialPortal;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Checks if a portal is a "close" arena portal that uses shorter distance threshold
         /// </summary>
         public static bool IsCloseArenaPortal(string portalLabel)
@@ -129,19 +158,17 @@ namespace BetterFollowbotLite
                 if (string.IsNullOrEmpty(targetAreaName))
                     return null;
 
-                BetterFollowbotLite.Instance.LogMessage($"SPECIAL AREA: Looking for portals matching '{targetAreaName}'");
+                BetterFollowbot.Instance.LogMessage($"SPECIAL AREA: Looking for portals matching '{targetAreaName}'");
 
-                // Get all portal-like objects
-                var allPortalLabels = BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
+                // Get all portal-like objects using clean entity type filtering
+                var allPortalLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
                         x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible && x.ItemOnGround != null &&
-                        (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") ||
-                         x.ItemOnGround.Metadata.ToLower().Contains("portal") ||
-                         x.ItemOnGround.Metadata.ToLower().Contains("transition")))
+                        IsValidPortal(x))
                     .ToList();
 
                 if (allPortalLabels == null || allPortalLabels.Count == 0)
                 {
-                    BetterFollowbotLite.Instance.LogMessage("SPECIAL AREA: No portal objects found");
+                    BetterFollowbot.Instance.LogMessage("SPECIAL AREA: No portal objects found");
                     return null;
                 }
 
@@ -172,14 +199,14 @@ namespace BetterFollowbotLite
 
                         if (matchesArea || matchesVariation)
                         {
-                            BetterFollowbotLite.Instance.LogMessage($"SPECIAL AREA: Found matching portal '{x.Label?.Text}' for area '{targetAreaName}'");
+                            BetterFollowbot.Instance.LogMessage($"SPECIAL AREA: Found matching portal '{x.Label?.Text}' for area '{targetAreaName}'");
                         }
 
                         return matchesArea || matchesVariation;
                     }
                     catch (Exception ex)
                     {
-                        BetterFollowbotLite.Instance.LogError($"SPECIAL AREA: Error checking portal '{x.Label?.Text}': {ex.Message}");
+                        BetterFollowbot.Instance.LogError($"SPECIAL AREA: Error checking portal '{x.Label?.Text}': {ex.Message}");
                         return false;
                     }
                 }).OrderBy(x => x.ItemOnGround.DistancePlayer).ToList();
@@ -187,18 +214,18 @@ namespace BetterFollowbotLite
                 if (matchingPortals.Count > 0)
                 {
                     var selectedPortal = matchingPortals.First();
-                    BetterFollowbotLite.Instance.LogMessage($"SPECIAL AREA: Selected portal '{selectedPortal.Label?.Text}' at distance {selectedPortal.ItemOnGround.DistancePlayer:F1}");
+                    BetterFollowbot.Instance.LogMessage($"SPECIAL AREA: Selected portal '{selectedPortal.Label?.Text}' at distance {selectedPortal.ItemOnGround.DistancePlayer:F1}");
                     return selectedPortal;
                 }
                 else
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"SPECIAL AREA: No portals found matching '{targetAreaName}'");
+                    BetterFollowbot.Instance.LogMessage($"SPECIAL AREA: No portals found matching '{targetAreaName}'");
                     return null;
                 }
             }
             catch (Exception ex)
             {
-                BetterFollowbotLite.Instance.LogError($"SPECIAL AREA: Error finding matching portal: {ex.Message}");
+                BetterFollowbot.Instance.LogError($"SPECIAL AREA: Error finding matching portal: {ex.Message}");
                 return null;
             }
         }
@@ -270,15 +297,15 @@ namespace BetterFollowbotLite
             {
                 var distanceMoved = Vector3.Distance(lastTargetPosition, newPosition);
                 // Use the existing autoPilotClearPathDistance setting to detect portal transitions
-                if (distanceMoved > BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
+                if (distanceMoved > BetterFollowbot.Instance.Settings.autoPilotClearPathDistance.Value)
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Leader moved {distanceMoved:F0} units - interzone portal detected (threshold: {BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value})");
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Portal transition detected - bot should look for portals near current position to follow leader");
+                    BetterFollowbot.Instance.LogMessage($"PORTAL TRANSITION: Leader moved {distanceMoved:F0} units - interzone portal detected (threshold: {BetterFollowbot.Instance.Settings.autoPilotClearPathDistance.Value})");
+                    BetterFollowbot.Instance.LogMessage($"PORTAL TRANSITION: Portal transition detected - bot should look for portals near current position to follow leader");
 
                     // Don't set portalLocation to leader's old position - the portal object stays in the same world location
                     // Instead, mark that we're in a portal transition state so the bot will look for portals to follow
                     portalLocation = Vector3.One; // Use as a flag to indicate portal transition mode is active
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Portal transition mode activated - IsInPortalTransition: {IsInPortalTransition}");
+                    BetterFollowbot.Instance.LogMessage($"PORTAL TRANSITION: Portal transition mode activated - IsInPortalTransition: {IsInPortalTransition}");
                 }
             }
         }
@@ -292,7 +319,7 @@ namespace BetterFollowbotLite
             {
                 try
                 {
-                    var rawName = BetterFollowbotLite.Instance.GameController.Area.CurrentArea.Area.RawName;
+                    var rawName = BetterFollowbot.Instance.GameController.Area.CurrentArea.Area.RawName;
                     return rawName != null && rawName.Contains("labyrinth", StringComparison.OrdinalIgnoreCase);
                 }
                 catch
@@ -313,7 +340,7 @@ namespace BetterFollowbotLite
                     return null;
 
                 // In labyrinth areas, find any portal-like object within reasonable distance
-                var portalLabels = BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels
+                var portalLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels
                     .Where(x =>
                         x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
                         x.ItemOnGround != null &&
@@ -329,7 +356,7 @@ namespace BetterFollowbotLite
             }
             catch (Exception ex)
             {
-                BetterFollowbotLite.Instance.LogError($"PortalManager: Error finding nearest labyrinth portal: {ex.Message}");
+                BetterFollowbot.Instance.LogError($"PortalManager: Error finding nearest labyrinth portal: {ex.Message}");
                 return null;
             }
         }

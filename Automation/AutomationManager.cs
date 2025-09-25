@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using BetterFollowbotLite.Interfaces;
+using BetterFollowbot.Interfaces;
 
-namespace BetterFollowbotLite.Automation
+namespace BetterFollowbot.Automation
 {
     /// <summary>
     /// Manages and coordinates all automation features

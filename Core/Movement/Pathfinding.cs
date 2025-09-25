@@ -4,14 +4,14 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using BetterFollowbotLite.Interfaces;
+using BetterFollowbot.Interfaces;
 using ExileCore;
 using ExileCore.PoEMemory.MemoryObjects;
 using GameOffsets;
 using GameOffsets.Native;
 using SharpDX;
 
-namespace BetterFollowbotLite.Core.Movement
+namespace BetterFollowbot.Core.Movement
 {
     /// <summary>
     /// Handles A* pathfinding and terrain analysis for movement
@@ -49,8 +49,8 @@ namespace BetterFollowbotLite.Core.Movement
         {
             try
             {
-                _terrainMetadata = BetterFollowbotLite.Instance.GameController.IngameState.Data.DataStruct.Terrain;
-                var terrainBytes = BetterFollowbotLite.Instance.GameController.Memory.ReadBytes(_terrainMetadata.LayerMelee.First, _terrainMetadata.LayerMelee.Size);
+                _terrainMetadata = BetterFollowbot.Instance.GameController.IngameState.Data.DataStruct.Terrain;
+                var terrainBytes = BetterFollowbot.Instance.GameController.Memory.ReadBytes(_terrainMetadata.LayerMelee.First, _terrainMetadata.LayerMelee.Size);
 
                 var numCols = (int)(_terrainMetadata.NumCols - 1) * 23;
                 var numRows = (int)(_terrainMetadata.NumRows - 1) * 23;
@@ -66,7 +66,7 @@ namespace BetterFollowbotLite.Core.Movement
                 var pathableValues = new[] { 1, 2, 3, 4, 5 };
                 var pv = pathableValues.ToHashSet();
 
-                _processedTerrainData = BetterFollowbotLite.Instance.GameController.IngameState.Data.RawPathfindingData;
+                _processedTerrainData = BetterFollowbot.Instance.GameController.IngameState.Data.RawPathfindingData;
                 if (_processedTerrainData == null)
                 {
                     _core.LogError("PATHFINDING: RawPathfindingData is null!");
@@ -78,7 +78,7 @@ namespace BetterFollowbotLite.Core.Movement
 
                 _grid = _processedTerrainData.Select(x => x.Select(y => pv.Contains(y)).ToArray()).ToArray();
 
-                _processedTerrainTargetingData = BetterFollowbotLite.Instance.GameController.IngameState.Data.RawTerrainTargetingData;
+                _processedTerrainTargetingData = BetterFollowbot.Instance.GameController.IngameState.Data.RawTerrainTargetingData;
 
                 _core.LogMessage("PATHFINDING: A* terrain data initialized successfully");
 

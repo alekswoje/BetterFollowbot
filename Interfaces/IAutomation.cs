@@ -1,4 +1,4 @@
-namespace BetterFollowbotLite.Interfaces
+namespace BetterFollowbot.Interfaces
 {
     /// <summary>
     /// Interface for general automation features (non-skill based)

@@ -1,6 +1,6 @@
 using ExileCore.PoEMemory.MemoryObjects;
 
-namespace BetterFollowbotLite.Interfaces
+namespace BetterFollowbot.Interfaces
 {
     /// <summary>
     /// Interface for detecting and tracking the party leader

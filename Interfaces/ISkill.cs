@@ -1,4 +1,4 @@
-namespace BetterFollowbotLite.Interfaces
+namespace BetterFollowbot.Interfaces
 {
     /// <summary>
     /// Interface for skill-based automation features

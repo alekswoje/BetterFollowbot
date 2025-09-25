@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using BetterFollowbotLite.Interfaces;
+using BetterFollowbot.Interfaces;
 using SharpDX;
 
-namespace BetterFollowbotLite.Core.Movement
+namespace BetterFollowbot.Core.Movement
 {
     /// <summary>
     /// Analyzes terrain for movement purposes, specifically terrain dashing
@@ -16,7 +16,7 @@ namespace BetterFollowbotLite.Core.Movement
             //TODO: Completely re-write this garbage.
             //It's not taking into account a lot of stuff, horribly inefficient and just not the right way to do this.
             //Calculate the straight path from us to the target (this would be waypoints normally)
-            var dir = targetPosition - BetterFollowbotLite.Instance.GameController.Player.GridPos;
+            var dir = targetPosition - BetterFollowbot.Instance.GameController.Player.GridPos;
             dir.Normalize();
 
             var distanceBeforeWall = 0;
@@ -26,9 +26,9 @@ namespace BetterFollowbotLite.Core.Movement
             var points = new List<System.Drawing.Point>();
             for (var i = 0; i < 500; i++)
             {
-                var v2Point = BetterFollowbotLite.Instance.GameController.Player.GridPos + i * dir;
-                var point = new System.Drawing.Point((int)(BetterFollowbotLite.Instance.GameController.Player.GridPos.X + i * dir.X),
-                    (int)(BetterFollowbotLite.Instance.GameController.Player.GridPos.Y + i * dir.Y));
+                var v2Point = BetterFollowbot.Instance.GameController.Player.GridPos + i * dir;
+                var point = new System.Drawing.Point((int)(BetterFollowbot.Instance.GameController.Player.GridPos.X + i * dir.X),
+                    (int)(BetterFollowbot.Instance.GameController.Player.GridPos.Y + i * dir.Y));
 
                 if (points.Contains(point))
                     continue;

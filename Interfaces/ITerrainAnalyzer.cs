@@ -1,6 +1,6 @@
 using SharpDX;
 
-namespace BetterFollowbotLite.Interfaces
+namespace BetterFollowbot.Interfaces
 {
     /// <summary>
     /// Interface for terrain analysis functionality, specifically for terrain dashing

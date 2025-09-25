@@ -1,4 +1,4 @@
-# BetterFollowbotLite
+# BetterFollowbot
 
 A Path of Exile plugin for ExileCore/PoeHelper that provides automated follow bot functionality with intelligent skill usage and navigation.
 
@@ -13,7 +13,7 @@ A Path of Exile plugin for ExileCore/PoeHelper that provides automated follow bo
 ## Installation
 
 1. Download or clone this repository
-2. Copy the `BetterFollowbotLite` folder to your `Plugins/Source/` directory
+2. Copy the `BetterFollowbot` folder to your `Plugins/Source/` directory
 3. Launch Path of Exile with ExileCore/PoeHelper
 4. The plugin will be automatically compiled and loaded
 

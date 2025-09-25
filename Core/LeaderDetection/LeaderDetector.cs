@@ -3,9 +3,9 @@ using System.Linq;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
-using BetterFollowbotLite.Interfaces;
+using BetterFollowbot.Interfaces;
 
-namespace BetterFollowbotLite.Core.LeaderDetection
+namespace BetterFollowbot.Core.LeaderDetection
 {
     /// <summary>
     /// Handles detection and tracking of the party leader
@@ -34,7 +34,7 @@ namespace BetterFollowbotLite.Core.LeaderDetection
                 var leaderPartyElement = GetLeaderPartyElement();
                 if (leaderPartyElement == null) return false;
 
-                var currentZone = BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName;
+                var currentZone = BetterFollowbot.Instance.GameController?.Area.CurrentArea.DisplayName;
                 return !leaderPartyElement.ZoneName.Equals(currentZone);
             }
         }
@@ -49,9 +49,9 @@ namespace BetterFollowbotLite.Core.LeaderDetection
             try
             {
                 // ZONE LOADING PROTECTION: If we're loading or don't have a valid game state, don't try to find leader
-                if (BetterFollowbotLite.Instance.GameController.IsLoading ||
-                    BetterFollowbotLite.Instance.GameController.Area.CurrentArea == null ||
-                    string.IsNullOrEmpty(BetterFollowbotLite.Instance.GameController.Area.CurrentArea.DisplayName))
+                if (BetterFollowbot.Instance.GameController.IsLoading ||
+                    BetterFollowbot.Instance.GameController.Area.CurrentArea == null ||
+                    string.IsNullOrEmpty(BetterFollowbot.Instance.GameController.Area.CurrentArea.DisplayName))
                 {
                     return null;
                 }
@@ -62,7 +62,7 @@ namespace BetterFollowbotLite.Core.LeaderDetection
                     return null;
                 }
 
-                var players = BetterFollowbotLite.Instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player];
+                var players = BetterFollowbot.Instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player];
                 if (players == null)
                 {
                     return null;

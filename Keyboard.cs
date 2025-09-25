@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-namespace BetterFollowbotLite;
+namespace BetterFollowbot;
 
 public static class Keyboard
 {
@@ -37,7 +37,7 @@ public static class Keyboard
     public static void KeyPress(Keys key, bool anyDelay = true)
     {
         if (anyDelay)
-            BetterFollowbotLite.Instance.LastTimeAny = DateTime.Now;
+            BetterFollowbot.Instance.LastTimeAny = DateTime.Now;
         KeyPressRoutine(key);
     }
 

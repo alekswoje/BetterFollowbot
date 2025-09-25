@@ -12,22 +12,22 @@ using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
-using BetterFollowbotLite.Skills;
-using BetterFollowbotLite.Skill;
-using BetterFollowbotLite.Automation;
-using BetterFollowbotLite.Core.TaskManagement;
-using BetterFollowbotLite.Core.Movement;
-using BetterFollowbotLite.Interfaces;
-using BetterFollowbotLite.Core.LeaderDetection;
-using BetterFollowbotLite.Core.Skills;
+using BetterFollowbot.Skills;
+using BetterFollowbot.Skill;
+using BetterFollowbot.Automation;
+using BetterFollowbot.Core.TaskManagement;
+using BetterFollowbot.Core.Movement;
+using BetterFollowbot.Interfaces;
+using BetterFollowbot.Core.LeaderDetection;
+using BetterFollowbot.Core.Skills;
 
-namespace BetterFollowbotLite;
+namespace BetterFollowbot;
 
-public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSettings>, IFollowbotCore
+public class BetterFollowbot : BaseSettingsPlugin<BetterFollowbotSettings>, IFollowbotCore
 {
     private const int Delay = 45;
     private const int MouseAutoSnapRange = 250;
-    internal static BetterFollowbotLite Instance;
+    internal static BetterFollowbot Instance;
     
     private ILeaderDetector leaderDetector;
     private ITaskManager taskManager;
@@ -41,7 +41,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     private SummonSkeletons summonSkeletons;
     private RejuvenationTotem rejuvenationTotem;
     private AuraBlessing auraBlessing;
-    private FlameLink flameLink;
+    private Links links;
     private SmiteBuff smiteBuff;
     private VaalSkills vaalSkillsAutomation;
     private Mines mines;
@@ -49,7 +49,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     private RespawnHandler respawnHandler;
     private GemLeveler gemLeveler;
     private PartyJoiner partyJoiner;
-    private AutoMapTabber autoMapTabber;
     private AutomationManager automationManager;
     
     // Post-respawn state tracking
@@ -104,7 +103,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         summonSkeletons = new SummonSkeletons(this, Settings, autoPilot, summons);
         rejuvenationTotem = new RejuvenationTotem(this, Settings);
         auraBlessing = new AuraBlessing(this, Settings);
-        flameLink = new FlameLink(this, Settings);
+        links = new Links(this, Settings);
         smiteBuff = new SmiteBuff(this, Settings);
         vaalSkillsAutomation = new VaalSkills(this, Settings);
         mines = new Mines(this, Settings);
@@ -113,14 +112,13 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         respawnHandler = new RespawnHandler(this, Settings);
         gemLeveler = new GemLeveler(this, Settings);
         partyJoiner = new PartyJoiner(this, Settings);
-        autoMapTabber = new AutoMapTabber(this, Settings);
 
         automationManager = new AutomationManager();
         automationManager.RegisterSkill(summonRagingSpirits);
         automationManager.RegisterSkill(summonSkeletons);
         automationManager.RegisterSkill(rejuvenationTotem);
         automationManager.RegisterSkill(auraBlessing);
-        automationManager.RegisterSkill(flameLink);
+        automationManager.RegisterSkill(links);
         automationManager.RegisterSkill(smiteBuff);
         automationManager.RegisterSkill(vaalSkillsAutomation);
         automationManager.RegisterSkill(mines);
@@ -129,14 +127,13 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         automationManager.RegisterAutomation(respawnHandler);
         automationManager.RegisterAutomation(gemLeveler);
         automationManager.RegisterAutomation(partyJoiner);
-        automationManager.RegisterAutomation(autoMapTabber);
 
         return true;
     }
         
     #region IFollowbotCore Implementation
     
-    // Settings property is already inherited from BaseSettingsPlugin<BetterFollowbotLiteSettings>
+    // Settings property is already inherited from BaseSettingsPlugin<BetterFollowbotSettings>
     public Vector3 PlayerPosition => playerPosition;
     public Entity LocalPlayer => localPlayer;
     GameController IFollowbotCore.GameController => GameController;

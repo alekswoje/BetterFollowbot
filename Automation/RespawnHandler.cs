@@ -1,6 +1,6 @@
 using System;
 using System.Threading;
-using BetterFollowbotLite.Interfaces;
+using BetterFollowbot.Interfaces;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -8,14 +8,14 @@ using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
 
-namespace BetterFollowbotLite.Automation
+namespace BetterFollowbot.Automation
 {
     internal class RespawnHandler : IAutomation
     {
-        private readonly BetterFollowbotLite _instance;
-        private readonly BetterFollowbotLiteSettings _settings;
+        private readonly BetterFollowbot _instance;
+        private readonly BetterFollowbotSettings _settings;
 
-        public RespawnHandler(BetterFollowbotLite instance, BetterFollowbotLiteSettings settings)
+        public RespawnHandler(BetterFollowbot instance, BetterFollowbotSettings settings)
         {
             _instance = instance;
             _settings = settings;
@@ -39,13 +39,13 @@ namespace BetterFollowbotLite.Automation
                         var resurrectAtCheckpoint = resurrectPanel.ResurrectAtCheckpoint;
                         if (resurrectAtCheckpoint != null && resurrectAtCheckpoint.IsVisible)
                         {
-                            BetterFollowbotLite.Instance.LogMessage("AUTO RESPAWN: Respawn panel detected, attempting checkpoint respawn");
+                            BetterFollowbot.Instance.LogMessage("AUTO RESPAWN: Respawn panel detected, attempting checkpoint respawn");
 
                             // Get the center position of the checkpoint respawn button
                             var checkpointRect = resurrectAtCheckpoint.GetClientRectCache;
                             var checkpointCenter = checkpointRect.Center;
 
-                            BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Checkpoint button position - X: {checkpointCenter.X:F1}, Y: {checkpointCenter.Y:F1}");
+                            BetterFollowbot.Instance.LogMessage($"AUTO RESPAWN: Checkpoint button position - X: {checkpointCenter.X:F1}, Y: {checkpointCenter.Y:F1}");
 
                             // Move mouse to the checkpoint respawn button with proper timing
                             Mouse.SetCursorPos(checkpointCenter);
@@ -59,7 +59,7 @@ namespace BetterFollowbotLite.Automation
 
                             if (distanceFromTarget < 10) // Within reasonable tolerance
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Mouse positioned correctly (distance: {distanceFromTarget:F1}), performing click");
+                                BetterFollowbot.Instance.LogMessage($"AUTO RESPAWN: Mouse positioned correctly (distance: {distanceFromTarget:F1}), performing click");
 
                                 // Perform the click with proper timing
                                 Mouse.LeftMouseDown();
@@ -73,7 +73,7 @@ namespace BetterFollowbotLite.Automation
                                 var panelStillVisible = resurrectPanel.IsVisible;
                                 if (!panelStillVisible)
                                 {
-                                    BetterFollowbotLite.Instance.LogMessage("AUTO RESPAWN: Checkpoint respawn successful - panel disappeared");
+                                    BetterFollowbot.Instance.LogMessage("AUTO RESPAWN: Checkpoint respawn successful - panel disappeared");
                                     
                                     // Set waiting state if the setting is enabled
                                     if (_settings.waitForLeaderAfterRespawn)
@@ -83,7 +83,7 @@ namespace BetterFollowbotLite.Automation
                                 }
                                 else
                                 {
-                                    BetterFollowbotLite.Instance.LogMessage("AUTO RESPAWN: Checkpoint respawn may have failed - panel still visible, retrying...");
+                                    BetterFollowbot.Instance.LogMessage("AUTO RESPAWN: Checkpoint respawn may have failed - panel still visible, retrying...");
 
                                     // Retry with a longer delay
                                     Thread.Sleep(300);
@@ -107,19 +107,19 @@ namespace BetterFollowbotLite.Automation
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Mouse positioning failed - distance from target: {distanceFromTarget:F1}");
+                                BetterFollowbot.Instance.LogMessage($"AUTO RESPAWN: Mouse positioning failed - distance from target: {distanceFromTarget:F1}");
                             }
                         }
                         else
                         {
-                            BetterFollowbotLite.Instance.LogMessage("AUTO RESPAWN: Checkpoint respawn button not available or not visible");
+                            BetterFollowbot.Instance.LogMessage("AUTO RESPAWN: Checkpoint respawn button not available or not visible");
                         }
                     }
                 }
             }
             catch (Exception e)
             {
-                BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Exception occurred - {e.Message}");
+                BetterFollowbot.Instance.LogMessage($"AUTO RESPAWN: Exception occurred - {e.Message}");
             }
         }
     }

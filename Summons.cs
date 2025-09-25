@@ -1,14 +1,14 @@
 ﻿using System.Linq;
 using ExileCore.PoEMemory.Components;
 
-namespace BetterFollowbotLite;
+namespace BetterFollowbot;
 
 public class Summons
 {
     public static float GetLowestMinionHpp()
     {
         float hpp = 100;
-        foreach (var obj in BetterFollowbotLite.Instance.localPlayer.GetComponent<Actor>().DeployedObjects
+        foreach (var obj in BetterFollowbot.Instance.localPlayer.GetComponent<Actor>().DeployedObjects
                      .Where(x => x?.Entity?.GetComponent<Life>() != null))
             if (obj.Entity.GetComponent<Life>().HPPercentage < hpp)
                 hpp = obj.Entity.GetComponent<Life>().HPPercentage;
@@ -19,7 +19,7 @@ public class Summons
     {
         const float hpp = 100;
         DeployedObject animatedGuardian = null;
-        animatedGuardian = BetterFollowbotLite.Instance.localPlayer.GetComponent<Actor>().DeployedObjects.FirstOrDefault(x =>
+        animatedGuardian = BetterFollowbot.Instance.localPlayer.GetComponent<Actor>().DeployedObjects.FirstOrDefault(x =>
             x?.Entity?.GetComponent<Life>() != null && x.Entity.Path.Contains("AnimatedArmour"));
         return animatedGuardian?.Entity.GetComponent<Life>().HPPercentage ?? hpp;
     }
@@ -28,7 +28,7 @@ public class Summons
     {
         try
         {
-            return BetterFollowbotLite.Instance.localPlayer.GetComponent<Actor>().DeployedObjects
+            return BetterFollowbot.Instance.localPlayer.GetComponent<Actor>().DeployedObjects
                 .Count(x => x?.Entity != null && x.Entity.IsAlive &&
                            (x.Entity.Path.Contains("Skeleton") ||
                             x.Entity.Path.Contains("skeleton") ||
@@ -44,7 +44,7 @@ public class Summons
     {
         try
         {
-            return BetterFollowbotLite.Instance.localPlayer.GetComponent<Actor>().DeployedObjects
+            return BetterFollowbot.Instance.localPlayer.GetComponent<Actor>().DeployedObjects
                 .Count(x => x?.Entity != null && x.Entity.IsAlive &&
                            (x.Entity.Path.Contains("RagingSpirit") ||
                             x.Entity.Path.Contains("ragingspirit") ||
@@ -62,7 +62,7 @@ public class Summons
     {
         try
         {
-            return BetterFollowbotLite.Instance.localPlayer.GetComponent<Actor>().DeployedObjects
+            return BetterFollowbot.Instance.localPlayer.GetComponent<Actor>().DeployedObjects
                 .Count(x => x?.Entity != null && x.Entity.IsAlive);
         }
         catch

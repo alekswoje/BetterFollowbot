@@ -1,4 +1,4 @@
-﻿namespace BetterFollowbotLite.Core.Skills;
+﻿namespace BetterFollowbot.Core.Skills;
 
 internal class Skill
 {

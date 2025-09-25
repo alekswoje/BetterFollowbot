@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using BetterFollowbotLite.Interfaces;
-using BetterFollowbotLite.Core.TaskManagement;
+using BetterFollowbot.Interfaces;
+using BetterFollowbot.Core.TaskManagement;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements;
@@ -13,7 +13,7 @@ using ExileCore.Shared.Interfaces;
 using ExileCore.Shared.Nodes;
 using SharpDX;
 
-namespace BetterFollowbotLite.Core.Movement
+namespace BetterFollowbot.Core.Movement
 {
     public class PathPlanner
     {
@@ -839,10 +839,7 @@ namespace BetterFollowbotLite.Core.Movement
                 var portalLabels = _core.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
                     x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
                     x.ItemOnGround != null &&
-                    (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") ||
-                     x.ItemOnGround.Metadata.ToLower().Contains("portal") ||
-                     x.ItemOnGround.Metadata.ToLower().Contains("transition") ||
-                     PortalManager.IsSpecialPortal(x.Label?.Text?.ToLower() ?? "")))
+                    IsValidPortal(x))
                     .ToList();
 
                 return portalLabels ?? new List<LabelOnGround>();
@@ -852,6 +849,14 @@ namespace BetterFollowbotLite.Core.Movement
                 _core.LogMessage($"PORTAL DEBUG: Exception in GetAllPortals: {ex.Message}");
                 return new List<LabelOnGround>();
             }
+        }
+
+        /// <summary>
+        /// Validates if a portal is actually a real portal using entity type
+        /// </summary>
+        private bool IsValidPortal(LabelOnGround portal)
+        {
+            return PortalManager.IsValidPortal(portal);
         }
 
         private LabelOnGround GetBestPortalLabel(PartyElementWindow leaderPartyElement, bool forceSearch = false)

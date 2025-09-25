@@ -5,7 +5,7 @@ using System.Windows.Forms;
 using ExileCore.Shared;
 using SharpDX;
 
-namespace BetterFollowbotLite;
+namespace BetterFollowbot;
 
 public static class Mouse
 {
@@ -70,7 +70,7 @@ public static class Mouse
     public static void SetCursorPosHuman(Vector2 targetPos, bool limited = true)
     {
         // Keep Curser Away from Screen Edges to prevent UI Interaction.
-        var windowRect = BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle();
+        var windowRect = BetterFollowbot.Instance.GameController.Window.GetWindowRectangle();
         var edgeBoundsX = windowRect.Size.Width / 4;
         var edgeBoundsY = windowRect.Size.Height / 4;
 
@@ -83,12 +83,12 @@ public static class Mouse
         }
 
 
-        var step = (float)Math.Sqrt(Vector2.Distance(BetterFollowbotLite.Instance.GetMousePosition(), targetPos)) * speedMouse / 20;
+        var step = (float)Math.Sqrt(Vector2.Distance(BetterFollowbot.Instance.GetMousePosition(), targetPos)) * speedMouse / 20;
 
         if (step > 6)
             for (var i = 0; i < step; i++)
             {
-                var vector2 = Vector2.SmoothStep(BetterFollowbotLite.Instance.GetMousePosition(), targetPos, i / step);
+                var vector2 = Vector2.SmoothStep(BetterFollowbot.Instance.GetMousePosition(), targetPos, i / step);
                 SetCursorPos((int)vector2.X, (int)vector2.Y);
                 System.Threading.Thread.Sleep(5);
             }
@@ -98,9 +98,9 @@ public static class Mouse
     public static void SetCursorPosAndLeftClickHuman(Vector2 coords, int extraDelay)
     {
         SetCursorPos(coords);
-        System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency + extraDelay);
+        System.Threading.Thread.Sleep(BetterFollowbot.Instance.Settings.autoPilotInputFrequency + extraDelay);
         LeftMouseDown();
-        System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency + extraDelay);
+        System.Threading.Thread.Sleep(BetterFollowbot.Instance.Settings.autoPilotInputFrequency + extraDelay);
         LeftMouseUp();
         System.Threading.Thread.Sleep(100);
     }

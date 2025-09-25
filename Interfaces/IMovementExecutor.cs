@@ -1,9 +1,9 @@
 using System;
 using System.Collections;
-using BetterFollowbotLite.Core.TaskManagement;
+using BetterFollowbot.Core.TaskManagement;
 using SharpDX;
 
-namespace BetterFollowbotLite.Interfaces
+namespace BetterFollowbot.Interfaces
 {
     /// <summary>
     /// Interface for executing movement tasks and handling different task types

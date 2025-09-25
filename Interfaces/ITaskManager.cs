@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using BetterFollowbotLite.Core.TaskManagement;
+using BetterFollowbot.Core.TaskManagement;
 
-namespace BetterFollowbotLite.Interfaces
+namespace BetterFollowbot.Interfaces
 {
     /// <summary>
     /// Interface for managing and executing tasks

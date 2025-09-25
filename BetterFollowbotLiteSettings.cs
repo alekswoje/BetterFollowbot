@@ -4,19 +4,14 @@ using ExileCore.Shared.Nodes;
 // ReSharper disable FieldCanBeMadeReadOnly.Global
 // Need non readonly to save settings.
 
-namespace BetterFollowbotLite;
+namespace BetterFollowbot;
 
-public class BetterFollowbotLiteSettings : ISettings
+public class BetterFollowbotSettings : ISettings
 {
-    #region Auto Map Tabber
-
-    public ToggleNode autoMapTabber = new ToggleNode(false);
-
-    #endregion
 
     public ToggleNode debugMode = new ToggleNode(false);
 
-    public BetterFollowbotLiteSettings()
+    public BetterFollowbotSettings()
     {
         Enable = new ToggleNode(false);
     }

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using BetterFollowbotLite.Interfaces;
+using BetterFollowbot.Interfaces;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -10,17 +10,17 @@ using ExileCore.Shared.Enums;
 using SharpDX;
 using System.Windows.Forms;
 
-namespace BetterFollowbotLite.Skills
+namespace BetterFollowbot.Skills
 {
     internal class SummonRagingSpirits : ISkill
     {
-        private readonly BetterFollowbotLite _instance;
-        private readonly BetterFollowbotLiteSettings _settings;
+        private readonly BetterFollowbot _instance;
+        private readonly BetterFollowbotSettings _settings;
         private readonly AutoPilot _autoPilot;
         private readonly Summons _summons;
 
 
-        public SummonRagingSpirits(BetterFollowbotLite instance, BetterFollowbotLiteSettings settings,
+        public SummonRagingSpirits(BetterFollowbot instance, BetterFollowbotSettings settings,
                                    AutoPilot autoPilot, Summons summons)
         {
             _instance = instance;

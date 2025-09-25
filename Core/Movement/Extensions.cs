@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 using ExileCore.PoEMemory.Components;
 using GameOffsets.Native;
 
-namespace BetterFollowbotLite.Core.Movement;
+namespace BetterFollowbot.Core.Movement;
 
 public static class Extensions
 {

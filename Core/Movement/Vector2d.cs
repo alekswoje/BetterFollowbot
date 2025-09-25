@@ -1,6 +1,6 @@
 using System;
 
-namespace BetterFollowbotLite.Core.Movement;
+namespace BetterFollowbot.Core.Movement;
 
 public readonly record struct Vector2d(double X, double Y)
 {

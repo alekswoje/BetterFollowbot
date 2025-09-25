@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
-using BetterFollowbotLite.Interfaces;
+using BetterFollowbot.Interfaces;
 
-namespace BetterFollowbotLite.Core.TaskManagement
+namespace BetterFollowbot.Core.TaskManagement
 {
     /// <summary>
     /// Manages the task queue for AutoPilot movement and actions

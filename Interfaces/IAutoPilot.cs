@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using ExileCore.PoEMemory.MemoryObjects;
 using SharpDX;
-using BetterFollowbotLite.Core.TaskManagement;
+using BetterFollowbot.Core.TaskManagement;
 
-namespace BetterFollowbotLite.Interfaces
+namespace BetterFollowbot.Interfaces
 {
     /// <summary>
     /// Interface for AutoPilot movement and pathfinding functionality

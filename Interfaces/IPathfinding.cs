@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using SharpDX;
 using GameOffsets.Native;
 
-namespace BetterFollowbotLite.Interfaces
+namespace BetterFollowbot.Interfaces
 {
     /// <summary>
     /// Interface for pathfinding and terrain analysis functionality

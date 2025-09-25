@@ -47,6 +47,23 @@ namespace BetterFollowbotLite.Automation
             }
         }
 
+        /// <summary>
+        /// Checks if the player is dead (resurrect panel is visible)
+        /// </summary>
+        private bool IsPlayerDead()
+        {
+            try
+            {
+                var resurrectPanel = _instance.GetResurrectPanel();
+                return resurrectPanel != null && resurrectPanel.IsVisible;
+            }
+            catch
+            {
+                // If we can't check death state, err on the side of caution
+                return true;
+            }
+        }
+
         public bool IsEnabled => _settings.autoLevelGemsEnabled;
 
         public string AutomationName => "Auto Level Gems";
@@ -60,20 +77,22 @@ namespace BetterFollowbotLite.Automation
                 try
                 {
                     // Protection checks - don't level gems if:
-                    // 1. Inventory is open
-                    // 2. Game is not focused
-                    // 3. Game is paused/menu is open
-                    // 4. Game is loading
-                    // 5. Not in game
+                    // 1. Player is dead (resurrect panel is visible)
+                    // 2. Inventory is open
+                    // 3. Game is not focused
+                    // 4. Game is paused/menu is open
+                    // 5. Game is loading
+                    // 6. Not in game
+                    var playerDead = IsPlayerDead();
                     var inventoryOpen = _instance.GameController.IngameState.IngameUi.InventoryPanel.IsVisible;
                     var gameNotFocused = !_instance.GameController.IsForeGroundCache;
                     var blockingUiOpen = IsBlockingUiOpen();
                     var gameLoading = _instance.GameController.IsLoading;
                     var notInGame = !_instance.GameController.InGame;
 
-                    if (inventoryOpen || gameNotFocused || blockingUiOpen || gameLoading || notInGame)
+                    if (playerDead || inventoryOpen || gameNotFocused || blockingUiOpen || gameLoading || notInGame)
                     {
-                        BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Skipping - InventoryOpen: {inventoryOpen}, GameNotFocused: {gameNotFocused}, BlockingUiOpen: {blockingUiOpen}, Loading: {gameLoading}, NotInGame: {notInGame}");
+                        BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Skipping - PlayerDead: {playerDead}, InventoryOpen: {inventoryOpen}, GameNotFocused: {gameNotFocused}, BlockingUiOpen: {blockingUiOpen}, Loading: {gameLoading}, NotInGame: {notInGame}");
                         return;
                     }
 

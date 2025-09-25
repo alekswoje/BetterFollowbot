@@ -74,6 +74,12 @@ namespace BetterFollowbotLite.Automation
                                 if (!panelStillVisible)
                                 {
                                     BetterFollowbotLite.Instance.LogMessage("AUTO RESPAWN: Checkpoint respawn successful - panel disappeared");
+                                    
+                                    // Set waiting state if the setting is enabled
+                                    if (_settings.waitForLeaderAfterRespawn)
+                                    {
+                                        _instance.SetWaitingForLeaderAfterRespawn(true);
+                                    }
                                 }
                                 else
                                 {
@@ -87,6 +93,14 @@ namespace BetterFollowbotLite.Automation
                                     Thread.Sleep(40);
                                     Mouse.LeftMouseUp();
                                     Thread.Sleep(200);
+                                    
+                                    // Check again after retry
+                                    Thread.Sleep(500);
+                                    var panelStillVisibleAfterRetry = resurrectPanel.IsVisible;
+                                    if (!panelStillVisibleAfterRetry && _settings.waitForLeaderAfterRespawn)
+                                    {
+                                        _instance.SetWaitingForLeaderAfterRespawn(true);
+                                    }
                                 }
 
                                 _instance.LastTimeAny = DateTime.Now; // Update global cooldown

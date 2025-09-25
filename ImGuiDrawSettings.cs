@@ -421,6 +421,17 @@ internal class ImGuiDrawSettings
 
                 // Show current status
                 ImGui.Text($"Status: {(isRespawnEnabled ? "Enabled" : "Disabled")}");
+                
+                // Wait for leader after respawn setting
+                if (isRespawnEnabled)
+                {
+                    ImGui.Separator();
+                    BetterFollowbotLite.Instance.Settings.waitForLeaderAfterRespawn.Value = 
+                        ImGuiExtension.Checkbox("Wait for Leader After Respawn", BetterFollowbotLite.Instance.Settings.waitForLeaderAfterRespawn.Value);
+                    
+                    ImGui.Text("When enabled, the bot will not create transition tasks");
+                    ImGui.Text("after respawning until the leader returns to the same zone.");
+                }
             }
         }
         catch (Exception e)

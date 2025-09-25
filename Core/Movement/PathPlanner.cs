@@ -72,6 +72,13 @@ namespace BetterFollowbotLite.Core.Movement
                     return;
                 }
 
+                // Check if we should block transition tasks due to post-respawn waiting
+                if (_core.ShouldBlockTransitionTasks())
+                {
+                    _core.LogMessage($"POST-RESPAWN: Blocking transition task creation - waiting for leader to return to zone");
+                    return;
+                }
+
                 if (_portalManager.IsInPortalTransition)
                 {
                     _core.LogMessage($"PORTAL: In portal transition mode - actively searching for portals to follow leader");

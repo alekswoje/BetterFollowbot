@@ -124,6 +124,7 @@ public class BetterFollowbotLiteSettings : ISettings
     #region Auto Respawn
 
     public ToggleNode autoRespawnEnabled = new ToggleNode(false);
+    public ToggleNode waitForLeaderAfterRespawn = new ToggleNode(false);
 
     #endregion
     

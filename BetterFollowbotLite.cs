@@ -51,6 +51,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     private PartyJoiner partyJoiner;
     private AutoMapTabber autoMapTabber;
     private AutomationManager automationManager;
+    
+    // Post-respawn state tracking
+    private bool _waitingForLeaderAfterRespawn = false;
+    private DateTime _lastRespawnTime = DateTime.MinValue;
 
     private List<Buff> buffs;
     private List<Entity> enemys = new List<Entity>();
@@ -239,6 +243,62 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         {
             return null;
         }
+    }
+
+    // Method to check if leader is in the same zone as the player
+    internal bool IsLeaderInSameZone()
+    {
+        try
+        {
+            var leaderPartyElement = leaderDetector?.LeaderPartyElement;
+            if (leaderPartyElement == null) return false;
+
+            var currentZone = GameController?.Area?.CurrentArea?.DisplayName;
+            if (string.IsNullOrEmpty(currentZone)) return false;
+
+            return leaderPartyElement.ZoneName?.Equals(currentZone, StringComparison.OrdinalIgnoreCase) == true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    // Method to set post-respawn waiting state (called by RespawnHandler)
+    internal void SetWaitingForLeaderAfterRespawn(bool waiting)
+    {
+        _waitingForLeaderAfterRespawn = waiting;
+        if (waiting)
+        {
+            _lastRespawnTime = DateTime.Now;
+            LogMessage($"POST-RESPAWN: Waiting for leader to return to zone before creating transition tasks");
+        }
+        else
+        {
+            LogMessage($"POST-RESPAWN: Leader is back in zone, resuming normal task creation");
+        }
+    }
+
+    // Method to check if we should block transition tasks due to post-respawn waiting
+    internal bool ShouldBlockTransitionTasks()
+    {
+        if (!_waitingForLeaderAfterRespawn || !Settings.waitForLeaderAfterRespawn) return false;
+        
+        // Check if leader is back in the same zone
+        if (IsLeaderInSameZone())
+        {
+            SetWaitingForLeaderAfterRespawn(false);
+            return false;
+        }
+
+        // Log occasionally to show we're still waiting
+        var timeSinceRespawn = DateTime.Now - _lastRespawnTime;
+        if (timeSinceRespawn.TotalSeconds > 0 && (int)timeSinceRespawn.TotalSeconds % 10 == 0)
+        {
+            LogMessage($"POST-RESPAWN: Still waiting for leader to return to zone ({timeSinceRespawn.TotalSeconds:F0}s since respawn)");
+        }
+
+        return true;
     }
 
     // Method to get gem level up panel (used by GemLeveler)

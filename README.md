@@ -113,6 +113,68 @@ Access plugin settings through the ExileCore menu:
 - Gem leveling cooldown timing
 - Party auto-join and trade acceptance
 
+## TODO / Roadmap
+
+### High Priority
+- [ ] **Fix Smite Casting Issues**: Resolve issues with smite not always casting properly
+- [ ] **Update Pathfinding**: Replace current system with A* pathfinding algorithm
+- [ ] **Fix Party TP Button**: Prevent bot from clicking party TP button when unavailable
+- [ ] **Fix Long Distance Following**: Resolve issues when leader is too far away
+- [ ] **Clean Up Codebase**: Major code cleanup and refactoring (current state is quite messy)
+
+### From FollowBot Examples
+- [ ] **Area-Specific Logic**: Add special handling for specific areas like "The Rottin Core" with custom transition logic
+- [ ] **Portal Request System**: Automatic portal request when no portals are found
+- [ ] **Labyrinth Support**: Clean up and enhance Aspirants' Plaza navigation (partially implemented)
+- [ ] **Movement Skill Integration**: Clean up and enhance movement skill usage with auto-detection of bound skills (no specific keybind settings needed)
+- [ ] **Clear Cursor Task**: Add dedicated cursor clearing functionality
+
+### From Copilot Examples
+- [ ] **SyncTask Implementation**: Replace async/await with SyncTask for better performance
+- [ ] **Modular Task System**: Implement flexible task management with individual enable/disable controls
+- [ ] **Custom Task Support**: Add ability to create and manage custom tasks
+- [ ] **Enhanced Logging**: Implement LoggerPlus system for better debugging
+- [ ] **Settings Handler**: Add sophisticated settings management with submenus
+- [ ] **Blink/Movement Enhancement**: Add space key movement option
+- [ ] **Item Pickup System**: Add advanced item pickup with filtering (or integrate with existing PickIt)
+- [ ] **Guild Stash Integration**: Add guild stash dumper functionality (may already be in TODO)
+- [ ] **UI Checker Task**: Replace current UI checker system with one integrating tasks and coroutines
+- [ ] **Task Runner Lifecycle**: Implement better task lifecycle management
+
+### Skill Enhancements
+- [ ] **High-Impact Mine Support**: Add support for high-impact mine support skills
+- [ ] **Guardian Block Support**: Add "if you've attacked recently gain attack block" and "if you've cast a spell gain spell block" logic
+- [ ] **Banner Logic**: Implement banner placing functionality
+- [ ] **All Link Skills**: Add support for all remaining link skills (easy implementation)
+- [ ] **All Mine Skills**: Add support for all remaining mine skills (easy implementation)
+- [ ] **Dash Skill Options**: Add support for Shield Charge, Frost Blades of Wintery Blast, Leap Slam as dash alternatives
+
+### Movement & Navigation
+- [ ] **Better Dash System**: Replace hard-coded 3s cooldown with dynamic dash system
+- [ ] **Portal Clicking Fix**: Fix issues with tall portals or portals not on screen
+- [ ] **Entity Interaction Fix**: Prevent clicking ritual altars, NPCs, and other unwanted entities
+
+### Automation Features
+- [ ] **Auto Stash**: Automatically stash items
+- [ ] **Auto Trade to Leader**: Automatically trade all items to party leader
+- [ ] **Auto Guild Stash**: Support for guild stash automation
+- [ ] **Quest Item Filtering**: Filter out low-value quest items
+- [ ] **Auto NPC Interaction**: Auto-talk to NPCs and take quest rewards
+- [ ] **Skill Point Books**: Auto-use skill point books
+- [ ] **Trial of Ascendancy**: Auto-click trial altars
+- [ ] **Lab Ascendancy**: Auto-click final ascendancy altar in lab
+- [ ] **Quest State Doors**: Auto-click quest state doors like the tower in Act 4
+- [ ] **Valuable Uniques**: Auto-pickup valuable unique items
+- [ ] **5-Way Resetter**: Add support for 5-way resetter functionality
+- [ ] **Auto Enable Auras**: Automatically enable auras when available
+
+### Technical Improvements
+- [ ] **Coroutine Focus**: Switch to a more coroutine-focused approach
+- [ ] **SyncTask Integration**: Use SyncTask where applicable (see pickit implementation)
+- [ ] **Task Management System**: Implement skills into task management system to avoid conflicting inputs
+- [ ] **Multi-Task Support**: Support for multiple simultaneous tasks
+- [ ] **Terrain Analyzer Rewrite**: Completely rewrite the terrain analyzer (currently inefficient and incomplete)
+
 ## Credits
 
 This plugin is a fork of the original [CoPilot](https://github.com/totalschaden/copilot) by [totalschaden](https://github.com/totalschaden).

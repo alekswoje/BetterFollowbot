@@ -15,6 +15,7 @@ namespace BetterFollowbot.Core.Movement
         {
             //TODO: Completely re-write this garbage.
             //It's not taking into account a lot of stuff, horribly inefficient and just not the right way to do this.
+            
             //Calculate the straight path from us to the target (this would be waypoints normally)
             var dir = targetPosition - BetterFollowbot.Instance.GameController.Player.GridPos;
             dir.Normalize();

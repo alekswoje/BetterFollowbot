@@ -5,9 +5,11 @@ A Path of Exile plugin for ExileCore/PoeHelper that provides automated follow bo
 ## Features
 
 - **Automated Following**: Intelligent pathfinding and following of party leader
-- **Skill Automation**: Automated casting of auras, blessings, and combat skills
+- **Comprehensive Skill Automation**: Automated casting of 20+ different skills including minions, auras, warcries, mines, and more
 - **Portal Management**: Smart portal detection and usage for zone transitions
 - **Combat Support**: Automated monster targeting and attack routines
+- **Party Management**: Auto-join party and accept trade requests
+- **Quality of Life**: Auto-respawn, auto-level gems, and smart UI blocking
 - **Customizable Settings**: Extensive configuration options for all features
 
 ## Installation
@@ -33,19 +35,83 @@ A Path of Exile plugin for ExileCore/PoeHelper that provides automated follow bo
 - **Pathfinding**: Adjust node distance and clear path settings
 
 #### Skill Automation
+
+**Minion Skills:**
+- **Summon Raging Spirits**: Intelligent SRS casting when rare/unique enemies are nearby
+- **Summon Skeletons**: Automated skeleton summoning with configurable count thresholds
+- **Rejuvenation Totem**: Smart totem placement based on party health and enemy presence
+
+**Aura & Buff Skills:**
 - **Aura Blessing**: Smart Holy Relic + Zealotry management (proactive minion health monitoring, flexible buff detection)
-- **Flame Link**: Party member linking functionality
-- **Smite**: Automated smite buff maintenance
+- **Smite Buff**: Automated smite buff maintenance with aggressive refresh timing
 - **Vaal Haste**: Automated vaal haste activation when available
 - **Vaal Discipline**: Automated vaal discipline when energy shield drops below threshold
+
+**Link Skills:**
+- **Flame Link**: Party member linking functionality with smart targeting
+- **Protective Link**: Automated protective link maintenance for party members
+
+**Warcry Skills:**
+- **Ancestral Cry**: Automated ancestral cry usage
+- **Infernal Cry**: Automated infernal cry usage
+- **General's Cry**: Automated general's cry usage
+- **Intimidating Cry**: Automated intimidating cry usage
+- **Rallying Cry**: Automated rallying cry usage
+- **Vengeful Cry**: Automated vengeful cry usage
+- **Enduring Cry**: Automated enduring cry usage
+- **Seismic Cry**: Automated seismic cry usage
+- **Battlemage's Cry**: Automated battlemage's cry usage
+
+**Mine Skills:**
+- **Stormblast Mine**: Automated mine throwing at rare/unique enemies
+- **Pyroclast Mine**: Automated pyroclast mine deployment with smart targeting
+
+#### Automation Features
+
+**Party Management:**
+- **Auto Join Party**: Automatically accept party invites when not already in a party
+- **Auto Accept Trade**: Automatically accept trade requests from party members
+
+**Quality of Life:**
+- **Auto Respawn**: Automatically respawn at checkpoint when death screen appears
+- **Auto Level Gems**: Automatically level up gems when the level-up panel appears
+- **Smart UI Blocking**: Prevents skill execution when UI elements are open (stash, inventory, etc.)
+
+**Advanced Features:**
+- **Intelligent Targeting**: Smart enemy detection using ReAgent-style validation
+- **Party Health Monitoring**: Monitors party member health for totem placement and vaal skills
+- **Distance-Based Logic**: Skills only activate when within appropriate range of leader
+- **Cooldown Management**: Sophisticated cooldown system prevents skill spam
 
 ## Settings
 
 Access plugin settings through the ExileCore menu:
+
+**General Settings:**
 - Enable/Disable individual features
 - Configure hotkeys and thresholds
-- Adjust automation parameters (e.g., Holy Relic health threshold, Vaal Discipline ES% threshold)
 - Debug mode for troubleshooting
+- Skill cooldown timing
+- Hideout skill disabling
+
+**AutoPilot Configuration:**
+- Leader name and following distance
+- Movement keys and dash settings
+- Pathfinding node distance
+- Clear path detection range
+
+**Skill-Specific Settings:**
+- **Minion Skills**: Count thresholds, range settings, targeting options
+- **Aura & Buffs**: Health thresholds, ES percentages, refresh timing
+- **Link Skills**: Range settings, refresh intervals
+- **Warcries**: Individual enable/disable for each warcry type
+- **Mines**: Range settings, mine count limits, leader distance
+- **Vaal Skills**: ES threshold for Vaal Discipline
+
+**Automation Settings:**
+- Auto-respawn and post-respawn behavior
+- Gem leveling cooldown timing
+- Party auto-join and trade acceptance
 
 ## Credits
 

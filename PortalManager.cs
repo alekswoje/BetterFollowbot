@@ -360,7 +360,5 @@ namespace BetterFollowbot
                 return null;
             }
         }
-
-        // TODO: Add more portal management methods here as we move them from AutoPilot.cs
     }
 }

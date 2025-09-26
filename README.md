@@ -115,31 +115,29 @@ Access plugin settings through the ExileCore menu:
 
 ## TODO / Roadmap
 
-### High Priority
+### High Priority Bug Fixes
 - [ ] **Fix Smite Casting Issues**: Resolve issues with smite not always casting properly
 - [ ] **Update Pathfinding**: Replace current system with A* pathfinding algorithm
 - [ ] **Fix Party TP Button**: Prevent bot from clicking party TP button when unavailable
 - [ ] **Fix Long Distance Following**: Resolve issues when leader is too far away
 - [ ] **Clean Up Codebase**: Major code cleanup and refactoring (current state is quite messy)
 
-### From FollowBot Examples
+### Navigation & Movement Improvements
 - [ ] **Area-Specific Logic**: Add special handling for specific areas like "The Rottin Core" with custom transition logic
 - [ ] **Portal Request System**: Automatic portal request when no portals are found
 - [ ] **Labyrinth Support**: Clean up and enhance Aspirants' Plaza navigation (partially implemented)
 - [ ] **Movement Skill Integration**: Clean up and enhance movement skill usage with auto-detection of bound skills (no specific keybind settings needed)
-- [ ] **Clear Cursor Task**: Add dedicated cursor clearing functionality
 
-### From Copilot Examples
+### Task Management System
 - [ ] **SyncTask Implementation**: Replace async/await with SyncTask for better performance
 - [ ] **Modular Task System**: Implement flexible task management with individual enable/disable controls
 - [ ] **Custom Task Support**: Add ability to create and manage custom tasks
-- [ ] **Enhanced Logging**: Implement LoggerPlus system for better debugging
-- [ ] **Settings Handler**: Add sophisticated settings management with submenus
-- [ ] **Blink/Movement Enhancement**: Add space key movement option
-- [ ] **Item Pickup System**: Add advanced item pickup with filtering (or integrate with existing PickIt)
-- [ ] **Guild Stash Integration**: Add guild stash dumper functionality (may already be in TODO)
 - [ ] **UI Checker Task**: Replace current UI checker system with one integrating tasks and coroutines
 - [ ] **Task Runner Lifecycle**: Implement better task lifecycle management
+
+### Quality of Life Features
+- [ ] **Enhanced Logging**: Implement LoggerPlus system for better debugging
+- [ ] **Settings Handler**: Add sophisticated and organized settings management 
 
 ### Skill Enhancements
 - [ ] **High-Impact Mine Support**: Add support for high-impact mine support skills

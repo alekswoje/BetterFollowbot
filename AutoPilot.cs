@@ -658,7 +658,8 @@ namespace BetterFollowbot;
                 }
                 if (IsBlockingUiOpen() && (DateTime.Now - _lastMenuCheckLog).TotalSeconds > 5)
                 {
-                    BetterFollowbot.Instance.LogMessage("UI CHECK: Blocking UI is open - blocking task execution");
+                    var openUIs = UIBlockingUtility.GetOpenBlockingUIsString();
+                    BetterFollowbot.Instance.LogMessage($"UI CHECK: Blocking UI is open - blocking task execution. Open UIs: {openUIs}");
                     _lastMenuCheckLog = DateTime.Now;
                 }
                 await Task.Delay(100);

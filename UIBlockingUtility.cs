@@ -38,7 +38,7 @@ namespace BetterFollowbot
                        ui.BanditDialog?.IsVisible == true ||
                        ui.MetamorphWindow?.IsVisible == true ||
                        ui.SyndicatePanel?.IsVisible == true ||
-                       ui.SyndicateTree?.IsVisible == true ||
+                       // ui.SyndicateTree?.IsVisible == true || // REMOVED: False positive - always reports as open
                        ui.QuestRewardWindow?.IsVisible == true ||
                        ui.SynthesisWindow?.IsVisible == true ||
                        ui.MapDeviceWindow?.IsVisible == true ||
@@ -98,8 +98,9 @@ namespace BetterFollowbot
                     openUIs.Add("MetamorphWindow");
                 if (ui.SyndicatePanel?.IsVisible == true)
                     openUIs.Add("SyndicatePanel");
-                if (ui.SyndicateTree?.IsVisible == true)
-                    openUIs.Add("SyndicateTree");
+                // SyndicateTree removed - false positive, always reports as open
+                // if (ui.SyndicateTree?.IsVisible == true)
+                //     openUIs.Add("SyndicateTree");
                 if (ui.QuestRewardWindow?.IsVisible == true)
                     openUIs.Add("QuestRewardWindow");
                 if (ui.SynthesisWindow?.IsVisible == true)

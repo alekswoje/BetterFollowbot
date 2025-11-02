@@ -30,6 +30,7 @@ namespace BetterFollowbot;
 
         // Throttle frequent log messages
         private DateTime _lastMenuCheckLog = DateTime.MinValue;
+        private DateTime _lastTeleportConfirmTime = DateTime.MinValue;
 
         /// <summary>
         /// Checks if any blocking UI elements are open that should prevent task execution
@@ -404,6 +405,7 @@ namespace BetterFollowbot;
         lastPathClearTime = DateTime.MinValue;
         lastResponsivenessCheck = DateTime.MinValue;
         lastEfficiencyCheck = DateTime.MinValue;
+        _lastTeleportConfirmTime = DateTime.MinValue;
 
         IsTeleportInProgress = false;
     }
@@ -1123,8 +1125,19 @@ namespace BetterFollowbot;
 
                     if (shouldTeleportConfirmAndContinue)
                     {
+                        // Check cooldown to prevent rapid-fire Enter presses that could open chat
+                        var timeSinceLastConfirm = (DateTime.Now - _lastTeleportConfirmTime).TotalMilliseconds;
+                        if (timeSinceLastConfirm < 1000) // 1 second cooldown
+                        {
+                            BetterFollowbot.Instance.LogMessage($"TELEPORT CONFIRM: Cooldown active ({timeSinceLastConfirm:F0}ms), skipping Enter press");
+                            await Task.Delay(100);
+                            continue;
+                        }
+
                         // Simple Enter key press to confirm teleport
+                        BetterFollowbot.Instance.LogMessage("TELEPORT CONFIRM: Pressing Enter to confirm");
                         Keyboard.KeyPress(Keys.Enter);
+                        _lastTeleportConfirmTime = DateTime.Now;
                         await Task.Delay(200); // Wait for teleport to process
                         continue;
                     }

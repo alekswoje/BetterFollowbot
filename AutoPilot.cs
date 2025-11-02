@@ -1123,15 +1123,9 @@ namespace BetterFollowbot;
 
                     if (shouldTeleportConfirmAndContinue)
                     {
-                        // FAST TELEPORT CONFIRM: Direct mouse movement for speed
-                        Mouse.SetCursorPos(new Vector2(currentTask.WorldPosition.X, currentTask.WorldPosition.Y));
-                        await Task.Delay(50); // Reduced from 200ms
-                        Mouse.LeftClick();
-                        await Task.Delay(100); // Reduced from 200ms, need some time for dialog
-                        // CRITICAL: Move mouse to center of screen after teleport confirm to prevent unwanted movement
-                        var screenCenter = new Vector2(BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().Width / 2, BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().Height / 2);
-                        Mouse.SetCursorPos(screenCenter);
-                        await Task.Delay(200); // Reduced from 1000ms, still need time for teleport
+                        // Simple Enter key press to confirm teleport
+                        Keyboard.KeyPress(Keys.Enter);
+                        await Task.Delay(200); // Wait for teleport to process
                         continue;
                     }
 

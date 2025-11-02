@@ -213,16 +213,9 @@ namespace BetterFollowbot.Core.Movement
                         break;
                     }
 
-                    currentTask.AttemptCount++;
-                    if (currentTask.AttemptCount > 6)
-                    {
-                        _core.LogMessage("TRANSITION: Max attempts reached (6), removing transition task");
-                        _taskManager.RemoveTask(currentTask);
-                    }
-                    else
-                    {
-                        _core.LogMessage("TRANSITION: Transition task queued for execution");
-                    }
+                    // Remove the task after clicking - confirmation dialog detection will create a TeleportConfirm task if needed
+                    _core.LogMessage("TRANSITION: Portal clicked, removing transition task");
+                    _taskManager.RemoveTask(currentTask);
                     shouldTransitionAndContinue = true;
                     break;
                 }

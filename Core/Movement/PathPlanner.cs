@@ -631,9 +631,9 @@ namespace BetterFollowbot.Core.Movement
                             _core.LogMessage($"LEADER MOVED FAR: Leader moved {distanceMoved:F1} units but within reasonable distance, using normal movement/dash");
                         }
                     }
-                    else if (lastTargetPosition != Vector3.Zero && distanceMoved <= _core.Settings.autoPilotClearPathDistance.Value)
+                    else
                     {
-                        _core.LogMessage($"PATH DEBUG: LastTargetPos valid but distanceMoved too small ({distanceMoved:F1} <= {_core.Settings.autoPilotClearPathDistance.Value}) - no zone transition detected");
+                        _core.LogMessage($"PATH DEBUG: Else block - lastTargetPos: {(lastTargetPosition == Vector3.Zero ? "ZERO" : $"Valid({lastTargetPosition.X:F0},{lastTargetPosition.Y:F0})")}, distanceMoved: {distanceMoved:F1}, distanceToLeader: {distanceToLeader:F1}");
                         
                         // Leader is far but hasn't moved enough to trigger zone transition - create normal movement tasks
                         // No distance cap - bot should follow regardless of distance in same zone

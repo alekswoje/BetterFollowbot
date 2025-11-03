@@ -67,71 +67,144 @@ namespace BetterFollowbot.Automation
                 if (playerDead || inventoryOpen || gameNotFocused || blockingUiOpen || gameLoading || notInGame)
                     return;
 
+                // Only level gems when within follow range of the leader (don't interfere with other tasks)
+                if (!_instance.IsWithinFollowRange())
+                    return;
+
                 var gemLvlUpPanel = _instance.GetGemLvlUpPanel();
                 if (gemLvlUpPanel?.IsVisible != true) return;
 
                 var gemsToLvlUp = gemLvlUpPanel.GemsToLvlUp;
                 if (gemsToLvlUp?.Count == 0) return;
 
-                foreach (var gem in gemsToLvlUp)
-                {
-                    if (gem?.IsVisible != true) continue;
+                // Check cooldown before attempting to level any gems
+                var timeSinceLastLevel = DateTime.Now - _lastGemLevelTime;
+                if (timeSinceLastLevel.TotalSeconds < _settings.gemLevelingCooldown.Value)
+                    return;
 
+                // NEW: Check for "Upgrade All" button (0th element)
+                if (gemsToLvlUp.Count > 0 && gemsToLvlUp[0]?.IsVisible == true)
+                {
                     try
                     {
-                        var gemChildren = gem.Children;
-                        if (gemChildren?.Count <= 3) continue;
-
-                        var gemStatusText = gemChildren[3]?.Text ?? "";
+                        var upgradeAllElement = gemsToLvlUp[0];
+                        var upgradeAllChildren = upgradeAllElement.Children;
                         
-                        if (gemStatusText.Contains("Gem cannot level up"))
-                            continue;
-
-                        if (!gemStatusText.Contains("Click to level up") && !string.IsNullOrWhiteSpace(gemStatusText))
-                            continue;
-
-                        var timeSinceLastLevel = DateTime.Now - _lastGemLevelTime;
-                        if (timeSinceLastLevel.TotalSeconds < _settings.gemLevelingCooldown.Value)
-                            return;
-
-                        var levelUpButton = gemChildren[1];
-                        if (levelUpButton?.IsVisible != true) continue;
-
-                        var buttonRect = levelUpButton.GetClientRectCache;
-                        var buttonCenter = buttonRect.Center;
-
-                        Mouse.SetCursorPos(buttonCenter);
-                        Thread.Sleep(150);
-
-                        var currentMousePos = _instance.GetMousePosition();
-                        var distanceFromTarget = Vector2.Distance(currentMousePos, buttonCenter);
-
-                        if (distanceFromTarget < 5)
+                        if (upgradeAllChildren?.Count > 0)
                         {
-                            Mouse.LeftMouseDown();
-                            Thread.Sleep(40);
-                            Mouse.LeftMouseUp();
-                            Thread.Sleep(200);
-
-                            var buttonStillVisible = levelUpButton.IsVisible;
-                            if (buttonStillVisible)
+                            var upgradeAllButton = upgradeAllChildren[0];
+                            if (upgradeAllButton?.IsVisible == true)
                             {
-                                Thread.Sleep(500);
-                                Mouse.LeftMouseDown();
-                                Thread.Sleep(40);
-                                Mouse.LeftMouseUp();
-                                Thread.Sleep(200);
+                                var buttonRect = upgradeAllButton.GetClientRectCache;
+                                var buttonCenter = buttonRect.Center;
+
+                                Mouse.SetCursorPos(buttonCenter);
+                                Thread.Sleep(150);
+
+                                var currentMousePos = _instance.GetMousePosition();
+                                var distanceFromTarget = Vector2.Distance(currentMousePos, buttonCenter);
+
+                                if (distanceFromTarget < 5)
+                                {
+                                    Mouse.LeftMouseDown();
+                                    Thread.Sleep(40);
+                                    Mouse.LeftMouseUp();
+                                    Thread.Sleep(200);
+
+                                    _instance.LastTimeAny = DateTime.Now;
+                                    _lastGemLevelTime = DateTime.Now;
+                                    BetterFollowbot.Instance.LogMessage("AUTO LEVEL GEMS: Clicked 'Upgrade All' button");
+                                    return; // Done, exit after clicking upgrade all
+                                }
                             }
                         }
-
-                        Thread.Sleep(300);
-                        _instance.LastTimeAny = DateTime.Now;
-                        _lastGemLevelTime = DateTime.Now;
-                        break;
                     }
-                    catch (Exception gemEx)
+                    catch (Exception upgradeAllEx)
                     {
-                        BetterFollowbot.Instance.LogMessage($"AUTO LEVEL GEMS: Error processing gem - {gemEx.Message}");
+                        BetterFollowbot.Instance.LogMessage($"AUTO LEVEL GEMS: Error processing upgrade all button - {upgradeAllEx.Message}");
+                    }
+                }
+
+                // NEW: If upgrade all button not visible, check for individual gems (1st element)
+                if (gemsToLvlUp.Count > 1 && gemsToLvlUp[1]?.IsVisible == true)
+                {
+                    try
+                    {
+                        var gemsContainerElement = gemsToLvlUp[1];
+                        var gemsContainerChildren = gemsContainerElement.Children;
+                        
+                        if (gemsContainerChildren?.Count > 0)
+                        {
+                            // Get the 0th child which contains the individual gems
+                            var individualGemsContainer = gemsContainerChildren[0];
+                            var individualGems = individualGemsContainer?.Children;
+                            
+                            if (individualGems?.Count > 0)
+                            {
+                                foreach (var gem in individualGems)
+                                {
+                                    if (gem?.IsVisible != true) continue;
+
+                                    try
+                                    {
+                                        var gemChildren = gem.Children;
+                                        if (gemChildren?.Count <= 3) continue;
+
+                                        // Check the 3rd child for status text
+                                        var gemStatusText = gemChildren[3]?.Text ?? "";
+                                        
+                                        // Only level up if it says "Click to level up"
+                                        if (!gemStatusText.Contains("Click to level up"))
+                                            continue;
+
+                                        // Get the 1st child which is the level up button
+                                        var levelUpButton = gemChildren[1];
+                                        if (levelUpButton?.IsVisible != true) continue;
+
+                                        var buttonRect = levelUpButton.GetClientRectCache;
+                                        var buttonCenter = buttonRect.Center;
+
+                                        Mouse.SetCursorPos(buttonCenter);
+                                        Thread.Sleep(150);
+
+                                        var currentMousePos = _instance.GetMousePosition();
+                                        var distanceFromTarget = Vector2.Distance(currentMousePos, buttonCenter);
+
+                                        if (distanceFromTarget < 5)
+                                        {
+                                            Mouse.LeftMouseDown();
+                                            Thread.Sleep(40);
+                                            Mouse.LeftMouseUp();
+                                            Thread.Sleep(200);
+
+                                            var buttonStillVisible = levelUpButton.IsVisible;
+                                            if (buttonStillVisible)
+                                            {
+                                                Thread.Sleep(500);
+                                                Mouse.LeftMouseDown();
+                                                Thread.Sleep(40);
+                                                Mouse.LeftMouseUp();
+                                                Thread.Sleep(200);
+                                            }
+                                        }
+
+                                        Thread.Sleep(300);
+                                        _instance.LastTimeAny = DateTime.Now;
+                                        _lastGemLevelTime = DateTime.Now;
+                                        BetterFollowbot.Instance.LogMessage($"AUTO LEVEL GEMS: Leveled individual gem");
+                                        break; // Only level one gem per execution
+                                    }
+                                    catch (Exception gemEx)
+                                    {
+                                        BetterFollowbot.Instance.LogMessage($"AUTO LEVEL GEMS: Error processing individual gem - {gemEx.Message}");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception individualGemsEx)
+                    {
+                        BetterFollowbot.Instance.LogMessage($"AUTO LEVEL GEMS: Error processing individual gems - {individualGemsEx.Message}");
                     }
                 }
             }

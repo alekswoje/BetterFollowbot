@@ -660,10 +660,10 @@ namespace BetterFollowbot.Core.Movement
                         }
                     }
                 }
-                //We have no path, set us to go to leader pos using Route Recording or A* pathfinding - ONLY when distance < 500
-                else if (_taskManager.TaskCount == 0 && distanceMoved < 2000 && distanceToLeader > 200 && distanceToLeader < 2000)
-                    {
-                        _core.LogMessage($"PATH DEBUG: Reached task creation block - DistanceMoved: {distanceMoved:F1}, Distance: {distanceToLeader:F1}");
+                //We have no path, set us to go to leader pos using Route Recording or A* pathfinding - ONLY when distance < 500 (under threshold)
+                else if (_taskManager.TaskCount == 0 && distanceMoved < 2000 && distanceToLeader > 200 && distanceToLeader < _core.Settings.autoPilotClearPathDistance.Value)
+                {
+                    _core.LogMessage($"PATH DEBUG: Reached task creation block (distance < threshold) - DistanceMoved: {distanceMoved:F1}, Distance: {distanceToLeader:F1}");
                         // Validate followTarget position before creating tasks
                         if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {

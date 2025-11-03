@@ -423,6 +423,8 @@ namespace BetterFollowbot.Core.Movement
                 }
 
                 var distanceToLeader = Vector3.Distance(_core.PlayerPosition, followTarget.Pos);
+                var distanceMoved = Vector3.Distance(lastTargetPosition, followTarget.Pos);
+                
                 if (distanceToLeader >= _core.Settings.autoPilotClearPathDistance.Value)
                 {
                     if (_taskManager.Tasks.Any(t =>
@@ -433,8 +435,6 @@ namespace BetterFollowbot.Core.Movement
                         _core.LogMessage("ZONE TRANSITION: Transition/teleport task already active, skipping movement processing");
                         return;
                     }
-
-                    var distanceMoved = Vector3.Distance(lastTargetPosition, followTarget.Pos);
                     if (lastTargetPosition != Vector3.Zero && distanceMoved > _core.Settings.autoPilotClearPathDistance.Value)
                     {
                         var isLikelyZoneTransition = distanceMoved > 1000;
@@ -812,49 +812,49 @@ namespace BetterFollowbot.Core.Movement
                                     var currentPathEnd = _taskManager.Tasks.Last().WorldPosition;
 
                                     if (!_core.Pathfinding.IsTerrainLoaded)
-                                {
-                                    _core.LogMessage($"A* PATH EXTENSION: Terrain not loaded, falling back to direct extension");
-                                    _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                }
-                                else
-                                {
-                                    var extensionWaypoints = _core.Pathfinding.GetPath(currentPathEnd, followTarget.Pos);
-
-                                    if (extensionWaypoints != null && extensionWaypoints.Count > 1)
                                     {
-                                        // Convert grid waypoints back to world positions and add as tasks
-                                        // Skip the first waypoint (current path end position)
-                                        var gridToWorldMultiplier = 250f / 23f; // Same conversion as in Pathfinding.cs
-                                        var waypointsAdded = 0;
-                                        for (int i = 1; i < extensionWaypoints.Count; i++) // Start from index 1 to skip current position
-                                        {
-                                            var waypoint = extensionWaypoints[i];
-                                            var worldPos = new Vector3(
-                                                waypoint.X * gridToWorldMultiplier,
-                                                followTarget.Pos.Y, // Keep same height
-                                                waypoint.Y * gridToWorldMultiplier
-                                            );
-                                            _taskManager.AddTask(new TaskNode(worldPos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                            waypointsAdded++;
-                                        }
-
-                                        if (waypointsAdded == 0)
-                                        {
-                                            _core.LogMessage($"A* PATH EXTENSION: No valid waypoints found, falling back to direct extension");
-                                            _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                        }
-                                        else
-                                        {
-                                            _core.LogMessage($"A* PATH EXTENSION: Added {waypointsAdded} additional waypoints");
-                                        }
+                                        _core.LogMessage($"A* PATH EXTENSION: Terrain not loaded, falling back to direct extension");
+                                        _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                                     }
                                     else
                                     {
-                                        // A* failed or returned insufficient waypoints, fall back to direct extension
-                                        _core.LogMessage($"A* PATH EXTENSION: Pathfinding failed (got {extensionWaypoints?.Count ?? 0} waypoints), falling back to direct extension");
-                                        _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                        var extensionWaypoints = _core.Pathfinding.GetPath(currentPathEnd, followTarget.Pos);
+
+                                        if (extensionWaypoints != null && extensionWaypoints.Count > 1)
+                                        {
+                                            // Convert grid waypoints back to world positions and add as tasks
+                                            // Skip the first waypoint (current path end position)
+                                            var gridToWorldMultiplier = 250f / 23f; // Same conversion as in Pathfinding.cs
+                                            var waypointsAdded = 0;
+                                            for (int i = 1; i < extensionWaypoints.Count; i++) // Start from index 1 to skip current position
+                                            {
+                                                var waypoint = extensionWaypoints[i];
+                                                var worldPos = new Vector3(
+                                                    waypoint.X * gridToWorldMultiplier,
+                                                    followTarget.Pos.Y, // Keep same height
+                                                    waypoint.Y * gridToWorldMultiplier
+                                                );
+                                                _taskManager.AddTask(new TaskNode(worldPos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                                waypointsAdded++;
+                                            }
+
+                                            if (waypointsAdded == 0)
+                                            {
+                                                _core.LogMessage($"A* PATH EXTENSION: No valid waypoints found, falling back to direct extension");
+                                                _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                            }
+                                            else
+                                            {
+                                                _core.LogMessage($"A* PATH EXTENSION: Added {waypointsAdded} additional waypoints");
+                                            }
+                                        }
+                                        else
+                                        {
+                                            // A* failed or returned insufficient waypoints, fall back to direct extension
+                                            _core.LogMessage($"A* PATH EXTENSION: Pathfinding failed (got {extensionWaypoints?.Count ?? 0} waypoints), falling back to direct extension");
+                                            _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                        }
                                     }
-                                }
                                 }
                             }
                         }
@@ -863,7 +863,6 @@ namespace BetterFollowbot.Core.Movement
                             _core.LogMessage("PATH EXTENSION: followTarget became null during path extension, skipping task creation");
                         }
                     }
-                }
                 else
                 {
                     //Clear all tasks except for looting/claim portal (as those only get done when we're within range of leader.

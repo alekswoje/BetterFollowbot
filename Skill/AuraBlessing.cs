@@ -90,6 +90,10 @@ namespace BetterFollowbot.Skills
             if (!_instance.CanUseSkill("AuraBlessing"))
                 return;
 
+            // Only use skills when within follow range of the leader
+            if (!_instance.IsWithinFollowRange())
+                return;
+
             // Loop through all skills to find Holy Relic and Zealotry skills
             foreach (var skill in _instance.skills)
             {

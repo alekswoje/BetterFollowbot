@@ -90,6 +90,10 @@ namespace BetterFollowbot.Skill
             if (!_instance.CanUseSkill("Warcries"))
                 return;
 
+            // Only use skills when within follow range of the leader
+            if (!_instance.IsWithinFollowRange())
+                return;
+
             // Handle all warcries
             HandleWarcries();
         }

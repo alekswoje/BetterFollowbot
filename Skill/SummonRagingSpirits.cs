@@ -111,6 +111,10 @@ namespace BetterFollowbot.Skills
             if (!_instance.CanUseSkill("SummonRagingSpirits"))
                 return;
 
+            // Only use skills when within follow range of the leader
+            if (!_instance.IsWithinFollowRange())
+                return;
+
             try
             {
 

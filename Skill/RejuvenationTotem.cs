@@ -91,6 +91,10 @@ namespace BetterFollowbot.Skills
             if (!_instance.CanUseSkill("RejuvenationTotem"))
                 return;
 
+            // Only use skills when within follow range of the leader
+            if (!_instance.IsWithinFollowRange())
+                return;
+
             try
             {
                 // Loop through all skills to find the rejuvenation totem skill

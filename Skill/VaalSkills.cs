@@ -90,6 +90,10 @@ namespace BetterFollowbot.Skills
             if (!_instance.CanUseSkill("VaalSkills"))
                 return;
 
+            // Only use skills when within follow range of the leader
+            if (!_instance.IsWithinFollowRange())
+                return;
+
             // Handle Vaal Haste
             if (_settings.vaalHasteEnabled)
             {

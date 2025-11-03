@@ -92,6 +92,10 @@ namespace BetterFollowbot.Skills
             if (!_instance.CanUseSkill("SmiteBuff"))
                 return;
 
+            // Only use skills when within follow range of the leader
+            if (!_instance.IsWithinFollowRange())
+                return;
+
             // Loop through all skills to find Smite skill
             foreach (var skill in _instance.skills)
             {

@@ -419,6 +419,25 @@ public class BetterFollowbot : BaseSettingsPlugin<BetterFollowbotSettings>, IFol
         skillLastUsedTimes[skillName] = DateTime.Now;
     }
 
+    /// <summary>
+    /// Checks if the bot is within the configured follow range of the leader
+    /// Skills should only be used when within this range to prevent lag behind
+    /// </summary>
+    public bool IsWithinFollowRange()
+    {
+        if (!Settings.autoPilot.Value)
+            return true; // If autopilot is off, allow skills
+
+        var followTarget = leaderDetector.GetFollowTarget();
+        if (followTarget == null || localPlayer == null)
+            return true; // If no leader, allow skills
+
+        var distanceToLeader = Vector3.Distance(localPlayer.Pos, followTarget.Pos);
+        var maxFollowDistance = Settings.autoPilotPathfindingNodeDistance.Value;
+        
+        return distanceToLeader <= maxFollowDistance;
+    }
+
     internal Keys GetSkillInputKey(int index)
     {
         return index switch

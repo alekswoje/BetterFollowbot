@@ -95,6 +95,10 @@ namespace BetterFollowbot.Skill
             if (!_instance.CanUseSkill("Mines"))
                 return;
 
+            // Only use skills when within follow range of the leader
+            if (!_instance.IsWithinFollowRange())
+                return;
+
             // Always log that Execute was called for debugging
             _instance.LogMessage($"MINES: Execute called (Enabled: {_settings.minesEnabled.Value})");
 

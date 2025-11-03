@@ -46,6 +46,9 @@ namespace BetterFollowbot.Skills
             if (_instance.GameController?.Area?.CurrentArea?.IsTown == true) return;
             if (_instance.GameController?.Area?.CurrentArea?.IsHideout == true && _settings.disableSkillsInHideout) return;
             if (!_instance.CanUseSkill("Links")) return;
+            
+            // Only use skills when within follow range of the leader
+            if (!_instance.IsWithinFollowRange()) return;
 
             if (_settings.flameLinkEnabled)
             {

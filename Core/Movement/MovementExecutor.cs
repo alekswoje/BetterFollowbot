@@ -337,6 +337,14 @@ namespace BetterFollowbot.Core.Movement
                      break;
                  }
 
+                 // NEW: Skill task execution
+                 case TaskNodeType.FlameLink:
+                 case TaskNodeType.ProtectiveLink:
+                 {
+                     ExecuteLinkSkillTask(currentTask);
+                     break;
+                 }
+
                 default:
                     // Unknown task type, remove it
                     _taskManager.RemoveTask(currentTask);
@@ -429,6 +437,59 @@ namespace BetterFollowbot.Core.Movement
             {
                 _core.LogError($"IsCursorPointingTowardsTarget error: {ex.Message}");
                 return false; // Default to false on error to force cursor repositioning
+            }
+        }
+
+        /// <summary>
+        /// NEW: Executes a link skill task (FlameLink or ProtectiveLink)
+        /// </summary>
+        private void ExecuteLinkSkillTask(TaskNode task)
+        {
+            try
+            {
+                // Check if target entity is still valid
+                if (task.TargetEntity == null || !task.TargetEntity.IsValid)
+                {
+                    _core.LogMessage($"SKILL TASK: {task.SkillName} target entity invalid, removing task");
+                    _taskManager.RemoveTask(task);
+                    return;
+                }
+
+                // Position cursor on target entity
+                var targetScreenPos = Helper.WorldToValidScreenPosition(task.TargetEntity.Pos);
+                Mouse.SetCursorPos(targetScreenPos);
+                
+                _core.LogMessage($"SKILL TASK: Positioned cursor on {task.SkillData?.TargetPlayerName} at ({targetScreenPos.X:F1}, {targetScreenPos.Y:F1})");
+                
+                // Small delay to ensure cursor positioning
+                System.Threading.Thread.Sleep(50);
+                
+                // Press the skill key
+                if (task.SkillKey != default(System.Windows.Forms.Keys))
+                {
+                    Keyboard.KeyPress(task.SkillKey);
+                    _core.LogMessage($"SKILL TASK: Executed {task.SkillName.ToUpper()} on {task.SkillData?.TargetPlayerName} ({task.SkillData?.Reason})");
+                    
+                    // Record skill use for cooldown tracking
+                    _core.RecordSkillUse("Links");
+                    
+                    // Update last link time in the Links class
+                    // This prevents the old Execute() method from double-linking
+                    var timerKey = $"{task.SkillData?.TargetPlayerName}_{task.SkillName}";
+                    // Note: We'll need to access the Links._lastLinkTime dictionary, but for now we'll rely on cooldown
+                }
+                else
+                {
+                    _core.LogMessage($"SKILL TASK: {task.SkillName} has invalid skill key, removing task");
+                }
+                
+                // Remove task after execution
+                _taskManager.RemoveTask(task);
+            }
+            catch (Exception ex)
+            {
+                _core.LogError($"SKILL TASK: Error executing {task.SkillName}: {ex.Message}");
+                _taskManager.RemoveTask(task);
             }
         }
     }

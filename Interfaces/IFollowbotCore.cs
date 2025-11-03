@@ -97,5 +97,10 @@ namespace BetterFollowbot.Interfaces
         /// Check if we should block transition tasks due to post-respawn waiting
         /// </summary>
         bool ShouldBlockTransitionTasks();
+
+        /// <summary>
+        /// Record skill usage for tracking purposes
+        /// </summary>
+        void RecordSkillUse(string skillName);
     }
 }

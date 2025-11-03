@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using BetterFollowbot;
 using BetterFollowbot.Interfaces;
 using BetterFollowbot.Core.Skills;
+using BetterFollowbot.Core.TaskManagement;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.MemoryObjects;
@@ -59,6 +60,137 @@ namespace BetterFollowbot.Skills
             {
                 ProcessLinkSkill(SkillInfo.protectiveLink, "bulwark_link_target", "protective_link");
             }
+        }
+
+        /// <summary>
+        /// NEW: Task-based skill execution
+        /// Creates skill tasks for links instead of executing immediately
+        /// </summary>
+        public List<TaskNode> CreateSkillTasks()
+        {
+            var tasks = new List<TaskNode>();
+            
+            // Only create tasks if we're within follow range
+            if (!_instance.IsWithinFollowRange())
+                return tasks;
+            
+            // Create flame link tasks
+            if (_settings.flameLinkEnabled)
+            {
+                var flameLinkTasks = CreateLinkTasks(SkillInfo.flameLink, "flame_link_target", "flame_link", TaskNodeType.FlameLink);
+                tasks.AddRange(flameLinkTasks);
+            }
+            
+            // Create protective link tasks
+            if (_settings.protectiveLinkEnabled)
+            {
+                var protectiveLinkTasks = CreateLinkTasks(SkillInfo.protectiveLink, "bulwark_link_target", "protective_link", TaskNodeType.ProtectiveLink);
+                tasks.AddRange(protectiveLinkTasks);
+            }
+            
+            return tasks;
+        }
+
+        /// <summary>
+        /// Creates link tasks for a specific link type
+        /// </summary>
+        private List<TaskNode> CreateLinkTasks(Core.Skills.Skill linkSkill, string targetBuffName, string linkType, TaskNodeType taskType)
+        {
+            var tasks = new List<TaskNode>();
+            
+            var skill = _instance.skills.FirstOrDefault(s => s.Id == linkSkill.Id);
+            if (skill == null) return tasks;
+
+            if (!SkillInfo.ManageCooldown(linkSkill, skill))
+                return tasks;
+
+            var partyElements = PartyElements.GetPlayerInfoElementList();
+            var playerEntities = _instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
+                .Where(x => x != null && x.IsValid && !x.IsHostile)
+                .ToList();
+
+            var linkSourceBuff = _instance.Buffs.FirstOrDefault(x => x.Name == linkSkill.BuffName);
+            var linkSourceTimeLeft = linkSourceBuff?.Timer ?? 0;
+
+            foreach (var partyElement in partyElements)
+            {
+                if (partyElement?.PlayerName == null) continue;
+
+                var playerEntity = playerEntities
+                    .FirstOrDefault(x => string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
+                        partyElement.PlayerName.ToLower(), StringComparison.CurrentCultureIgnoreCase));
+
+                if (playerEntity != null)
+                {
+                    var playerBuffs = playerEntity.GetComponent<Buffs>()?.BuffsList ?? new System.Collections.Generic.List<Buff>();
+                    var linkTargetBuff = playerBuffs.FirstOrDefault(x => x.Name == targetBuffName);
+
+                    bool needsLinking = false;
+                    string reason = "";
+
+                    var timerKey = $"{partyElement.PlayerName}_{linkType}";
+                    if (!_lastLinkTime.ContainsKey(timerKey))
+                    {
+                        _lastLinkTime[timerKey] = DateTime.MinValue;
+                    }
+
+                    var timeSinceLastLink = (DateTime.Now - _lastLinkTime[timerKey]).TotalSeconds;
+
+                    if (linkTargetBuff == null)
+                    {
+                        needsLinking = true;
+                        reason = "no buff";
+                    }
+                    else if (linkTargetBuff.Timer < 5)
+                    {
+                        needsLinking = true;
+                        reason = $"buff low ({linkTargetBuff.Timer:F1}s)";
+                    }
+                    else if (timeSinceLastLink >= 4)
+                    {
+                        needsLinking = true;
+                        reason = $"refresh ({timeSinceLastLink:F1}s since last link)";
+                    }
+
+                    if (needsLinking)
+                    {
+                        var mouseScreenPos = _instance.GetMousePosition();
+                        var targetScreenPos = Helper.WorldToValidScreenPosition(playerEntity.Pos);
+                        var distanceToCursor = Vector2.Distance(mouseScreenPos, targetScreenPos);
+
+                        var maxDistance = 150;
+                        var canLink = (linkSourceBuff == null || distanceToCursor < maxDistance) &&
+                                      (linkSourceTimeLeft > 2 || linkSourceBuff == null);
+
+                        if (canLink)
+                        {
+                            // Create a task instead of executing immediately
+                            var linkTask = new TaskNode(playerEntity.Pos, 0, taskType)
+                            {
+                                SkillName = linkType,
+                                TargetEntity = playerEntity,
+                                SkillSlotIndex = skill.SkillSlotIndex,
+                                SkillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex),
+                                SkillData = new SkillExecutionData
+                                {
+                                    TargetPlayerName = partyElement.PlayerName,
+                                    Reason = reason,
+                                    DistanceToTarget = distanceToCursor,
+                                    TimeSinceLastUse = (float)timeSinceLastLink
+                                }
+                            };
+                            
+                            tasks.Add(linkTask);
+                            _instance.LogMessage($"SKILL TASK CREATED: {linkType.ToUpper()} task for {partyElement.PlayerName} ({reason}, Distance: {distanceToCursor:F1})");
+                            
+                            // Only create one link task per update to avoid flooding the queue
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return tasks;
         }
 
         private void ProcessLinkSkill(Core.Skills.Skill linkSkill, string targetBuffName, string linkType)

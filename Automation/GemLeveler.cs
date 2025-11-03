@@ -82,7 +82,7 @@ namespace BetterFollowbot.Automation
                 if (timeSinceLastLevel.TotalSeconds < _settings.gemLevelingCooldown.Value)
                     return;
 
-                // NEW: Check for "Upgrade All" button (0th element)
+                // NEW: Check for "Upgrade All" button (0th element) - if it exists, ONLY use this
                 if (gemsToLvlUp.Count > 0 && gemsToLvlUp[0]?.IsVisible == true)
                 {
                     try
@@ -114,7 +114,6 @@ namespace BetterFollowbot.Automation
                                     _instance.LastTimeAny = DateTime.Now;
                                     _lastGemLevelTime = DateTime.Now;
                                     BetterFollowbot.Instance.LogMessage("AUTO LEVEL GEMS: Clicked 'Upgrade All' button");
-                                    return; // Done, exit after clicking upgrade all
                                 }
                             }
                         }
@@ -123,10 +122,13 @@ namespace BetterFollowbot.Automation
                     {
                         BetterFollowbot.Instance.LogMessage($"AUTO LEVEL GEMS: Error processing upgrade all button - {upgradeAllEx.Message}");
                     }
+                    
+                    // Exit here - if upgrade all button is visible, don't check individual gems
+                    return;
                 }
 
-                // NEW: If upgrade all button not visible, check for individual gems (1st element)
-                if (gemsToLvlUp.Count > 1 && gemsToLvlUp[1]?.IsVisible == true)
+                // NEW: If upgrade all button NOT visible, check for individual gems (1st element)
+                else if (gemsToLvlUp.Count > 1 && gemsToLvlUp[1]?.IsVisible == true)
                 {
                     try
                     {

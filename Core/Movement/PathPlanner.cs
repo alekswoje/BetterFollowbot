@@ -634,6 +634,29 @@ namespace BetterFollowbot.Core.Movement
                     else if (lastTargetPosition != Vector3.Zero && distanceMoved <= _core.Settings.autoPilotClearPathDistance.Value)
                     {
                         _core.LogMessage($"PATH DEBUG: LastTargetPos valid but distanceMoved too small ({distanceMoved:F1} <= {_core.Settings.autoPilotClearPathDistance.Value}) - no zone transition detected");
+                        
+                        // Leader is far but hasn't moved enough to trigger zone transition - create normal movement tasks
+                        if (_taskManager.TaskCount == 0 && distanceToLeader > 200 && distanceToLeader < 2000)
+                        {
+                            if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
+                            {
+                                if (_core.Settings.autoPilotUseRouteRecording.Value)
+                                {
+                                    _core.LogMessage($"ROUTE RECORDING: Creating waypoint to distant but stationary leader - Distance: {distanceToLeader:F1}");
+                                    
+                                    if (distanceToLeader > _core.Settings.autoPilotDashDistance && _core.Settings.autoPilotDashEnabled)
+                                    {
+                                        _core.LogMessage($"ROUTE RECORDING: Adding Dash task to distant leader - Distance: {distanceToLeader:F1}");
+                                        _taskManager.AddTask(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                                    }
+                                    else
+                                    {
+                                        _core.LogMessage($"ROUTE RECORDING: Adding Movement task to distant leader");
+                                        _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                    }
+                                }
+                            }
+                        }
                     }
                     //We have no path, set us to go to leader pos using Route Recording or A* pathfinding.
                     else if (_taskManager.TaskCount == 0 && distanceMoved < 2000 && distanceToLeader > 200 && distanceToLeader < 2000)

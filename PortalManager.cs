@@ -309,9 +309,9 @@ namespace BetterFollowbot
         }
 
         /// <summary>
-        /// Detects portal transitions based on leader movement
+        /// Detects portal transitions based on leader movement AND zone changes
         /// </summary>
-        public void DetectPortalTransition(Vector3 lastTargetPosition, Vector3 newPosition)
+        public void DetectPortalTransition(Vector3 lastTargetPosition, Vector3 newPosition, string leaderZoneName = null)
         {
             if (lastTargetPosition != Vector3.Zero && newPosition != Vector3.Zero)
             {
@@ -319,13 +319,27 @@ namespace BetterFollowbot
                 // Use the existing autoPilotClearPathDistance setting to detect portal transitions
                 if (distanceMoved > BetterFollowbot.Instance.Settings.autoPilotClearPathDistance.Value)
                 {
-                    BetterFollowbot.Instance.LogMessage($"PORTAL TRANSITION: Leader moved {distanceMoved:F0} units - interzone portal detected (threshold: {BetterFollowbot.Instance.Settings.autoPilotClearPathDistance.Value})");
-                    BetterFollowbot.Instance.LogMessage($"PORTAL TRANSITION: Portal transition detected - bot should look for portals near current position to follow leader");
+                    // IMPORTANT: Only trigger portal transition mode if leader is also in a DIFFERENT zone
+                    // Otherwise the leader is just running far away in the same zone
+                    var currentZone = BetterFollowbot.Instance.GameController?.Area?.CurrentArea?.DisplayName;
+                    var isDifferentZone = !string.IsNullOrEmpty(leaderZoneName) && 
+                                         !string.IsNullOrEmpty(currentZone) && 
+                                         !leaderZoneName.Equals(currentZone);
+                    
+                    if (isDifferentZone)
+                    {
+                        BetterFollowbot.Instance.LogMessage($"PORTAL TRANSITION: Leader moved {distanceMoved:F0} units AND changed zones ('{currentZone}' -> '{leaderZoneName}') - portal transition detected");
+                        BetterFollowbot.Instance.LogMessage($"PORTAL TRANSITION: Portal transition detected - bot should look for portals near current position to follow leader");
 
-                    // Don't set portalLocation to leader's old position - the portal object stays in the same world location
-                    // Instead, mark that we're in a portal transition state so the bot will look for portals to follow
-                    portalLocation = Vector3.One; // Use as a flag to indicate portal transition mode is active
-                    BetterFollowbot.Instance.LogMessage($"PORTAL TRANSITION: Portal transition mode activated - IsInPortalTransition: {IsInPortalTransition}");
+                        // Don't set portalLocation to leader's old position - the portal object stays in the same world location
+                        // Instead, mark that we're in a portal transition state so the bot will look for portals to follow
+                        portalLocation = Vector3.One; // Use as a flag to indicate portal transition mode is active
+                        BetterFollowbot.Instance.LogMessage($"PORTAL TRANSITION: Portal transition mode activated - IsInPortalTransition: {IsInPortalTransition}");
+                    }
+                    else
+                    {
+                        BetterFollowbot.Instance.LogMessage($"PORTAL TRANSITION: Leader moved {distanceMoved:F0} units but is still in same zone ('{currentZone}') - NOT a portal transition, just long distance movement");
+                    }
                 }
             }
         }

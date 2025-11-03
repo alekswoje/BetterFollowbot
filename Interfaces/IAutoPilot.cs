@@ -38,7 +38,7 @@ namespace BetterFollowbot.Interfaces
         /// <summary>
         /// Update the position of the follow target
         /// </summary>
-        void UpdateFollowTargetPosition();
+        void UpdateFollowTargetPosition(string leaderZoneName = null);
         
         /// <summary>
         /// Update the main autopilot logic

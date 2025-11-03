@@ -626,7 +626,8 @@ public class BetterFollowbot : BaseSettingsPlugin<BetterFollowbotSettings>, IFol
                 }
 
                 // CRITICAL: AutoPilot task management must work in background
-                autoPilot.UpdateFollowTargetPosition();
+                var leaderPartyElement = leaderDetector?.GetLeaderPartyElement();
+                autoPilot.UpdateFollowTargetPosition(leaderPartyElement?.ZoneName);
                 autoPilot.UpdateAutoPilotLogic();
                 autoPilot.Render();
 

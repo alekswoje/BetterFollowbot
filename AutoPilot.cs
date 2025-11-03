@@ -120,7 +120,7 @@ namespace BetterFollowbot;
     /// Updates the follow target's position if it exists
     /// This is crucial for zone transitions where the entity's position changes
     /// </summary>
-    public void UpdateFollowTargetPosition()
+    public void UpdateFollowTargetPosition(string leaderZoneName = null)
     {
         if (followTarget != null && followTarget.IsValid)
         {
@@ -142,7 +142,7 @@ namespace BetterFollowbot;
                 }
             }
 
-            portalManager.DetectPortalTransition(lastTargetPosition, newPosition);
+            portalManager.DetectPortalTransition(lastTargetPosition, newPosition, leaderZoneName);
 
             lastTargetPosition = newPosition;
 

@@ -64,6 +64,7 @@ public class BetterFollowbot : BaseSettingsPlugin<BetterFollowbotSettings>, IFol
     private DateTime lastGraceLogTime = DateTime.MinValue;
     private DateTime lastGraceCheckLogTime = DateTime.MinValue;
     private DateTime lastAutoPilotUpdateLogTime = DateTime.MinValue;
+    private DateTime lastSkillRangeCheckLogTime = DateTime.MinValue;
     private Entity lastFollowTarget;
     private bool lastHadGrace;
     private Dictionary<string, DateTime> skillLastUsedTimes = new Dictionary<string, DateTime>();
@@ -425,17 +426,64 @@ public class BetterFollowbot : BaseSettingsPlugin<BetterFollowbotSettings>, IFol
     /// </summary>
     public bool IsWithinFollowRange()
     {
+        // Throttle logging to prevent spam (log every 2 seconds max)
+        var shouldLog = (DateTime.Now - lastSkillRangeCheckLogTime).TotalSeconds >= 2.0;
+        
         if (!Settings.autoPilotEnabled.Value)
+        {
+            if (shouldLog)
+            {
+                LogMessage("SKILL RANGE CHECK: AutoPilot disabled, allowing skills");
+                lastSkillRangeCheckLogTime = DateTime.Now;
+            }
             return true; // If autopilot is off, allow skills
+        }
 
         var followTarget = autoPilot?.FollowTarget;
         if (followTarget == null || localPlayer == null)
+        {
+            if (shouldLog)
+            {
+                LogMessage($"SKILL RANGE CHECK: No follow target ({followTarget == null}) or local player ({localPlayer == null}), allowing skills");
+                lastSkillRangeCheckLogTime = DateTime.Now;
+            }
             return true; // If no leader, allow skills
+        }
+
+        // Don't use skills if there are multiple movement tasks queued (bot is actively catching up)
+        var taskCount = autoPilot?.Tasks?.Count ?? 0;
+        if (taskCount > 2)
+        {
+            if (shouldLog)
+            {
+                LogMessage($"SKILL RANGE CHECK: BLOCKED - Too many movement tasks queued ({taskCount} tasks), bot is catching up");
+                lastSkillRangeCheckLogTime = DateTime.Now;
+            }
+            return false; // Bot is busy catching up, don't interrupt with skills
+        }
 
         var distanceToLeader = Vector3.Distance(localPlayer.Pos, followTarget.Pos);
         var maxFollowDistance = Settings.autoPilotPathfindingNodeDistance.Value;
         
-        return distanceToLeader <= maxFollowDistance;
+        // Use a tighter range (75% of pathfinding distance) for skills to ensure bot stays close
+        var skillUseDistance = maxFollowDistance * 0.75f;
+        
+        var withinRange = distanceToLeader <= skillUseDistance;
+        
+        if (shouldLog)
+        {
+            if (withinRange)
+            {
+                LogMessage($"SKILL RANGE CHECK: ALLOWED - Distance: {distanceToLeader:F1} <= {skillUseDistance:F1} (75% of {maxFollowDistance}), Tasks: {taskCount}");
+            }
+            else
+            {
+                LogMessage($"SKILL RANGE CHECK: BLOCKED - Distance: {distanceToLeader:F1} > {skillUseDistance:F1} (75% of {maxFollowDistance}), Tasks: {taskCount}");
+            }
+            lastSkillRangeCheckLogTime = DateTime.Now;
+        }
+        
+        return withinRange;
     }
 
     internal Keys GetSkillInputKey(int index)
@@ -592,7 +640,11 @@ public class BetterFollowbot : BaseSettingsPlugin<BetterFollowbotSettings>, IFol
 
                     if (followTarget != null && autoPilot.Tasks.Count == 0)
                     {
-                        LogMessage("AUTOPILOT: Has follow target but no tasks - AutoPilot may not be moving the bot");
+                        var distanceToLeader = localPlayer != null ? Vector3.Distance(localPlayer.Pos, followTarget.Pos) : -1;
+                        var minDistanceForTask = Settings.autoPilotPathfindingNodeDistance.Value;
+                        LogMessage($"AUTOPILOT: Has follow target but no tasks - Distance: {distanceToLeader:F1}, MinDistance: {minDistanceForTask}, AutoPilot may not be moving the bot");
+                        LogMessage($"AUTOPILOT: Bot position: {(localPlayer != null ? $"X:{localPlayer.Pos.X:F1} Y:{localPlayer.Pos.Y:F1}" : "null")}");
+                        LogMessage($"AUTOPILOT: Leader position: X:{followTarget.Pos.X:F1} Y:{followTarget.Pos.Y:F1}");
                         }
                         lastAutoPilotUpdateLogTime = DateTime.Now;
                     }

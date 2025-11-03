@@ -425,10 +425,10 @@ public class BetterFollowbot : BaseSettingsPlugin<BetterFollowbotSettings>, IFol
     /// </summary>
     public bool IsWithinFollowRange()
     {
-        if (!Settings.autoPilot.Value)
+        if (!Settings.autoPilotEnabled.Value)
             return true; // If autopilot is off, allow skills
 
-        var followTarget = leaderDetector.GetFollowTarget();
+        var followTarget = autoPilot?.FollowTarget;
         if (followTarget == null || localPlayer == null)
             return true; // If no leader, allow skills
 

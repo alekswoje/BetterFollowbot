@@ -425,6 +425,12 @@ namespace BetterFollowbot.Core.Movement
                 var distanceToLeader = Vector3.Distance(_core.PlayerPosition, followTarget.Pos);
                 var distanceMoved = Vector3.Distance(lastTargetPosition, followTarget.Pos);
                 
+                // DEBUG: Log when bot is far from leader but has no tasks
+                if (_taskManager.TaskCount == 0 && distanceToLeader > 200)
+                {
+                    _core.LogMessage($"PATH DEBUG: No tasks, checking conditions - Distance: {distanceToLeader:F1}, DistanceMoved: {distanceMoved:F1}, ClearPathThreshold: {_core.Settings.autoPilotClearPathDistance.Value}, LastTargetPos: {(lastTargetPosition == Vector3.Zero ? "Zero" : "Valid")}");
+                }
+                
                 if (distanceToLeader >= _core.Settings.autoPilotClearPathDistance.Value)
                 {
                     if (_taskManager.Tasks.Any(t =>
@@ -625,9 +631,14 @@ namespace BetterFollowbot.Core.Movement
                             _core.LogMessage($"LEADER MOVED FAR: Leader moved {distanceMoved:F1} units but within reasonable distance, using normal movement/dash");
                         }
                     }
+                    else if (lastTargetPosition != Vector3.Zero && distanceMoved <= _core.Settings.autoPilotClearPathDistance.Value)
+                    {
+                        _core.LogMessage($"PATH DEBUG: LastTargetPos valid but distanceMoved too small ({distanceMoved:F1} <= {_core.Settings.autoPilotClearPathDistance.Value}) - no zone transition detected");
+                    }
                     //We have no path, set us to go to leader pos using Route Recording or A* pathfinding.
                     else if (_taskManager.TaskCount == 0 && distanceMoved < 2000 && distanceToLeader > 200 && distanceToLeader < 2000)
                     {
+                        _core.LogMessage($"PATH DEBUG: Reached task creation block - DistanceMoved: {distanceMoved:F1}, Distance: {distanceToLeader:F1}");
                         // Validate followTarget position before creating tasks
                         if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {

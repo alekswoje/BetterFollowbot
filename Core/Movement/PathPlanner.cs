@@ -602,14 +602,43 @@ namespace BetterFollowbot.Core.Movement
                             _core.LogMessage($"LEADER MOVED FAR: Leader moved {distanceMoved:F1} units but within reasonable distance, using normal movement/dash");
                         }
                     }
-                    //We have no path, set us to go to leader pos using A* pathfinding.
+                    //We have no path, set us to go to leader pos using Route Recording or A* pathfinding.
                     else if (_taskManager.TaskCount == 0 && distanceMoved < 2000 && distanceToLeader > 200 && distanceToLeader < 2000)
                     {
                         // Validate followTarget position before creating tasks
                         if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {
-                            // Check if terrain is loaded before using A* pathfinding
-                            if (!_core.Pathfinding.IsTerrainLoaded)
+                            // ROUTE RECORDING MODE: Simple waypoint following (recommended, avoids getting stuck)
+                            if (_core.Settings.autoPilotUseRouteRecording.Value)
+                            {
+                                _core.LogMessage($"ROUTE RECORDING: Creating initial waypoint to leader - Distance: {distanceToLeader:F1}");
+                                
+                                if (distanceToLeader > _core.Settings.autoPilotDashDistance && _core.Settings.autoPilotDashEnabled)
+                                {
+                                    var shouldSkipDashTasks = _taskManager.Tasks.Any(t =>
+                                        t.Type == TaskNodeType.Transition ||
+                                        t.Type == TaskNodeType.TeleportConfirm ||
+                                        t.Type == TaskNodeType.TeleportButton ||
+                                        t.Type == TaskNodeType.Dash);
+
+                                    if (shouldSkipDashTasks || AutoPilot.IsTeleportInProgress)
+                                    {
+                                        _core.LogMessage($"ZONE TRANSITION: Skipping dash task creation - conflicting tasks active");
+                                    }
+                                    else
+                                    {
+                                        _core.LogMessage($"ROUTE RECORDING: Adding Dash task - Distance: {distanceToLeader:F1}");
+                                        _taskManager.AddTask(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                                    }
+                                }
+                                else
+                                {
+                                    _core.LogMessage($"ROUTE RECORDING: Adding Movement task to leader position");
+                                    _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                }
+                            }
+                            // A* PATHFINDING MODE: Complex pathfinding (can get stuck on walls)
+                            else if (!_core.Pathfinding.IsTerrainLoaded)
                             {
                                 _core.LogMessage($"A* PATH: Terrain not loaded, falling back to direct movement - Distance: {distanceToLeader:F1}");
                                 _core.LogMessage($"A* PATH: Player pos: {_core.PlayerPosition}, Leader pos: {followTarget.Pos}");
@@ -733,23 +762,33 @@ namespace BetterFollowbot.Core.Movement
                             _core.LogError($"Invalid followTarget position: {followTarget?.Pos}, skipping task creation");
                         }
                     }
-                    //We have a path. Check if the last task is far enough away from current one to add a new task node using A*.
+                    //We have a path. Check if the last task is far enough away from current one to add a new task node using Route Recording or A*.
                     else if (_taskManager.TaskCount > 0)
                     {
                         // ADDITIONAL NULL CHECK: Ensure followTarget is still valid before extending path
                         if (followTarget != null && followTarget.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {
                             var distanceFromLastTask = Vector3.Distance(_taskManager.Tasks.Last().WorldPosition, followTarget.Pos);
-                            // More responsive: reduce threshold by half for more frequent path updates
-                            var responsiveThreshold = _core.Settings.autoPilotPathfindingNodeDistance.Value / 2;
-                            if (distanceFromLastTask >= responsiveThreshold)
+                            // Use the configured pathfinding node distance as threshold
+                            var waypointThreshold = _core.Settings.autoPilotPathfindingNodeDistance.Value;
+                            
+                            if (distanceFromLastTask >= waypointThreshold)
                             {
-                                _core.LogMessage($"RESPONSIVENESS: Extending path with A* - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
+                                // ROUTE RECORDING MODE: Simply add leader's current position as next waypoint
+                                if (_core.Settings.autoPilotUseRouteRecording.Value)
+                                {
+                                    _core.LogMessage($"ROUTE RECORDING: Extending path - Leader moved {distanceFromLastTask:F1} units from last waypoint");
+                                    _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                }
+                                // A* PATHFINDING MODE: Use pathfinding to extend path
+                                else
+                                {
+                                    _core.LogMessage($"A* PATH EXTENSION: Extending path with A* - Distance: {distanceFromLastTask:F1}");
 
-                                // Use A* to find additional waypoints from current path end to target
-                                var currentPathEnd = _taskManager.Tasks.Last().WorldPosition;
+                                    // Use A* to find additional waypoints from current path end to target
+                                    var currentPathEnd = _taskManager.Tasks.Last().WorldPosition;
 
-                                if (!_core.Pathfinding.IsTerrainLoaded)
+                                    if (!_core.Pathfinding.IsTerrainLoaded)
                                 {
                                     _core.LogMessage($"A* PATH EXTENSION: Terrain not loaded, falling back to direct extension");
                                     _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
@@ -792,6 +831,7 @@ namespace BetterFollowbot.Core.Movement
                                         _core.LogMessage($"A* PATH EXTENSION: Pathfinding failed (got {extensionWaypoints?.Count ?? 0} waypoints), falling back to direct extension");
                                         _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                                     }
+                                }
                                 }
                             }
                         }

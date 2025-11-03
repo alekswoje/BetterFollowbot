@@ -115,6 +115,8 @@ internal class ImGuiDrawSettings
                     ImGuiExtension.IntSlider("Transition Dist", BetterFollowbot.Instance.Settings.autoPilotClearPathDistance);
                 BetterFollowbot.Instance.Settings.autoPilotRandomActionDelay.Value =
                     ImGuiExtension.IntSlider("Random Action Delay (ms)", BetterFollowbot.Instance.Settings.autoPilotRandomActionDelay);
+                BetterFollowbot.Instance.Settings.autoPilotUseRouteRecording.Value =
+                    ImGuiExtension.Checkbox("Route Recording (Recommended)", BetterFollowbot.Instance.Settings.autoPilotUseRouteRecording.Value);
             }
         }
         catch (Exception e)

@@ -631,9 +631,9 @@ namespace BetterFollowbot.Core.Movement
                             _core.LogMessage($"LEADER MOVED FAR: Leader moved {distanceMoved:F1} units but within reasonable distance, using normal movement/dash");
                         }
                     }
-                    else if (lastTargetPosition != Vector3.Zero && distanceMoved <= _core.Settings.autoPilotClearPathDistance.Value)
+                    else
                     {
-                        _core.LogMessage($"PATH DEBUG: LastTargetPos valid but distanceMoved too small ({distanceMoved:F1} <= {_core.Settings.autoPilotClearPathDistance.Value}) - no zone transition detected");
+                        _core.LogMessage($"PATH DEBUG: Else block - lastTargetPos: {(lastTargetPosition == Vector3.Zero ? "ZERO" : $"Valid({lastTargetPosition.X:F0},{lastTargetPosition.Y:F0})")}, distanceMoved: {distanceMoved:F1}, distanceToLeader: {distanceToLeader:F1}");
                         
                         // Leader is far but hasn't moved enough to trigger zone transition - create normal movement tasks
                         // No distance cap - bot should follow regardless of distance in same zone
@@ -659,8 +659,9 @@ namespace BetterFollowbot.Core.Movement
                             }
                         }
                     }
-                    //We have no path, set us to go to leader pos using Route Recording or A* pathfinding.
-                    else if (_taskManager.TaskCount == 0 && distanceMoved < 2000 && distanceToLeader > 200 && distanceToLeader < 2000)
+                }
+                //We have no path, set us to go to leader pos using Route Recording or A* pathfinding - ONLY when distance < 500
+                else if (_taskManager.TaskCount == 0 && distanceMoved < 2000 && distanceToLeader > 200 && distanceToLeader < 2000)
                     {
                         _core.LogMessage($"PATH DEBUG: Reached task creation block - DistanceMoved: {distanceMoved:F1}, Distance: {distanceToLeader:F1}");
                         // Validate followTarget position before creating tasks

@@ -636,7 +636,8 @@ namespace BetterFollowbot.Core.Movement
                         _core.LogMessage($"PATH DEBUG: LastTargetPos valid but distanceMoved too small ({distanceMoved:F1} <= {_core.Settings.autoPilotClearPathDistance.Value}) - no zone transition detected");
                         
                         // Leader is far but hasn't moved enough to trigger zone transition - create normal movement tasks
-                        if (_taskManager.TaskCount == 0 && distanceToLeader > 200 && distanceToLeader < 2000)
+                        // No distance cap - bot should follow regardless of distance in same zone
+                        if (_taskManager.TaskCount == 0 && distanceToLeader > 200)
                         {
                             if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                             {

@@ -641,178 +641,52 @@ namespace BetterFollowbot.Core.Movement
                         {
                             if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                             {
-                                if (_core.Settings.autoPilotUseRouteRecording.Value)
+                                _core.LogMessage($"ROUTE RECORDING: Creating waypoint to distant but stationary leader - Distance: {distanceToLeader:F1}");
+                                
+                                if (distanceToLeader > _core.Settings.autoPilotDashDistance && _core.Settings.autoPilotDashEnabled)
                                 {
-                                    _core.LogMessage($"ROUTE RECORDING: Creating waypoint to distant but stationary leader - Distance: {distanceToLeader:F1}");
-                                    
-                                    if (distanceToLeader > _core.Settings.autoPilotDashDistance && _core.Settings.autoPilotDashEnabled)
-                                    {
-                                        _core.LogMessage($"ROUTE RECORDING: Adding Dash task to distant leader - Distance: {distanceToLeader:F1}");
-                                        _taskManager.AddTask(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
-                                    }
-                                    else
-                                    {
-                                        _core.LogMessage($"ROUTE RECORDING: Adding Movement task to distant leader");
-                                        _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                    }
+                                    _core.LogMessage($"ROUTE RECORDING: Adding Dash task to distant leader - Distance: {distanceToLeader:F1}");
+                                    _taskManager.AddTask(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                                }
+                                else
+                                {
+                                    _core.LogMessage($"ROUTE RECORDING: Adding Movement task to distant leader");
+                                    _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                                 }
                             }
                         }
                     }
-                    //We have no path, set us to go to leader pos using Route Recording or A* pathfinding.
+                    //We have no path, set us to go to leader pos using Route Recording.
                     else if (_taskManager.TaskCount == 0 && distanceMoved < 2000 && distanceToLeader > 200 && distanceToLeader < 2000)
                     {
                         _core.LogMessage($"PATH DEBUG: Reached task creation block - DistanceMoved: {distanceMoved:F1}, Distance: {distanceToLeader:F1}");
                         // Validate followTarget position before creating tasks
                         if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {
-                            // ROUTE RECORDING MODE: Simple waypoint following (recommended, avoids getting stuck)
-                            if (_core.Settings.autoPilotUseRouteRecording.Value)
+                            _core.LogMessage($"ROUTE RECORDING: Creating initial waypoint to leader - Distance: {distanceToLeader:F1}");
+                            
+                            if (distanceToLeader > _core.Settings.autoPilotDashDistance && _core.Settings.autoPilotDashEnabled)
                             {
-                                _core.LogMessage($"ROUTE RECORDING: Creating initial waypoint to leader - Distance: {distanceToLeader:F1}");
-                                
-                                if (distanceToLeader > _core.Settings.autoPilotDashDistance && _core.Settings.autoPilotDashEnabled)
-                                {
-                                    var shouldSkipDashTasks = _taskManager.Tasks.Any(t =>
-                                        t.Type == TaskNodeType.Transition ||
-                                        t.Type == TaskNodeType.TeleportConfirm ||
-                                        t.Type == TaskNodeType.TeleportButton ||
-                                        t.Type == TaskNodeType.Dash);
+                                var shouldSkipDashTasks = _taskManager.Tasks.Any(t =>
+                                    t.Type == TaskNodeType.Transition ||
+                                    t.Type == TaskNodeType.TeleportConfirm ||
+                                    t.Type == TaskNodeType.TeleportButton ||
+                                    t.Type == TaskNodeType.Dash);
 
-                                    if (shouldSkipDashTasks || AutoPilot.IsTeleportInProgress)
-                                    {
-                                        _core.LogMessage($"ZONE TRANSITION: Skipping dash task creation - conflicting tasks active");
-                                    }
-                                    else
-                                    {
-                                        _core.LogMessage($"ROUTE RECORDING: Adding Dash task - Distance: {distanceToLeader:F1}");
-                                        _taskManager.AddTask(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
-                                    }
+                                if (shouldSkipDashTasks || AutoPilot.IsTeleportInProgress)
+                                {
+                                    _core.LogMessage($"ZONE TRANSITION: Skipping dash task creation - conflicting tasks active");
                                 }
                                 else
                                 {
-                                    _core.LogMessage($"ROUTE RECORDING: Adding Movement task to leader position");
-                                    _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                }
-                            }
-                            // A* PATHFINDING MODE: Complex pathfinding (can get stuck on walls)
-                            else if (!_core.Pathfinding.IsTerrainLoaded)
-                            {
-                                _core.LogMessage($"A* PATH: Terrain not loaded, falling back to direct movement - Distance: {distanceToLeader:F1}");
-                                _core.LogMessage($"A* PATH: Player pos: {_core.PlayerPosition}, Leader pos: {followTarget.Pos}");
-
-                                if (distanceToLeader > _core.Settings.autoPilotDashDistance && _core.Settings.autoPilotDashEnabled)
-                                {
-                                    var shouldSkipDashTasks = _taskManager.Tasks.Any(t =>
-                                        t.Type == TaskNodeType.Transition ||
-                                        t.Type == TaskNodeType.TeleportConfirm ||
-                                        t.Type == TaskNodeType.TeleportButton ||
-                                        t.Type == TaskNodeType.Dash);
-
-                                    if (shouldSkipDashTasks || AutoPilot.IsTeleportInProgress)
-                                    {
-                                        _core.LogMessage($"ZONE TRANSITION: Skipping dash task creation - conflicting tasks active ({_taskManager.CountTasks(t => t.Type == TaskNodeType.Dash)} dash tasks, {_taskManager.CountTasks(t => t.Type == TaskNodeType.Transition)} transition tasks, teleport={AutoPilot.IsTeleportInProgress})");
-                                    }
-                                    else
-                                    {
-                                        _core.LogMessage($"Adding Dash task (terrain not loaded) - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}");
-                                        _taskManager.AddTask(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
-                                    }
-                                }
-                                else
-                                {
-                                    _core.LogMessage($"Adding Movement task (terrain not loaded) - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}");
-                                    _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
+                                    _core.LogMessage($"ROUTE RECORDING: Adding Dash task - Distance: {distanceToLeader:F1}");
+                                    _taskManager.AddTask(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
                                 }
                             }
                             else
                             {
-                                // Use A* pathfinding to create waypoint tasks instead of straight line
-                                _core.LogMessage($"A* PATH: Attempting to find path - Player: {_core.PlayerPosition}, Leader: {followTarget.Pos}");
-                                var pathWaypoints = _core.Pathfinding.GetPath(_core.PlayerPosition, followTarget.Pos);
-
-                                if (pathWaypoints != null && pathWaypoints.Count > 1) // Need more than just start position
-                                {
-                                    _core.LogMessage($"A* PATH: Found path with {pathWaypoints.Count} waypoints to leader");
-
-                                    if (distanceToLeader > _core.Settings.autoPilotDashDistance && _core.Settings.autoPilotDashEnabled)
-                                    {
-                                        var shouldSkipDashTasks = _taskManager.Tasks.Any(t =>
-                                            t.Type == TaskNodeType.Transition ||
-                                            t.Type == TaskNodeType.TeleportConfirm ||
-                                            t.Type == TaskNodeType.TeleportButton ||
-                                            t.Type == TaskNodeType.Dash);
-
-                                        if (shouldSkipDashTasks || AutoPilot.IsTeleportInProgress)
-                                        {
-                                            _core.LogMessage($"ZONE TRANSITION: Skipping dash task creation - conflicting tasks active ({_taskManager.CountTasks(t => t.Type == TaskNodeType.Dash)} dash tasks, {_taskManager.CountTasks(t => t.Type == TaskNodeType.Transition)} transition tasks, teleport={AutoPilot.IsTeleportInProgress})");
-                                        }
-                                        else
-                                        {
-                                            _core.LogMessage($"Adding A* Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}");
-                                            _taskManager.AddTask(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
-                                        }
-                                    }
-                                    else
-                                    {
-                                        // Create movement tasks along the A* path waypoints
-                                        // Skip the first waypoint (current position) and create tasks for the rest
-                                        var gridToWorldMultiplier = 250f / 23f; // Same conversion as in Pathfinding.cs
-                                        var waypointsAdded = 0;
-                                        for (int i = 1; i < pathWaypoints.Count; i++) // Start from index 1 to skip current position
-                                        {
-                                            var waypoint = pathWaypoints[i];
-                                            var worldPos = new Vector3(
-                                                waypoint.X * gridToWorldMultiplier,
-                                                followTarget.Pos.Y, // Keep same height
-                                                waypoint.Y * gridToWorldMultiplier
-                                            );
-                                            _core.LogMessage($"A* PATH: Adding waypoint {i}/{pathWaypoints.Count}: grid({waypoint.X},{waypoint.Y}) -> world({worldPos.X:F1},{worldPos.Y:F1},{worldPos.Z:F1})");
-                                            _taskManager.AddTask(new TaskNode(worldPos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                            waypointsAdded++;
-                                        }
-
-                                        if (waypointsAdded == 0)
-                                        {
-                                            // If no waypoints were added, fall back to direct movement
-                                            _core.LogMessage($"A* PATH: No valid waypoints found, falling back to direct movement");
-                                            _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                        }
-                                        else
-                                        {
-                                            _core.LogMessage($"A* PATH: Created {waypointsAdded} movement tasks along path");
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    // A* failed or returned only start position, try direct movement
-                                    _core.LogMessage($"A* PATH: Pathfinding failed or returned insufficient waypoints (got {pathWaypoints?.Count ?? 0}), falling back to direct movement - Distance: {distanceToLeader:F1}");
-
-                                    if (distanceToLeader > _core.Settings.autoPilotDashDistance && _core.Settings.autoPilotDashEnabled)
-                                    {
-                                        var shouldSkipDashTasks = _taskManager.Tasks.Any(t =>
-                                            t.Type == TaskNodeType.Transition ||
-                                            t.Type == TaskNodeType.TeleportConfirm ||
-                                            t.Type == TaskNodeType.TeleportButton ||
-                                            t.Type == TaskNodeType.Dash);
-
-                                        if (shouldSkipDashTasks || AutoPilot.IsTeleportInProgress)
-                                        {
-                                            _core.LogMessage($"ZONE TRANSITION: Skipping dash task creation - conflicting tasks active ({_taskManager.CountTasks(t => t.Type == TaskNodeType.Dash)} dash tasks, {_taskManager.CountTasks(t => t.Type == TaskNodeType.Transition)} transition tasks, teleport={AutoPilot.IsTeleportInProgress})");
-                                        }
-                                        else
-                                        {
-                                            _core.LogMessage($"Adding Dash task (A* failed) - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}");
-                                            _taskManager.AddTask(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
-                                        }
-                                    }
-                                    else
-                                    {
-                                        _core.LogMessage($"Adding Movement task (A* failed) - Distance: {distanceToLeader:F1}, Dash enabled: {_core.Settings.autoPilotDashEnabled}");
-                                        _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                    }
-                                }
+                                _core.LogMessage($"ROUTE RECORDING: Adding Movement task to leader position");
+                                _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                             }
                         }
                         else
@@ -820,7 +694,7 @@ namespace BetterFollowbot.Core.Movement
                             _core.LogError($"Invalid followTarget position: {followTarget?.Pos}, skipping task creation");
                         }
                     }
-                    //We have a path. Check if the last task is far enough away from current one to add a new task node using Route Recording or A*.
+                    //We have a path. Check if the last task is far enough away from current one to add a new task node.
                     else if (_taskManager.TaskCount > 0)
                     {
                         // ADDITIONAL NULL CHECK: Ensure followTarget is still valid before extending path
@@ -832,65 +706,8 @@ namespace BetterFollowbot.Core.Movement
                             
                             if (distanceFromLastTask >= waypointThreshold)
                             {
-                                // ROUTE RECORDING MODE: Simply add leader's current position as next waypoint
-                                if (_core.Settings.autoPilotUseRouteRecording.Value)
-                                {
-                                    _core.LogMessage($"ROUTE RECORDING: Extending path - Leader moved {distanceFromLastTask:F1} units from last waypoint");
-                                    _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                }
-                                // A* PATHFINDING MODE: Use pathfinding to extend path
-                                else
-                                {
-                                    _core.LogMessage($"A* PATH EXTENSION: Extending path with A* - Distance: {distanceFromLastTask:F1}");
-
-                                    // Use A* to find additional waypoints from current path end to target
-                                    var currentPathEnd = _taskManager.Tasks.Last().WorldPosition;
-
-                                    if (!_core.Pathfinding.IsTerrainLoaded)
-                                    {
-                                        _core.LogMessage($"A* PATH EXTENSION: Terrain not loaded, falling back to direct extension");
-                                        _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                    }
-                                    else
-                                    {
-                                        var extensionWaypoints = _core.Pathfinding.GetPath(currentPathEnd, followTarget.Pos);
-
-                                        if (extensionWaypoints != null && extensionWaypoints.Count > 1)
-                                        {
-                                            // Convert grid waypoints back to world positions and add as tasks
-                                            // Skip the first waypoint (current path end position)
-                                            var gridToWorldMultiplier = 250f / 23f; // Same conversion as in Pathfinding.cs
-                                            var waypointsAdded = 0;
-                                            for (int i = 1; i < extensionWaypoints.Count; i++) // Start from index 1 to skip current position
-                                            {
-                                                var waypoint = extensionWaypoints[i];
-                                                var worldPos = new Vector3(
-                                                    waypoint.X * gridToWorldMultiplier,
-                                                    followTarget.Pos.Y, // Keep same height
-                                                    waypoint.Y * gridToWorldMultiplier
-                                                );
-                                                _taskManager.AddTask(new TaskNode(worldPos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                                waypointsAdded++;
-                                            }
-
-                                            if (waypointsAdded == 0)
-                                            {
-                                                _core.LogMessage($"A* PATH EXTENSION: No valid waypoints found, falling back to direct extension");
-                                                _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                            }
-                                            else
-                                            {
-                                                _core.LogMessage($"A* PATH EXTENSION: Added {waypointsAdded} additional waypoints");
-                                            }
-                                        }
-                                        else
-                                        {
-                                            // A* failed or returned insufficient waypoints, fall back to direct extension
-                                            _core.LogMessage($"A* PATH EXTENSION: Pathfinding failed (got {extensionWaypoints?.Count ?? 0} waypoints), falling back to direct extension");
-                                            _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
-                                        }
-                                    }
-                                }
+                                _core.LogMessage($"ROUTE RECORDING: Extending path - Leader moved {distanceFromLastTask:F1} units from last waypoint");
+                                _taskManager.AddTask(new TaskNode(followTarget.Pos, _core.Settings.autoPilotPathfindingNodeDistance));
                             }
                         }
                         else

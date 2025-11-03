@@ -33,6 +33,18 @@ namespace BetterFollowbot;
         private DateTime _lastTeleportConfirmTime = DateTime.MinValue;
 
         /// <summary>
+        /// Gets a random action delay in milliseconds to make bot behavior less detectable
+        /// </summary>
+        private int GetRandomActionDelay()
+        {
+            if (BetterFollowbot.Instance.Settings.autoPilotRandomActionDelay.Value == 0)
+                return 0;
+            
+            // Return a random value between 0 and the configured max delay
+            return random.Next(0, BetterFollowbot.Instance.Settings.autoPilotRandomActionDelay.Value + 1);
+        }
+
+        /// <summary>
         /// Checks if any blocking UI elements are open that should prevent task execution
         /// </summary>
         private bool IsBlockingUiOpen()
@@ -926,6 +938,11 @@ namespace BetterFollowbot;
                 {
                     if (shouldDashToLeader)
                     {
+                        // Add random delay for less detectable behavior
+                        var randomDelay = GetRandomActionDelay();
+                        if (randomDelay > 0)
+                            await Task.Delay(randomDelay);
+
                         Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(FollowTargetPosition));
                         BetterFollowbot.Instance.LogMessage("Movement task: Dash mouse positioned, pressing key");
                         if (instantPathOptimization)
@@ -971,6 +988,11 @@ namespace BetterFollowbot;
                             continue;
                         }
 
+                        // Add random delay for less detectable behavior
+                        var randomDelay = GetRandomActionDelay();
+                        if (randomDelay > 0)
+                            await Task.Delay(randomDelay);
+
                         BetterFollowbot.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
                         BetterFollowbot.Instance.LogMessage($"Movement task: Move key: {BetterFollowbot.Instance.Settings.autoPilotMoveKey}");
                         Mouse.SetCursorPosHuman(movementScreenPos);
@@ -994,6 +1016,11 @@ namespace BetterFollowbot;
                     if (shouldTransitionAndContinue)
                     {
                         BetterFollowbot.Instance.LogMessage("TRANSITION: Starting portal click sequence");
+
+                        // Add random delay for less detectable behavior
+                        var randomDelay = GetRandomActionDelay();
+                        if (randomDelay > 0)
+                            await Task.Delay(randomDelay);
 
                         // Move mouse to portal position with multiple attempts
                         BetterFollowbot.Instance.LogMessage($"TRANSITION: Moving mouse to portal position ({transitionPos.X:F1}, {transitionPos.Y:F1})");
@@ -1067,6 +1094,11 @@ namespace BetterFollowbot;
  // Skip this dash and recalculate
                             continue;
                         }
+
+                        // Add random delay for less detectable behavior
+                        var randomDelay = GetRandomActionDelay();
+                        if (randomDelay > 0)
+                            await Task.Delay(randomDelay);
 
                         Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(currentTask.WorldPosition));
                         BetterFollowbot.Instance.LogMessage("Dash: Mouse positioned, pressing dash key");

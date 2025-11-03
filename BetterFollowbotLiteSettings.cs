@@ -33,6 +33,7 @@ public class BetterFollowbotSettings : ISettings
     public RangeNode<int> autoPilotPathfindingNodeDistance = new RangeNode<int>(200, 10, 1000);
     public RangeNode<int> autoPilotClearPathDistance = new RangeNode<int>(500, 100, 5000);
     public RangeNode<int> autoPilotDashDistance = new RangeNode<int>(500, 50, 2000);
+    public RangeNode<int> autoPilotRandomActionDelay = new RangeNode<int>(15, 0, 100);
 
     #endregion
         

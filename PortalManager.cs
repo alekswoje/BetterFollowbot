@@ -99,9 +99,16 @@ namespace BetterFollowbot
                 if (portal?.ItemOnGround == null) return false;
 
                 var entityType = portal.ItemOnGround.Type;
+                var metadata = portal.ItemOnGround.Metadata?.ToLower() ?? "";
                 
                 // Use entity type for reliable portal detection
                 if (entityType.ToString() == "TownPortal" || entityType.ToString() == "AreaTransition")
+                {
+                    return true;
+                }
+
+                // Check for map device portals (MultiplexPortal) using metadata
+                if (metadata.Contains("multiplexportal"))
                 {
                     return true;
                 }
@@ -161,9 +168,22 @@ namespace BetterFollowbot
                 BetterFollowbot.Instance.LogMessage($"SPECIAL AREA: Looking for portals matching '{targetAreaName}'");
 
                 // Get all portal-like objects using clean entity type filtering
+                // For map portals (MultiplexPortal), relax visibility requirements since they may not be fully loaded
                 var allPortalLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
-                        x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible && x.ItemOnGround != null &&
-                        IsValidPortal(x))
+                    {
+                        if (x == null || x.ItemOnGround == null) return false;
+                        
+                        // Map device portals (MultiplexPortal) - check without strict visibility requirements
+                        var metadata = x.ItemOnGround.Metadata?.ToLower() ?? "";
+                        if (metadata.Contains("multiplexportal"))
+                        {
+                            // Only require the label exists, not that it's fully visible yet
+                            return x.Label != null && x.Label.IsValid;
+                        }
+                        
+                        // For other portals, use normal visibility checks
+                        return x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible && IsValidPortal(x);
+                    })
                     .ToList();
 
                 if (allPortalLabels == null || allPortalLabels.Count == 0)

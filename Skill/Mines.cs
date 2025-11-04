@@ -281,7 +281,6 @@ namespace BetterFollowbot.Skill
                                     var rarityComponent = bestTarget.GetComponent<ObjectMagicProperties>();
                                     var rarity = rarityComponent?.Rarity.ToString() ?? "Unknown";
                                     var distance = Vector3.Distance(_instance.playerPosition, bestTarget.Pos);
-                                    var mineType = hasStormblastMine ? "Stormblast" : (hasPyroclastMine ? "Pyroclast" : "Portal");
                                     _instance.LogMessage($"MINES: Threw {mineType} mine at {bestTarget.Path} (Rarity: {rarity}, Distance: {distance:F1})");
 
                                     return true; // Skill was executed

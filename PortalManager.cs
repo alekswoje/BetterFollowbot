@@ -171,6 +171,33 @@ namespace BetterFollowbot
                 var allLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels?.ToList();
                 BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Total ItemsOnGroundLabels count: {allLabels?.Count ?? 0}");
 
+                // Check for ANY MultiplexPortal entities (even if filtered out)
+                var allMultiplexPortals = allLabels?.Where(x => 
+                    x != null && 
+                    x.ItemOnGround != null && 
+                    x.ItemOnGround.Metadata != null &&
+                    x.ItemOnGround.Metadata.ToLower().Contains("multiplexportal")
+                ).ToList();
+                
+                BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Found {allMultiplexPortals?.Count ?? 0} MultiplexPortal entities in total (before filtering)");
+                
+                if (allMultiplexPortals != null && allMultiplexPortals.Count > 0)
+                {
+                    for (int i = 0; i < allMultiplexPortals.Count && i < 5; i++)
+                    {
+                        var mp = allMultiplexPortals[i];
+                        var labelText = mp.Label?.Text ?? "NULL";
+                        var hasLabel = mp.Label != null;
+                        var labelIsValid = mp.Label?.IsValid ?? false;
+                        var labelIsVisible = mp.Label?.IsVisible ?? false;
+                        var isVisible = mp.IsVisible;
+                        var address = mp.Address.ToString("X");
+                        var distance = mp.ItemOnGround?.DistancePlayer ?? 0;
+                        
+                        BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG (MultiplexPortal Before Filter) [{i}]: Label='{labelText}', HasLabel={hasLabel}, LabelValid={labelIsValid}, LabelVisible={labelIsVisible}, IsVisible={isVisible}, Distance={distance:F1}, Address=0x{address}");
+                    }
+                }
+
                 // Get all portal-like objects using clean entity type filtering
                 // For map portals (MultiplexPortal), relax visibility requirements since they may not be fully loaded
                 var allPortalLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>

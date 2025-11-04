@@ -866,4 +866,4 @@ namespace BetterFollowbot.Core.Movement
                 t.Type == TaskNodeType.TeleportButton);
         }
     }
-}
+}the logs

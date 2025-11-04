@@ -289,11 +289,10 @@ namespace BetterFollowbot
                         var areaVariations = new[]
                         {
                             targetAreaLower,
-                            targetAreaLower.Replace("'s", "s"),
-                            targetAreaLower.Replace("s", "'s"),
-                            targetAreaLower.Replace(" ", ""),
-                            targetAreaLower.Replace(" ", "_"),
-                            targetAreaLower.Replace(" ", "-")
+                            targetAreaLower.Replace("'s", "s"),  // Remove apostrophes (Atzoatl's → Atzoatls)
+                            targetAreaLower.Replace(" ", ""),     // No spaces (arcane isle hideout → arcaneislehideout)
+                            targetAreaLower.Replace(" ", "_"),    // Underscores (arcane isle hideout → arcane_isle_hideout)
+                            targetAreaLower.Replace(" ", "-")     // Dashes (arcane isle hideout → arcane-isle-hideout)
                         };
 
                         BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Checking variations: {string.Join(", ", areaVariations)}");

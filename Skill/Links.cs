@@ -28,7 +28,7 @@ namespace BetterFollowbot.Skills
             _lastLinkTime = new System.Collections.Generic.Dictionary<string, DateTime>();
         }
 
-        public bool IsEnabled => _settings.linksEnabled || _settings.flameLinkEnabled || _settings.protectiveLinkEnabled;
+        public bool IsEnabled => _settings.linksEnabled || _settings.flameLinkEnabled || _settings.protectiveLinkEnabled || _settings.destructiveLinkEnabled;
 
         public string SkillName => "Links";
 
@@ -60,6 +60,11 @@ namespace BetterFollowbot.Skills
             {
                 ProcessLinkSkill(SkillInfo.protectiveLink, "bulwark_link_target", "protective_link");
             }
+
+            if (_settings.destructiveLinkEnabled)
+            {
+                ProcessLinkSkill(SkillInfo.destructiveLink, "destructive_link_target", "destructive_link");
+            }
         }
 
         /// <summary>
@@ -86,6 +91,13 @@ namespace BetterFollowbot.Skills
             {
                 var protectiveLinkTasks = CreateLinkTasks(SkillInfo.protectiveLink, "bulwark_link_target", "protective_link", TaskNodeType.ProtectiveLink);
                 tasks.AddRange(protectiveLinkTasks);
+            }
+            
+            // Create destructive link tasks
+            if (_settings.destructiveLinkEnabled)
+            {
+                var destructiveLinkTasks = CreateLinkTasks(SkillInfo.destructiveLink, "destructive_link_target", "destructive_link", TaskNodeType.DestructiveLink);
+                tasks.AddRange(destructiveLinkTasks);
             }
             
             return tasks;

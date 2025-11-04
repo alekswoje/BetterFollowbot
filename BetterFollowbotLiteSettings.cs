@@ -93,6 +93,7 @@ public class BetterFollowbotSettings : ISettings
     public TextNode minesLeaderDistance = new TextNode("500");
     public ToggleNode minesStormblastEnabled = new ToggleNode(true);
     public ToggleNode minesPyroclastEnabled = new ToggleNode(true);
+    public ToggleNode minesPortalEnabled = new ToggleNode(true);
     public RangeNode<int> maxMines = new RangeNode<int>(15, 1, 50);
 
     #endregion

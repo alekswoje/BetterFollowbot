@@ -366,6 +366,8 @@ internal class ImGuiDrawSettings
                     BetterFollowbot.Instance.Settings.minesStormblastEnabled.Value);
                 BetterFollowbot.Instance.Settings.minesPyroclastEnabled.Value = ImGuiExtension.Checkbox("Pyroclast",
                     BetterFollowbot.Instance.Settings.minesPyroclastEnabled.Value);
+                BetterFollowbot.Instance.Settings.minesPortalEnabled.Value = ImGuiExtension.Checkbox("Portal",
+                    BetterFollowbot.Instance.Settings.minesPortalEnabled.Value);
                 BetterFollowbot.Instance.Settings.maxMines.Value = ImGuiExtension.IntSlider("Max Mines",
                     BetterFollowbot.Instance.Settings.maxMines);
             }

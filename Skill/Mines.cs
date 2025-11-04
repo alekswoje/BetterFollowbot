@@ -129,19 +129,23 @@ namespace BetterFollowbot.Skill
 
             try
             {
-                // Check if we have either stormblast or pyroclast mine skills enabled
+                // Check if we have stormblast, pyroclast, or portal mine skills enabled
                 // Use more flexible detection for pyroclast mine
                 var hasStormblastMine = _settings.minesStormblastEnabled && skill.Id == SkillInfo.stormblastMine.Id;
                 var hasPyroclastMine = _settings.minesPyroclastEnabled && 
                     (skill.Id == SkillInfo.pyroclastMine.Id || 
                      skill.InternalName?.ToLower().Contains("pyroclast") == true);
+                var hasPortalMine = _settings.minesPortalEnabled && 
+                    (skill.Id == SkillInfo.portalMine.Id || 
+                     skill.InternalName?.ToLower().Contains("portal") == true);
 
-                if (hasStormblastMine || hasPyroclastMine)
+                if (hasStormblastMine || hasPyroclastMine || hasPortalMine)
                 {
-                    _instance.LogMessage($"MINES: Found {(hasStormblastMine ? "Stormblast" : "Pyroclast")} mine skill (ID: {skill.Id}, InternalName: {skill.InternalName})");
+                    var mineType = hasStormblastMine ? "Stormblast" : (hasPyroclastMine ? "Pyroclast" : "Portal");
+                    _instance.LogMessage($"MINES: Found {mineType} mine skill (ID: {skill.Id}, InternalName: {skill.InternalName})");
 
                     // Check cooldown
-                    var mineSkill = hasStormblastMine ? SkillInfo.stormblastMine : SkillInfo.pyroclastMine;
+                    var mineSkill = hasStormblastMine ? SkillInfo.stormblastMine : (hasPyroclastMine ? SkillInfo.pyroclastMine : SkillInfo.portalMine);
                     if (SkillInfo.ManageCooldown(mineSkill, skill))
                     {
                         // Parse mines range from text input, default to 35 if invalid
@@ -277,7 +281,8 @@ namespace BetterFollowbot.Skill
                                     var rarityComponent = bestTarget.GetComponent<ObjectMagicProperties>();
                                     var rarity = rarityComponent?.Rarity.ToString() ?? "Unknown";
                                     var distance = Vector3.Distance(_instance.playerPosition, bestTarget.Pos);
-                                    _instance.LogMessage($"MINES: Threw {(hasStormblastMine ? "Stormblast" : "Pyroclast")} mine at {bestTarget.Path} (Rarity: {rarity}, Distance: {distance:F1})");
+                                    var mineType = hasStormblastMine ? "Stormblast" : (hasPyroclastMine ? "Pyroclast" : "Portal");
+                                    _instance.LogMessage($"MINES: Threw {mineType} mine at {bestTarget.Path} (Rarity: {rarity}, Distance: {distance:F1})");
 
                                     return true; // Skill was executed
                                 }
@@ -306,7 +311,8 @@ namespace BetterFollowbot.Skill
                     .Where(entity => entity != null && entity.IsValid && entity.IsAlive && 
                            (entity.Path?.ToLower().Contains("mine") == true || 
                             entity.Path?.ToLower().Contains("stormblast") == true ||
-                            entity.Path?.ToLower().Contains("pyroclast") == true))
+                            entity.Path?.ToLower().Contains("pyroclast") == true ||
+                            entity.Path?.ToLower().Contains("portal") == true))
                     .ToList();
 
                 return mineEntities.Count;

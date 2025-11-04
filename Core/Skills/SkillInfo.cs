@@ -90,6 +90,7 @@ internal static class SkillInfo
     // Mine Skills
     internal static Skill stormblastMine = new Skill();
     internal static Skill pyroclastMine = new Skill();
+    internal static Skill portalMine = new Skill();
 
     // Rejuvenation Totem
     internal static Skill rejuvenationTotem = new Skill();
@@ -170,6 +171,7 @@ internal static class SkillInfo
         vaalDiscipline = new Skill();
         stormblastMine = new Skill();
         pyroclastMine = new Skill();
+        portalMine = new Skill();
         rejuvenationTotem = new Skill();
         ancestralCry = new Skill();
         infernalCry = new Skill();
@@ -549,6 +551,13 @@ internal static class SkillInfo
                     pyroclastMine.Id = skill.Id;
                     BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Pyroclast Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
+                case "portal":
+                case "Portal":
+                case "PortalMine":
+                case "portal_mine":
+                    portalMine.Id = skill.Id;
+                    BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Portal Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    break;
                 case "rejuvenation_totem":
                     rejuvenationTotem.Id = skill.Id;
                     rejuvenationTotem.BuffName = "totem_aura_life_regen";
@@ -598,7 +607,8 @@ internal static class SkillInfo
                     else if (skill.InternalName.ToLower().Contains("mine") ||
                              skill.InternalName.ToLower().Contains("stormblast") ||
                              skill.InternalName.ToLower().Contains("pyroclast") ||
-                             skill.InternalName.ToLower().Contains("pyroclastminealtx"))
+                             skill.InternalName.ToLower().Contains("pyroclastminealtx") ||
+                             skill.InternalName.ToLower().Contains("portal"))
                     {
                         BetterFollowbot.Instance?.LogMessage($"POTENTIAL MINE SKILL: {skill.InternalName} - ID: {skill.Id}");
                         
@@ -607,6 +617,12 @@ internal static class SkillInfo
                         {
                             pyroclastMine.Id = skill.Id;
                             BetterFollowbot.Instance?.LogMessage($"AUTO-DETECTED: Pyroclast Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                        }
+                        // Set the skill ID for portal mine if it contains portal and mine
+                        else if (skill.InternalName.ToLower().Contains("portal") && skill.InternalName.ToLower().Contains("mine"))
+                        {
+                            portalMine.Id = skill.Id;
+                            BetterFollowbot.Instance?.LogMessage($"AUTO-DETECTED: Portal Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
                         }
                     }
                     // Log warcry skills that might have different names

@@ -167,6 +167,10 @@ namespace BetterFollowbot
 
                 BetterFollowbot.Instance.LogMessage($"SPECIAL AREA: Looking for portals matching '{targetAreaName}'");
 
+                // First, let's see ALL ItemsOnGroundLabels to understand what we're working with
+                var allLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels?.ToList();
+                BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Total ItemsOnGroundLabels count: {allLabels?.Count ?? 0}");
+
                 // Get all portal-like objects using clean entity type filtering
                 // For map portals (MultiplexPortal), relax visibility requirements since they may not be fully loaded
                 var allPortalLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
@@ -186,13 +190,60 @@ namespace BetterFollowbot
                     })
                     .ToList();
 
+                BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Found {allPortalLabels?.Count ?? 0} portal objects after filtering");
+                
+                if (allPortalLabels != null && allPortalLabels.Count > 0)
+                {
+                    // Log details about each portal found
+                    for (int i = 0; i < allPortalLabels.Count && i < 10; i++) // Limit to 10 to avoid spam
+                    {
+                        var portal = allPortalLabels[i];
+                        var labelText = portal.Label?.Text ?? "NULL";
+                        var metadata = portal.ItemOnGround?.Metadata ?? "NULL";
+                        var entityType = portal.ItemOnGround?.Type.ToString() ?? "NULL";
+                        var distance = portal.ItemOnGround?.DistancePlayer ?? 0;
+                        var isVisible = portal.IsVisible;
+                        var labelIsVisible = portal.Label?.IsVisible ?? false;
+                        
+                        BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG [{i}]: Label='{labelText}', Metadata='{metadata}', Type={entityType}, Distance={distance:F1}, IsVisible={isVisible}, LabelVisible={labelIsVisible}");
+                    }
+                }
+
                 if (allPortalLabels == null || allPortalLabels.Count == 0)
                 {
-                    BetterFollowbot.Instance.LogMessage("SPECIAL AREA: No portal objects found");
+                    BetterFollowbot.Instance.LogMessage("SPECIAL AREA: No portal objects found after filtering");
+                    
+                    // Debug: Check if there are ANY MultiplexPortal entities at all
+                    var multiplexPortals = allLabels?.Where(x => 
+                        x != null && 
+                        x.ItemOnGround != null && 
+                        x.ItemOnGround.Metadata != null &&
+                        x.ItemOnGround.Metadata.ToLower().Contains("multiplexportal")
+                    ).ToList();
+                    
+                    BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Found {multiplexPortals?.Count ?? 0} MultiplexPortal entities (unfiltered)");
+                    
+                    if (multiplexPortals != null && multiplexPortals.Count > 0)
+                    {
+                        for (int i = 0; i < multiplexPortals.Count && i < 5; i++)
+                        {
+                            var portal = multiplexPortals[i];
+                            var labelText = portal.Label?.Text ?? "NULL";
+                            var hasLabel = portal.Label != null;
+                            var labelIsValid = portal.Label?.IsValid ?? false;
+                            var labelIsVisible = portal.Label?.IsVisible ?? false;
+                            var isVisible = portal.IsVisible;
+                            
+                            BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG (Unfiltered) [{i}]: Label='{labelText}', HasLabel={hasLabel}, LabelValid={labelIsValid}, LabelVisible={labelIsVisible}, IsVisible={isVisible}");
+                        }
+                    }
+                    
                     return null;
                 }
 
                 // Look for portals that match the target area name
+                BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Starting portal matching for target '{targetAreaName}'");
+                
                 var matchingPortals = allPortalLabels.Where(x =>
                 {
                     try
@@ -200,8 +251,12 @@ namespace BetterFollowbot
                         var labelText = x.Label?.Text?.ToLower() ?? "";
                         var targetAreaLower = targetAreaName.ToLower();
 
+                        BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Checking portal label '{labelText}' against target '{targetAreaLower}'");
+
                         // Check if portal label contains the target area name
                         var matchesArea = labelText.Contains(targetAreaLower) || targetAreaLower.Contains(labelText);
+                        
+                        BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Direct match result: {matchesArea} (labelText.Contains={labelText.Contains(targetAreaLower)}, targetAreaLower.Contains={targetAreaLower.Contains(labelText)})");
                         
                         // Also check for common variations
                         var areaVariations = new[]
@@ -214,12 +269,20 @@ namespace BetterFollowbot
                             targetAreaLower.Replace(" ", "-")
                         };
 
+                        BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Checking variations: {string.Join(", ", areaVariations)}");
+
                         var matchesVariation = areaVariations.Any(variation => 
                             labelText.Contains(variation) || variation.Contains(labelText));
+
+                        BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Variation match result: {matchesVariation}");
 
                         if (matchesArea || matchesVariation)
                         {
                             BetterFollowbot.Instance.LogMessage($"SPECIAL AREA: Found matching portal '{x.Label?.Text}' for area '{targetAreaName}'");
+                        }
+                        else
+                        {
+                            BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: No match for portal '{x.Label?.Text}'");
                         }
 
                         return matchesArea || matchesVariation;

@@ -481,9 +481,20 @@ namespace BetterFollowbot;
             {
                 // Get all portal-like objects using clean entity type filtering
                 var allPortalLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
-                        x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible && x.ItemOnGround != null &&
-                        IsValidPortal(x))
-                    .ToList();
+                {
+                    if (x == null || x.ItemOnGround == null) return false;
+                    
+                    var metadata = x.ItemOnGround.Metadata?.ToLower() ?? "";
+                    
+                    // Map device portals (MultiplexPortal) - relax visibility requirements since they may not be fully loaded
+                    if (metadata.Contains("multiplexportal"))
+                    {
+                        return x.Label != null && x.Label.IsValid && IsValidPortal(x);
+                    }
+                    
+                    // For other portals, use normal visibility checks
+                    return x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible && IsValidPortal(x);
+                }).ToList();
 
                 BetterFollowbot.Instance.LogMessage($"PORTAL SEARCH: Found {allPortalLabels.Count} portal objects on ground");
                 foreach (var portal in allPortalLabels.Take(5)) // Log first 5 to avoid spam
@@ -1238,12 +1249,24 @@ namespace BetterFollowbot;
         {
             var portalLabels =
                 BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
-                    x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
-                    x.ItemOnGround != null &&
-                    (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") ||
-                     x.ItemOnGround.Metadata.ToLower().Contains("portal") ||
-                     x.ItemOnGround.Metadata.ToLower().Contains("transition") ||
-                     PortalManager.IsSpecialPortal(x.Label?.Text?.ToLower() ?? ""))).ToList();
+                {
+                    if (x == null || x.ItemOnGround == null) return false;
+                    
+                    var metadata = x.ItemOnGround.Metadata?.ToLower() ?? "";
+                    
+                    // Map device portals (MultiplexPortal) - relax visibility requirements since they may not be fully loaded
+                    if (metadata.Contains("multiplexportal"))
+                    {
+                        return x.Label != null && x.Label.IsValid;
+                    }
+                    
+                    // For other portals, use normal visibility checks
+                    return x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
+                           (metadata.Contains("areatransition") ||
+                            metadata.Contains("portal") ||
+                            metadata.Contains("transition") ||
+                            PortalManager.IsSpecialPortal(x.Label?.Text?.ToLower() ?? ""));
+                }).ToList();
 
             foreach (var portal in portalLabels)
             {

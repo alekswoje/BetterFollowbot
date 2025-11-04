@@ -89,7 +89,7 @@ public class BetterFollowbotSettings : ISettings
     #region Mines
 
     public ToggleNode minesEnabled = new ToggleNode(false);
-    public TextNode minesRange = new TextNode("350");
+    public TextNode minesRange = new TextNode("100");
     public TextNode minesLeaderDistance = new TextNode("500");
     public ToggleNode minesStormblastEnabled = new ToggleNode(true);
     public ToggleNode minesPyroclastEnabled = new ToggleNode(true);

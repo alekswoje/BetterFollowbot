@@ -135,9 +135,11 @@ namespace BetterFollowbot.Skill
                 var hasPyroclastMine = _settings.minesPyroclastEnabled && 
                     (skill.Id == SkillInfo.pyroclastMine.Id || 
                      skill.InternalName?.ToLower().Contains("pyroclast") == true);
+                // Portal mine - make sure we don't match town_portal or regular portal
                 var hasPortalMine = _settings.minesPortalEnabled && 
-                    (skill.Id == SkillInfo.portalMine.Id || 
-                     skill.InternalName?.ToLower().Contains("portal") == true);
+                    skill.Id == SkillInfo.portalMine.Id &&
+                    skill.InternalName?.ToLower() != "town_portal" &&
+                    skill.InternalName?.ToLower() != "portal";
 
                 if (hasStormblastMine || hasPyroclastMine || hasPortalMine)
                 {

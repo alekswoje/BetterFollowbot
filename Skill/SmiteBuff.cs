@@ -127,11 +127,10 @@ namespace BetterFollowbot.Skills
                     _instance.LogMessage($"SMITE DEBUG: SkillInfo.smite.Cooldown: {SkillInfo.smite.Cooldown}");
                     _instance.LogMessage($"SMITE DEBUG: skill.RemainingUses: {skill.RemainingUses}, skill.IsOnCooldown: {skill.IsOnCooldown}");
                     
-                    // Less restrictive cooldown for smite buff (reduced from 100ms to 25ms)
-                    if (SkillInfo.smite.Cooldown <= 0 &&
-                        !(skill.RemainingUses <= 0 && skill.IsOnCooldown))
+                    // Use ManageCooldown to properly handle cooldown timing
+                    if (SkillInfo.ManageCooldown(SkillInfo.smite, skill))
                     {
-                        _instance.LogMessage("SMITE DEBUG: Passed cooldown check");
+                        _instance.LogMessage("SMITE DEBUG: Passed cooldown check (ManageCooldown returned true)");
                         
                         // Check mana cost
                         if (!skill.Stats.TryGetValue(GameStat.ManaCost, out var manaCost))
@@ -170,8 +169,8 @@ namespace BetterFollowbot.Skills
                                     _instance.LogMessage($"SMITE DEBUG: Pressing key {skillKey}");
                                     Keyboard.KeyPress(skillKey);
                                     _instance.RecordSkillUse("SmiteBuff");
-                                    // Reduced cooldown from 100ms to 25ms for more frequent casting
-                                    SkillInfo.smite.Cooldown = 25;
+                                    // Set cooldown in milliseconds (100ms = 0.1s) - ManageCooldown will handle the countdown
+                                    SkillInfo.smite.Cooldown = 100;
                                     _instance.LastTimeAny = DateTime.Now; // Update global cooldown
 
                                     _instance.LogMessage($"SMITE: Cast successfully (Buff: {hasSmiteBuff}, TimeLeft: {buffTimeLeft:F1}s)");

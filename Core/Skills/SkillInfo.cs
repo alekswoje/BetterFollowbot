@@ -551,10 +551,10 @@ internal static class SkillInfo
                     pyroclastMine.Id = skill.Id;
                     BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Pyroclast Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
-                case "portal":
-                case "Portal":
                 case "PortalMine":
                 case "portal_mine":
+                case "PortalMineOfDisruption":
+                case "portal_mine_of_disruption":
                     portalMine.Id = skill.Id;
                     BetterFollowbot.Instance?.LogMessage($"SKILL DETECTED: Portal Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
@@ -607,8 +607,7 @@ internal static class SkillInfo
                     else if (skill.InternalName.ToLower().Contains("mine") ||
                              skill.InternalName.ToLower().Contains("stormblast") ||
                              skill.InternalName.ToLower().Contains("pyroclast") ||
-                             skill.InternalName.ToLower().Contains("pyroclastminealtx") ||
-                             skill.InternalName.ToLower().Contains("portal"))
+                             skill.InternalName.ToLower().Contains("pyroclastminealtx"))
                     {
                         BetterFollowbot.Instance?.LogMessage($"POTENTIAL MINE SKILL: {skill.InternalName} - ID: {skill.Id}");
                         
@@ -618,8 +617,10 @@ internal static class SkillInfo
                             pyroclastMine.Id = skill.Id;
                             BetterFollowbot.Instance?.LogMessage($"AUTO-DETECTED: Pyroclast Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
                         }
-                        // Set the skill ID for portal mine if it contains portal and mine
-                        else if (skill.InternalName.ToLower().Contains("portal") && skill.InternalName.ToLower().Contains("mine"))
+                        // Set the skill ID for portal mine if it contains "portal" AND "mine" but NOT "town"
+                        else if (skill.InternalName.ToLower().Contains("portal") && 
+                                 skill.InternalName.ToLower().Contains("mine") &&
+                                 !skill.InternalName.ToLower().Contains("town"))
                         {
                             portalMine.Id = skill.Id;
                             BetterFollowbot.Instance?.LogMessage($"AUTO-DETECTED: Portal Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");

@@ -338,9 +338,61 @@ namespace BetterFollowbot
                     }
                     else
                     {
-                        BetterFollowbot.Instance.LogMessage($"PORTAL TRANSITION: Leader moved {distanceMoved:F0} units but is still in same zone ('{currentZone}') - NOT a portal transition, just long distance movement");
+                        // Check if there's a portal nearby - some zones have portals within the same area (e.g., Glacier)
+                        var botPosition = BetterFollowbot.Instance.GameController?.Player?.GetComponent<ExileCore.PoEMemory.Components.Render>()?.Pos;
+                        if (botPosition.HasValue)
+                        {
+                            var portalDetectionRange = BetterFollowbot.Instance.Settings.autoPilotClearPathDistance.Value;
+                            var nearbyPortals = GetNearbyPortals(botPosition.Value, portalDetectionRange);
+                            if (nearbyPortals.Any())
+                            {
+                                BetterFollowbot.Instance.LogMessage($"PORTAL TRANSITION: Leader moved {distanceMoved:F0} units in same zone ('{currentZone}') BUT found {nearbyPortals.Count} nearby portal(s) within {portalDetectionRange} units - activating portal transition mode");
+                                portalLocation = Vector3.One; // Activate portal transition mode
+                                BetterFollowbot.Instance.LogMessage($"PORTAL TRANSITION: Portal transition mode activated - IsInPortalTransition: {IsInPortalTransition}");
+                            }
+                            else
+                            {
+                                BetterFollowbot.Instance.LogMessage($"PORTAL TRANSITION: Leader moved {distanceMoved:F0} units in same zone ('{currentZone}') with no nearby portals within {portalDetectionRange} units - NOT a portal transition, just long distance movement");
+                            }
+                        }
+                        else
+                        {
+                            BetterFollowbot.Instance.LogMessage($"PORTAL TRANSITION: Leader moved {distanceMoved:F0} units but is still in same zone ('{currentZone}') - NOT a portal transition, just long distance movement");
+                        }
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Gets all portals within a certain distance of a position
+        /// </summary>
+        private List<LabelOnGround> GetNearbyPortals(Vector3 position, float maxDistance)
+        {
+            try
+            {
+                var allPortalLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels?.Where(x =>
+                {
+                    if (x == null || x.ItemOnGround == null) return false;
+                    
+                    // Check if it's a valid portal
+                    if (!IsValidPortal(x)) return false;
+                    
+                    // Check distance
+                    var portalPos = x.ItemOnGround.GetComponent<ExileCore.PoEMemory.Components.Render>()?.Pos;
+                    if (!portalPos.HasValue) return false;
+                    
+                    var distance = Vector3.Distance(position, portalPos.Value);
+                    return distance <= maxDistance;
+                })
+                .ToList();
+
+                return allPortalLabels ?? new List<LabelOnGround>();
+            }
+            catch (Exception e)
+            {
+                BetterFollowbot.Instance.LogMessage($"ERROR: Exception in GetNearbyPortals: {e.Message}");
+                return new List<LabelOnGround>();
             }
         }
 

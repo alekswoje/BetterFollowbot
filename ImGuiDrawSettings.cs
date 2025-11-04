@@ -112,7 +112,7 @@ internal class ImGuiDrawSettings
                 BetterFollowbot.Instance.Settings.autoPilotPathfindingNodeDistance.Value =
                     ImGuiExtension.IntSlider("Follow Distance", BetterFollowbot.Instance.Settings.autoPilotPathfindingNodeDistance);
                 BetterFollowbot.Instance.Settings.autoPilotClearPathDistance.Value =
-                    ImGuiExtension.IntSlider("Transition Dist", BetterFollowbot.Instance.Settings.autoPilotClearPathDistance);
+                    ImGuiExtension.IntSlider("Transition/Portal Detection Range", BetterFollowbot.Instance.Settings.autoPilotClearPathDistance);
                 BetterFollowbot.Instance.Settings.autoPilotRandomActionDelay.Value =
                     ImGuiExtension.IntSlider("Random Action Delay (ms)", BetterFollowbot.Instance.Settings.autoPilotRandomActionDelay);
             }

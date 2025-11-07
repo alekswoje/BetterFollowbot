@@ -9,6 +9,20 @@ using SharpDX;
 
 namespace BetterFollowbot
 {
+    public class LabelAddressComparer : IEqualityComparer<LabelOnGround>
+    {
+        public bool Equals(LabelOnGround x, LabelOnGround y)
+        {
+            if (x == null || y == null) return false;
+            return x.Address == y.Address;
+        }
+
+        public int GetHashCode(LabelOnGround obj)
+        {
+            return obj?.Address.GetHashCode() ?? 0;
+        }
+    }
+
     /// <summary>
     /// Manages all portal-related functionality for the bot
     /// </summary>
@@ -478,13 +492,13 @@ namespace BetterFollowbot
                             .ToList();
                         
                         portalEntities.AddRange(directPortals);
-                        BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Found {directPortals.Count} portal entities using direct Entities collection (TownPortal + AreaTransition)");
+                        BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Found {directPortals.Count} portal entities using direct Entities collection");
                     }
                 }
                 
                 var allLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels?.ToList();
-                
                 var matchedLabels = new List<LabelOnGround>();
+                
                 foreach (var entity in portalEntities)
                 {
                     if (entity == null) continue;
@@ -498,14 +512,33 @@ namespace BetterFollowbot
                         matchedLabels.Add(matchingLabel);
                         BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Matched entity to label '{matchingLabel.Label?.Text}' at distance {entity.DistancePlayer:F1}");
                     }
-                    else
-                    {
-                        BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Entity at {entity.Pos} has no matching label (Type: {entity.Type})");
-                    }
                 }
                 
                 BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Matched {matchedLabels.Count} portal entities to labels");
-                return matchedLabels;
+                
+                var labelsFromItemsOnGround = allLabels?.Where(x =>
+                {
+                    if (x == null || x.ItemOnGround == null) return false;
+                    
+                    var metadata = x.ItemOnGround.Metadata?.ToLower() ?? "";
+                    var entityType = x.ItemOnGround.Type;
+                    
+                    if (entityType == ExileCore.Shared.Enums.EntityType.TownPortal || 
+                        entityType == ExileCore.Shared.Enums.EntityType.AreaTransition)
+                        return true;
+                    
+                    if (metadata.Contains("multiplexportal"))
+                        return true;
+                    
+                    return false;
+                }).ToList() ?? new List<LabelOnGround>();
+                
+                BetterFollowbot.Instance.LogMessage($"PORTAL ITEMSONGROUND DEBUG: Found {labelsFromItemsOnGround.Count} portals from ItemsOnGroundLabels");
+                
+                var combinedResults = matchedLabels.Union(labelsFromItemsOnGround, new LabelAddressComparer()).ToList();
+                BetterFollowbot.Instance.LogMessage($"PORTAL COMBINED DEBUG: Combined total: {combinedResults.Count} unique portals (entities: {matchedLabels.Count}, labels: {labelsFromItemsOnGround.Count})");
+                
+                return combinedResults;
             }
             catch (Exception ex)
             {

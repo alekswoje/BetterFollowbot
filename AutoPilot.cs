@@ -136,14 +136,10 @@ namespace BetterFollowbot;
                     var updateDuration = DateTime.Now - updateStartTime;
                     BetterFollowbot.Instance.LogMessage($"AUTOPILOT: [{DateTime.Now:HH:mm:ss.fff}] Follow target moved {distanceMoved:F0} units (possible zone transition) from {lastTargetPosition} to {newPosition} (update took {updateDuration.TotalMilliseconds:F0}ms)");
                 }
-                else if (newPosition != lastTargetPosition)
-                {
-                    lastTargetPosition = newPosition;
-                }
             }
 
             portalManager.DetectPortalTransition(lastTargetPosition, newPosition, leaderZoneName);
-
+            
             lastTargetPosition = newPosition;
 
             var totalUpdateDuration = DateTime.Now - updateStartTime;

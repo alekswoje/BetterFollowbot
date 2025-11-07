@@ -448,14 +448,39 @@ namespace BetterFollowbot
         {
             try
             {
-                var townPortals = BetterFollowbot.Instance.GameController?.EntityListWrapper?.ValidEntitiesByType[ExileCore.Shared.Enums.EntityType.TownPortal];
-                var areaTransitions = BetterFollowbot.Instance.GameController?.EntityListWrapper?.ValidEntitiesByType[ExileCore.Shared.Enums.EntityType.AreaTransition];
-                
                 var portalEntities = new List<Entity>();
-                if (townPortals != null) portalEntities.AddRange(townPortals);
-                if (areaTransitions != null) portalEntities.AddRange(areaTransitions);
                 
-                BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Found {townPortals?.Count ?? 0} TownPortal entities, {areaTransitions?.Count ?? 0} AreaTransition entities");
+                try
+                {
+                    var townPortals = BetterFollowbot.Instance.GameController?.EntityListWrapper?.ValidEntitiesByType[ExileCore.Shared.Enums.EntityType.TownPortal];
+                    var areaTransitions = BetterFollowbot.Instance.GameController?.EntityListWrapper?.ValidEntitiesByType[ExileCore.Shared.Enums.EntityType.AreaTransition];
+                    
+                    if (townPortals != null) portalEntities.AddRange(townPortals);
+                    if (areaTransitions != null) portalEntities.AddRange(areaTransitions);
+                    
+                    BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Found {townPortals?.Count ?? 0} TownPortal entities, {areaTransitions?.Count ?? 0} AreaTransition entities from ValidEntitiesByType");
+                }
+                catch
+                {
+                    BetterFollowbot.Instance.LogMessage("PORTAL ENTITY DEBUG: ValidEntitiesByType failed, using fallback");
+                }
+                
+                if (portalEntities.Count == 0)
+                {
+                    var allEntities = BetterFollowbot.Instance.GameController?.Entities;
+                    if (allEntities != null)
+                    {
+                        var directPortals = allEntities.Where(x => 
+                            x != null && 
+                            x.IsValid && 
+                            (x.Type == ExileCore.Shared.Enums.EntityType.TownPortal || 
+                             x.Type == ExileCore.Shared.Enums.EntityType.AreaTransition))
+                            .ToList();
+                        
+                        portalEntities.AddRange(directPortals);
+                        BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Found {directPortals.Count} portal entities using direct Entities collection (TownPortal + AreaTransition)");
+                    }
+                }
                 
                 var allLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels?.ToList();
                 

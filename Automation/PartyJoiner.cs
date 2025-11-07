@@ -254,13 +254,11 @@ namespace BetterFollowbot.Automation
                                                             BetterFollowbot.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: {inviteType} mouse positioning failed - too far from target ({distanceFromTarget:F1})");
                                                         }
 
-                                                        // Update cooldowns
                                                         _instance.LastTimeAny = DateTime.Now;
                                                         _lastAutoJoinPartyAttempt = DateTime.Now;
                                                     }
                                                     else
                                                     {
-                                                        // Only log button not found occasionally to avoid spam
                                                         var timeSinceLastLog = (DateTime.Now - _lastAutoJoinPartyAttempt).TotalSeconds;
                                                         if (timeSinceLastLog >= 20.0)
                                                         {

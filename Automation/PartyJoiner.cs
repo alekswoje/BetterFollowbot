@@ -111,8 +111,9 @@ namespace BetterFollowbot.Automation
                                             {
                                                 inviterName = invite.Name ?? "";
                                             }
-                                            catch
+                                            catch (Exception nameEx)
                                             {
+                                                BetterFollowbot.Instance.LogMessage($"INVITE DEBUG: Could not get invite.Name - {nameEx.Message}");
                                             }
 
                                             var leaderNames = _settings.autoPilotLeader.Value;
@@ -202,24 +203,17 @@ namespace BetterFollowbot.Automation
                                                             }
                                                             else if (inviteType == "TRADE")
                                                             {
+                                                                BetterFollowbot.Instance.LogMessage("AUTO JOIN PARTY & ACCEPT TRADE: Trade invite accepted, waiting for trade window");
+                                                                Thread.Sleep(500);
+                                                                
                                                                 var tradePanel = GetTradePanel();
-                                                                success = tradePanel != null && tradePanel.IsVisible;
+                                                                success = tradePanel != null;
 
-                                                                if (success)
+                                                                if (success && _settings.autoDumpInventoryOnTrade.Value)
                                                                 {
-                                                                    BetterFollowbot.Instance.LogMessage("AUTO JOIN PARTY & ACCEPT TRADE: Successfully opened trade window!");
-                                                                    BetterFollowbot.Instance.LogMessage($"TRADE DEBUG: autoDumpInventoryOnTrade={_settings.autoDumpInventoryOnTrade.Value}");
-                                                                    
-                                                                    if (_settings.autoDumpInventoryOnTrade.Value)
-                                                                    {
-                                                                        BetterFollowbot.Instance.LogMessage("TRADE DEBUG: Waiting 200ms before dumping inventory");
-                                                                        Thread.Sleep(200);
-                                                                        DumpInventoryToTrade();
-                                                                    }
-                                                                }
-                                                                else
-                                                                {
-                                                                    BetterFollowbot.Instance.LogMessage($"TRADE DEBUG: Trade panel check - Panel null: {tradePanel == null}, Visible: {tradePanel?.IsVisible}");
+                                                                    BetterFollowbot.Instance.LogMessage("AUTO JOIN PARTY & ACCEPT TRADE: Trade window detected, dumping inventory");
+                                                                    Thread.Sleep(300);
+                                                                    DumpInventoryToTrade();
                                                                 }
                                                             }
 
@@ -243,24 +237,17 @@ namespace BetterFollowbot.Automation
                                                                 }
                                                                 else if (inviteType == "TRADE")
                                                                 {
+                                                                    BetterFollowbot.Instance.LogMessage("AUTO JOIN PARTY & ACCEPT TRADE: Trade invite accepted on second attempt, waiting for trade window");
+                                                                    Thread.Sleep(500);
+                                                                    
                                                                     var tradePanel = GetTradePanel();
-                                                                    success = tradePanel != null && tradePanel.IsVisible;
+                                                                    success = tradePanel != null;
 
-                                                                    if (success)
+                                                                    if (success && _settings.autoDumpInventoryOnTrade.Value)
                                                                     {
-                                                                        BetterFollowbot.Instance.LogMessage("AUTO JOIN PARTY & ACCEPT TRADE: Successfully opened trade window on second attempt!");
-                                                                        BetterFollowbot.Instance.LogMessage($"TRADE DEBUG: autoDumpInventoryOnTrade={_settings.autoDumpInventoryOnTrade.Value}");
-                                                                        
-                                                                        if (_settings.autoDumpInventoryOnTrade.Value)
-                                                                        {
-                                                                            BetterFollowbot.Instance.LogMessage("TRADE DEBUG: Waiting 200ms before dumping inventory (second attempt)");
-                                                                            Thread.Sleep(200);
-                                                                            DumpInventoryToTrade();
-                                                                        }
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        BetterFollowbot.Instance.LogMessage($"TRADE DEBUG (2nd attempt): Trade panel check - Panel null: {tradePanel == null}, Visible: {tradePanel?.IsVisible}");
+                                                                        BetterFollowbot.Instance.LogMessage("AUTO JOIN PARTY & ACCEPT TRADE: Trade window detected, dumping inventory (second attempt)");
+                                                                        Thread.Sleep(300);
+                                                                        DumpInventoryToTrade();
                                                                     }
                                                                 }
 
@@ -330,11 +317,11 @@ namespace BetterFollowbot.Automation
                 }
 
                 var tradePanel = GetTradePanel();
-                BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP DEBUG: Trade panel - Null: {tradePanel == null}, Visible: {tradePanel?.IsVisible}");
+                BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP DEBUG: Trade panel - Null: {tradePanel == null}");
                 
-                if (tradePanel == null || !tradePanel.IsVisible)
+                if (tradePanel == null)
                 {
-                    BetterFollowbot.Instance.LogMessage("INVENTORY DUMP: Trade window not visible");
+                    BetterFollowbot.Instance.LogMessage("INVENTORY DUMP: Trade window not found");
                     return;
                 }
 
@@ -415,11 +402,11 @@ namespace BetterFollowbot.Automation
             try
             {
                 var tradePanel = GetTradePanel();
-                BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Trade panel - Null: {tradePanel == null}, Visible: {tradePanel?.IsVisible}");
+                BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Trade panel - Null: {tradePanel == null}");
                 
-                if (tradePanel == null || !tradePanel.IsVisible)
+                if (tradePanel == null)
                 {
-                    BetterFollowbot.Instance.LogMessage("AUTO CLICK TRADE ACCEPT: Trade window not visible");
+                    BetterFollowbot.Instance.LogMessage("AUTO CLICK TRADE ACCEPT: Trade window not found");
                     return;
                 }
 

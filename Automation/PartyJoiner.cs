@@ -352,7 +352,7 @@ namespace BetterFollowbot.Automation
                 foreach (var item in itemsToDump)
                 {
                     var tradePanelCheck = GetTradePanel();
-                    if (tradePanelCheck == null || !tradePanelCheck.IsVisible)
+                    if (tradePanelCheck == null)
                     {
                         BetterFollowbot.Instance.LogMessage("INVENTORY DUMP: Trade window closed, aborting");
                         break;

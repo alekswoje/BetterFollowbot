@@ -28,7 +28,6 @@ namespace BetterFollowbot.Automation
 
         public string AutomationName => "Auto Join Party & Trade";
 
-        // Method to get trade panel (used internally by this class)
         private dynamic GetTradePanel()
         {
             try
@@ -43,21 +42,17 @@ namespace BetterFollowbot.Automation
 
         public void Execute()
         {
-            // Check if auto join party & accept trade is enabled and enough time has passed since last attempt (0.5 second cooldown)
             var timeSinceLastAttempt = (DateTime.Now - _lastAutoJoinPartyAttempt).TotalSeconds;
             if (_settings.autoJoinPartyEnabled.Value && timeSinceLastAttempt >= 0.5 && _instance.Gcd())
             {
                 try
                 {
-                    // Check if player is already in a party - if so, don't accept party invites (but still accept trades)
                     var partyElement = _instance.GetPartyElements();
                     var isInParty = partyElement != null && partyElement.Count > 0;
 
-                    // Check if the invites panel is visible
                     var invitesPanel = _instance.GetInvitesPanel();
                     if (invitesPanel != null && invitesPanel.IsVisible)
                     {
-                        // Try to get invites using different property names
                         dynamic invites = null;
 
                         try
@@ -66,7 +61,6 @@ namespace BetterFollowbot.Automation
                         }
                         catch (Exception ex)
                         {
-                            // Try alternative property names if Invites fails
                             try
                             {
                                 invites = invitesPanel.InviteList;
@@ -105,7 +99,6 @@ namespace BetterFollowbot.Automation
 
                             if (inviteCount > 0)
                             {
-                                // Process each invite in the array
                                 foreach (var invite in invites)
                                 {
                                     if (invite != null)
@@ -115,10 +108,7 @@ namespace BetterFollowbot.Automation
                                             string inviterName = "";
                                             try
                                             {
-                                                if (invite.Children != null && invite.Children.Length > 1)
-                                                {
-                                                    inviterName = invite.Children?[0]?.Children?[0]?.Children?[0]?.Text ?? "";
-                                                }
+                                                inviterName = invite.Name ?? "";
                                             }
                                             catch
                                             {
@@ -179,37 +169,28 @@ namespace BetterFollowbot.Automation
 
                                                 if (shouldProcess)
                                                 {
-                                                    // Get the accept button
                                                     var acceptButton = invite.AcceptButton;
                                                     if (acceptButton != null && acceptButton.IsVisible)
                                                     {
-                                                        // Get the center position of the accept button
                                                         var buttonRect = acceptButton.GetClientRectCache;
                                                         var buttonCenter = buttonRect.Center;
 
-                                                        // Move mouse to the accept button
                                                         Mouse.SetCursorPos(buttonCenter);
-
-                                                        // Wait for mouse to settle - longer delay to avoid AutoPilot interference
                                                         Thread.Sleep(300);
 
-                                                        // Verify mouse position
                                                         var currentMousePos = _instance.GetMousePosition();
                                                         var distanceFromTarget = Vector2.Distance(currentMousePos, buttonCenter);
 
-                                                        if (distanceFromTarget < 15) // Allow slightly more tolerance
+                                                        if (distanceFromTarget < 15)
                                                         {
-                                                            // First click attempt - use synchronous mouse events
                                                             Mouse.LeftMouseDown();
                                                             Thread.Sleep(40);
                                                             Mouse.LeftMouseUp();
-                                                            Thread.Sleep(300); // Longer delay
+                                                            Thread.Sleep(300);
 
-                                                            // Check success based on invite type
                                                             bool success = false;
                                                             if (inviteType == "PARTY")
                                                             {
-                                                                // Check if we successfully joined a party
                                                                 var partyAfterClick = _instance.GetPartyElements();
                                                                 success = partyAfterClick != null && partyAfterClick.Count > 0;
 
@@ -220,7 +201,6 @@ namespace BetterFollowbot.Automation
                                                             }
                                                             else if (inviteType == "TRADE")
                                                             {
-                                                                // Check if trade window opened
                                                                 var tradePanel = GetTradePanel();
                                                                 success = tradePanel != null && tradePanel.IsVisible;
 
@@ -232,14 +212,12 @@ namespace BetterFollowbot.Automation
 
                                                             if (!success)
                                                             {
-                                                                // Second click attempt with longer delay
                                                                 Thread.Sleep(600);
                                                                 Mouse.LeftMouseDown();
                                                                 Thread.Sleep(40);
                                                                 Mouse.LeftMouseUp();
                                                                 Thread.Sleep(300);
 
-                                                                // Check again
                                                                 if (inviteType == "PARTY")
                                                                 {
                                                                     var partyAfterClick = _instance.GetPartyElements();
@@ -263,7 +241,6 @@ namespace BetterFollowbot.Automation
 
                                                                 if (!success)
                                                                 {
-                                                                    // Only log failures occasionally to avoid spam
                                                                     var timeSinceLastFailure = (DateTime.Now - _lastAutoJoinPartyAttempt).TotalSeconds;
                                                                     if (timeSinceLastFailure >= 30.0)
                                                                     {

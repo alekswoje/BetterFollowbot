@@ -756,13 +756,22 @@ namespace BetterFollowbot;
 
             if (BetterFollowbot.Instance.ShouldWaitForLeaderGrace)
             {
-                if (_taskManager.TaskCount > 0)
+                var hasTransitionTasks = _taskManager.Tasks.Any(t => 
+                    t.Type == TaskNodeType.Transition || 
+                    t.Type == TaskNodeType.TeleportConfirm || 
+                    t.Type == TaskNodeType.TeleportButton);
+                
+                if (!hasTransitionTasks && _taskManager.TaskCount > 0)
                 {
                     _taskManager.ClearTasks();
-                    BetterFollowbot.Instance.LogMessage("LEADER GRACE: Cleared all tasks - waiting for leader to break grace period");
+                    BetterFollowbot.Instance.LogMessage("LEADER GRACE: Cleared non-transition tasks - waiting for leader to break grace period");
                 }
-                await Task.Delay(100);
-                continue;
+                
+                if (!hasTransitionTasks)
+                {
+                    await Task.Delay(100);
+                    continue;
+                }
             }
 
             if (_taskManager.TaskCount > 0)

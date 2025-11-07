@@ -64,6 +64,7 @@ public class BetterFollowbot : BaseSettingsPlugin<BetterFollowbotSettings>, IFol
     private DateTime lastGraceLogTime = DateTime.MinValue;
     private DateTime lastGraceCheckLogTime = DateTime.MinValue;
     private bool _leaderHasGrace = false;
+    private const double GRACE_WAIT_AFTER_ZONE_CHANGE = 3.0;
     private DateTime lastAutoPilotUpdateLogTime = DateTime.MinValue;
     private DateTime lastSkillRangeCheckLogTime = DateTime.MinValue;
     private Entity lastFollowTarget;
@@ -396,7 +397,20 @@ public class BetterFollowbot : BaseSettingsPlugin<BetterFollowbotSettings>, IFol
     /// </summary>
     public Summons Summons => summons;
 
-    public bool ShouldWaitForLeaderGrace => Settings.autoPilotGrace.Value && _leaderHasGrace;
+    public bool ShouldWaitForLeaderGrace
+    {
+        get
+        {
+            if (!Settings.autoPilotGrace.Value)
+                return false;
+            
+            var timeSinceZoneChange = (DateTime.Now - lastAreaChangeTime).TotalSeconds;
+            if (timeSinceZoneChange < GRACE_WAIT_AFTER_ZONE_CHANGE)
+                return true;
+            
+            return _leaderHasGrace;
+        }
+    }
 
     public bool Gcd()
     {

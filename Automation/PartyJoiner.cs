@@ -411,11 +411,11 @@ namespace BetterFollowbot.Automation
                 }
 
                 var acceptButton = tradePanel.AcceptButton;
-                BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Accept button - Null: {acceptButton == null}, Visible: {acceptButton?.IsVisible}");
+                BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Accept button - Null: {acceptButton == null}");
                 
-                if (acceptButton == null || !acceptButton.IsVisible)
+                if (acceptButton == null)
                 {
-                    BetterFollowbot.Instance.LogMessage("AUTO CLICK TRADE ACCEPT: Accept button not visible");
+                    BetterFollowbot.Instance.LogMessage("AUTO CLICK TRADE ACCEPT: Accept button not found");
                     return;
                 }
 

@@ -207,13 +207,32 @@ namespace BetterFollowbot.Core.Movement
 
                     if (!isOnScreen)
                     {
-                        _core.LogMessage("TRANSITION: Portal is not on screen, cannot click it!");
-                        _taskManager.RemoveTask(currentTask);
-                        shouldTransitionAndContinue = false;
-                        break;
+                        _core.LogMessage($"TRANSITION: Portal is not on screen at distance {distanceToPortal:F1}, need to move closer");
+                        
+                        if (distanceToPortal > 100)
+                        {
+                            _core.LogMessage($"TRANSITION: Creating movement task to approach portal (distance: {distanceToPortal:F1})");
+                            var approachTask = new TaskNode(portalPos, 50, TaskNodeType.Movement);
+                            _taskManager.RemoveTask(currentTask);
+                            _taskManager.AddTask(approachTask);
+                            _taskManager.AddTask(currentTask);
+                            shouldTransitionAndContinue = false;
+                            break;
+                        }
+                        else
+                        {
+                            _core.LogMessage("TRANSITION: Close enough but portal UI not rendering properly, retrying");
+                            currentTask.AttemptCount++;
+                            if (currentTask.AttemptCount > 20)
+                            {
+                                _core.LogMessage("TRANSITION: Too many retry attempts, removing task");
+                                _taskManager.RemoveTask(currentTask);
+                            }
+                            shouldTransitionAndContinue = false;
+                            break;
+                        }
                     }
 
-                    // Remove the task after clicking - confirmation dialog detection will create a TeleportConfirm task if needed
                     _core.LogMessage("TRANSITION: Portal clicked, removing transition task");
                     _taskManager.RemoveTask(currentTask);
                     shouldTransitionAndContinue = true;

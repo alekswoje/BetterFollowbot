@@ -117,7 +117,7 @@ namespace BetterFollowbot.Automation
                                             {
                                                 if (invite.Children != null && invite.Children.Length > 1)
                                                 {
-                                                    inviterName = invite.Children[1]?.Children?[0]?.Children?[0]?.Children?[0]?.Text ?? "";
+                                                    inviterName = invite.Children?[0]?.Children?[0]?.Children?[0]?.Text ?? "";
                                                 }
                                             }
                                             catch

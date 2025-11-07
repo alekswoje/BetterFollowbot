@@ -79,7 +79,7 @@ internal class ImGuiDrawSettings
                 BetterFollowbot.Instance.Settings.autoPilotEnabled.Value =
                     ImGuiExtension.Checkbox("Enabled", BetterFollowbot.Instance.Settings.autoPilotEnabled.Value);
                 BetterFollowbot.Instance.Settings.autoPilotGrace.Value =
-                    ImGuiExtension.Checkbox("No Grace Period", BetterFollowbot.Instance.Settings.autoPilotGrace.Value);
+                    ImGuiExtension.Checkbox("Wait for Leader to Break Grace", BetterFollowbot.Instance.Settings.autoPilotGrace.Value);
                 BetterFollowbot.Instance.Settings.autoPilotLeader = ImGuiExtension.InputText("Leader: ", BetterFollowbot.Instance.Settings.autoPilotLeader, 60, ImGuiInputTextFlags.None);
                 if (string.IsNullOrWhiteSpace(BetterFollowbot.Instance.Settings.autoPilotLeader.Value))
                 {

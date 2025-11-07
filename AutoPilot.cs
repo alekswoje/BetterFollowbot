@@ -479,28 +479,82 @@ namespace BetterFollowbot;
 
             if (shouldSearchForPortals)
             {
-                // Get all portal-like objects using clean entity type filtering
+                if (isHideout)
+                {
+                    var allLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels?.ToList();
+                    BetterFollowbot.Instance.LogMessage($"PORTAL SEARCH HIDEOUT: Total ItemsOnGroundLabels: {allLabels?.Count ?? 0}");
+                    
+                    var multiplexPortals = allLabels?.Where(x => 
+                        x != null && 
+                        x.ItemOnGround != null && 
+                        x.ItemOnGround.Metadata != null &&
+                        x.ItemOnGround.Metadata.ToLower().Contains("multiplexportal")
+                    ).ToList();
+                    
+                    BetterFollowbot.Instance.LogMessage($"PORTAL SEARCH HIDEOUT: Found {multiplexPortals?.Count ?? 0} MultiplexPortal entities (unfiltered)");
+                    
+                    if (multiplexPortals != null && multiplexPortals.Count > 0)
+                    {
+                        for (int i = 0; i < multiplexPortals.Count && i < 5; i++)
+                        {
+                            var mp = multiplexPortals[i];
+                            var labelText = mp.Label?.Text ?? "NULL";
+                            var hasLabel = mp.Label != null;
+                            var labelIsValid = mp.Label?.IsValid ?? false;
+                            var labelIsVisible = mp.Label?.IsVisible ?? false;
+                            var isVisible = mp.IsVisible;
+                            var distance = mp.ItemOnGround?.DistancePlayer ?? 0;
+                            var isValidPortal = IsValidPortal(mp);
+                            
+                            BetterFollowbot.Instance.LogMessage($"PORTAL SEARCH HIDEOUT [MultiplexPortal {i}]: Label='{labelText}', HasLabel={hasLabel}, LabelValid={labelIsValid}, LabelVisible={labelIsVisible}, IsVisible={isVisible}, Distance={distance:F1}, IsValidPortal={isValidPortal}");
+                        }
+                    }
+                }
+                
                 var allPortalLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
                 {
                     if (x == null || x.ItemOnGround == null) return false;
                     
                     var metadata = x.ItemOnGround.Metadata?.ToLower() ?? "";
                     
-                    // Map device portals (MultiplexPortal) - relax visibility requirements since they may not be fully loaded
                     if (metadata.Contains("multiplexportal"))
                     {
-                        return x.Label != null && x.Label.IsValid && IsValidPortal(x);
+                        var hasLabel = x.Label != null;
+                        var labelIsValid = x.Label?.IsValid ?? false;
+                        var isValidPortal = IsValidPortal(x);
+                        var result = hasLabel && labelIsValid && isValidPortal;
+                        
+                        if (isHideout && !result)
+                        {
+                            var labelText = x.Label?.Text ?? "NULL";
+                            BetterFollowbot.Instance.LogMessage($"PORTAL SEARCH HIDEOUT: MultiplexPortal FILTERED OUT - Label='{labelText}', HasLabel={hasLabel}, LabelValid={labelIsValid}, IsValidPortal={isValidPortal}");
+                        }
+                        
+                        return result;
                     }
                     
-                    // For other portals, use normal visibility checks
-                    return x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible && IsValidPortal(x);
+                    var isVisible = x.IsVisible;
+                    var hasLabel2 = x.Label != null;
+                    var labelIsValid2 = x.Label?.IsValid ?? false;
+                    var labelIsVisible = x.Label?.IsVisible ?? false;
+                    var isValidPortal2 = IsValidPortal(x);
+                    var result2 = isVisible && hasLabel2 && labelIsValid2 && labelIsVisible && isValidPortal2;
+                    
+                    if (isHideout && !result2 && metadata.Contains("portal"))
+                    {
+                        var labelText = x.Label?.Text ?? "NULL";
+                        BetterFollowbot.Instance.LogMessage($"PORTAL SEARCH HIDEOUT: Portal FILTERED OUT - Label='{labelText}', IsVisible={isVisible}, HasLabel={hasLabel2}, LabelValid={labelIsValid2}, LabelVisible={labelIsVisible}, IsValidPortal={isValidPortal2}");
+                    }
+                    
+                    return result2;
                 }).ToList();
 
-                BetterFollowbot.Instance.LogMessage($"PORTAL SEARCH: Found {allPortalLabels.Count} portal objects on ground");
-                foreach (var portal in allPortalLabels.Take(5)) // Log first 5 to avoid spam
+                BetterFollowbot.Instance.LogMessage($"PORTAL SEARCH: Found {allPortalLabels.Count} portal objects on ground (after filtering)");
+                foreach (var portal in allPortalLabels.Take(5))
                 {
                     var label = portal.Label?.Text ?? "NULL";
-                    BetterFollowbot.Instance.LogMessage($"PORTAL SEARCH: Portal label '{label}' at {portal.ItemOnGround.Pos}");
+                    var metadata = portal.ItemOnGround.Metadata ?? "NULL";
+                    BetterFollowbot.Instance.LogMessage($"PORTAL SEARCH: Portal label '{label}', Metadata='{metadata}' at {portal.ItemOnGround.Pos}");
                 }
 
                 if (allPortalLabels == null || allPortalLabels.Count == 0)
@@ -691,17 +745,26 @@ namespace BetterFollowbot;
                 continue;
             }
 
-            // ADDITIONAL SAFEGUARD: Don't execute tasks during zone loading or when game state is unstable
             if (BetterFollowbot.Instance.GameController.IsLoading ||
                 BetterFollowbot.Instance.GameController.Area.CurrentArea == null ||
                 string.IsNullOrEmpty(BetterFollowbot.Instance.GameController.Area.CurrentArea.DisplayName))
             {
                 BetterFollowbot.Instance.LogMessage("TASK EXECUTION: Blocking task execution during zone loading");
-                await Task.Delay(200); // Wait longer during zone loading
+                await Task.Delay(200);
                 continue;
             }
 
-            // Only execute input tasks here - decision making moved to Render method
+            if (BetterFollowbot.Instance.ShouldWaitForLeaderGrace)
+            {
+                if (_taskManager.TaskCount > 0)
+                {
+                    _taskManager.ClearTasks();
+                    BetterFollowbot.Instance.LogMessage("LEADER GRACE: Cleared all tasks - waiting for leader to break grace period");
+                }
+                await Task.Delay(100);
+                continue;
+            }
+
             if (_taskManager.TaskCount > 0)
             {
                 TaskNode currentTask = null;
@@ -1247,6 +1310,51 @@ namespace BetterFollowbot;
 
         try
         {
+            var isHideout = BetterFollowbot.Instance.GameController?.Area?.CurrentArea?.IsHideout ?? false;
+            var allLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels?.ToList();
+            var allLabelsCount = allLabels?.Count ?? 0;
+            
+            if (isHideout && BetterFollowbot.Instance.Settings.debugMode)
+            {
+                BetterFollowbot.Instance.LogMessage($"PORTAL RENDER DEBUG: In Hideout - Total ItemsOnGroundLabels: {allLabelsCount}");
+                
+                var allMultiplexPortals = allLabels?.Where(x => 
+                    x != null && 
+                    x.ItemOnGround != null && 
+                    x.ItemOnGround.Metadata != null &&
+                    x.ItemOnGround.Metadata.ToLower().Contains("multiplexportal")
+                ).ToList();
+                
+                BetterFollowbot.Instance.LogMessage($"PORTAL RENDER DEBUG: Found {allMultiplexPortals?.Count ?? 0} MultiplexPortal entities (before filtering)");
+                
+                if (allMultiplexPortals != null && allMultiplexPortals.Count > 0)
+                {
+                    for (int i = 0; i < allMultiplexPortals.Count && i < 3; i++)
+                    {
+                        var mp = allMultiplexPortals[i];
+                        var labelText = mp.Label?.Text ?? "NULL";
+                        var hasLabel = mp.Label != null;
+                        var labelIsValid = mp.Label?.IsValid ?? false;
+                        var labelIsVisible = mp.Label?.IsVisible ?? false;
+                        var isVisible = mp.IsVisible;
+                        var distance = mp.ItemOnGround?.DistancePlayer ?? 0;
+                        var address = mp.Address.ToString("X");
+                        var itemAddress = mp.ItemOnGround?.Address.ToString("X") ?? "NULL";
+                        
+                        BetterFollowbot.Instance.LogMessage($"PORTAL RENDER DEBUG [MultiplexPortal {i}]: Label='{labelText}', HasLabel={hasLabel}, LabelValid={labelIsValid}, LabelVisible={labelIsVisible}, IsVisible={isVisible}, Distance={distance:F1}, Address=0x{address}, ItemAddress=0x{itemAddress}");
+                    }
+                }
+                
+                var allPortalLikeEntities = allLabels?.Where(x =>
+                {
+                    if (x == null || x.ItemOnGround == null || x.ItemOnGround.Metadata == null) return false;
+                    var metadata = x.ItemOnGround.Metadata.ToLower();
+                    return metadata.Contains("portal") || metadata.Contains("areatransition") || metadata.Contains("transition");
+                }).ToList();
+                
+                BetterFollowbot.Instance.LogMessage($"PORTAL RENDER DEBUG: Found {allPortalLikeEntities?.Count ?? 0} portal-like entities (unfiltered)");
+            }
+            
             var portalLabels =
                 BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
                 {
@@ -1254,19 +1362,45 @@ namespace BetterFollowbot;
                     
                     var metadata = x.ItemOnGround.Metadata?.ToLower() ?? "";
                     
-                    // Map device portals (MultiplexPortal) - relax visibility requirements since they may not be fully loaded
                     if (metadata.Contains("multiplexportal"))
                     {
-                        return x.Label != null && x.Label.IsValid;
+                        var hasLabel = x.Label != null;
+                        var labelIsValid = x.Label?.IsValid ?? false;
+                        var result = hasLabel && labelIsValid;
+                        
+                        if (isHideout && BetterFollowbot.Instance.Settings.debugMode)
+                        {
+                            var labelText = x.Label?.Text ?? "NULL";
+                            BetterFollowbot.Instance.LogMessage($"PORTAL RENDER DEBUG: MultiplexPortal filter check - Label='{labelText}', HasLabel={hasLabel}, IsValid={labelIsValid}, PassedFilter={result}");
+                        }
+                        
+                        return result;
                     }
                     
-                    // For other portals, use normal visibility checks
-                    return x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
-                           (metadata.Contains("areatransition") ||
-                            metadata.Contains("portal") ||
-                            metadata.Contains("transition") ||
-                            PortalManager.IsSpecialPortal(x.Label?.Text?.ToLower() ?? ""));
+                    var isVisible = x.IsVisible;
+                    var hasLabel2 = x.Label != null;
+                    var labelIsValid2 = x.Label?.IsValid ?? false;
+                    var labelIsVisible = x.Label?.IsVisible ?? false;
+                    var metadataMatch = metadata.Contains("areatransition") ||
+                                       metadata.Contains("portal") ||
+                                       metadata.Contains("transition") ||
+                                       PortalManager.IsSpecialPortal(x.Label?.Text?.ToLower() ?? "");
+                    
+                    var result2 = isVisible && hasLabel2 && labelIsValid2 && labelIsVisible && metadataMatch;
+                    
+                    if (isHideout && BetterFollowbot.Instance.Settings.debugMode && !result2 && metadataMatch)
+                    {
+                        var labelText = x.Label?.Text ?? "NULL";
+                        BetterFollowbot.Instance.LogMessage($"PORTAL RENDER DEBUG: Portal FAILED filter - Label='{labelText}', IsVisible={isVisible}, HasLabel={hasLabel2}, LabelValid={labelIsValid2}, LabelVisible={labelIsVisible}, MetadataMatch={metadataMatch}");
+                    }
+                    
+                    return result2;
                 }).ToList();
+            
+            if (isHideout && BetterFollowbot.Instance.Settings.debugMode)
+            {
+                BetterFollowbot.Instance.LogMessage($"PORTAL RENDER DEBUG: After filtering, rendering {portalLabels?.Count ?? 0} portals with UI");
+            }
 
             foreach (var portal in portalLabels)
             {

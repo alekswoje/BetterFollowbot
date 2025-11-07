@@ -21,7 +21,7 @@ public class BetterFollowbotSettings : ISettings
     #region AutoPilot
         
     public ToggleNode autoPilotEnabled = new ToggleNode(false);
-    public ToggleNode autoPilotGrace = new ToggleNode(true);
+    public ToggleNode autoPilotGrace = new ToggleNode(false);
     public TextNode autoPilotLeader = new TextNode("");
     public ToggleNode autoPilotDashEnabled = new ToggleNode(false);
     public ToggleNode autoPilotCloseFollow = new ToggleNode(true);

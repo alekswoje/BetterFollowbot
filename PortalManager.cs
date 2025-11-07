@@ -167,104 +167,12 @@ namespace BetterFollowbot
 
                 BetterFollowbot.Instance.LogMessage($"SPECIAL AREA: Looking for portals matching '{targetAreaName}'");
 
-                // First, let's see ALL ItemsOnGroundLabels to understand what we're working with
-                var allLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels?.ToList();
-                BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Total ItemsOnGroundLabels count: {allLabels?.Count ?? 0}");
-
-                // Check for ANY MultiplexPortal entities (even if filtered out)
-                var allMultiplexPortals = allLabels?.Where(x => 
-                    x != null && 
-                    x.ItemOnGround != null && 
-                    x.ItemOnGround.Metadata != null &&
-                    x.ItemOnGround.Metadata.ToLower().Contains("multiplexportal")
-                ).ToList();
-                
-                BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Found {allMultiplexPortals?.Count ?? 0} MultiplexPortal entities in total (before filtering)");
-                
-                if (allMultiplexPortals != null && allMultiplexPortals.Count > 0)
-                {
-                    for (int i = 0; i < allMultiplexPortals.Count && i < 5; i++)
-                    {
-                        var mp = allMultiplexPortals[i];
-                        var labelText = mp.Label?.Text ?? "NULL";
-                        var hasLabel = mp.Label != null;
-                        var labelIsValid = mp.Label?.IsValid ?? false;
-                        var labelIsVisible = mp.Label?.IsVisible ?? false;
-                        var isVisible = mp.IsVisible;
-                        var address = mp.Address.ToString("X");
-                        var distance = mp.ItemOnGround?.DistancePlayer ?? 0;
-                        
-                        BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG (MultiplexPortal Before Filter) [{i}]: Label='{labelText}', HasLabel={hasLabel}, LabelValid={labelIsValid}, LabelVisible={labelIsVisible}, IsVisible={isVisible}, Distance={distance:F1}, Address=0x{address}");
-                    }
-                }
-
-                // Get all portal-like objects using clean entity type filtering
-                // For map portals (MultiplexPortal), relax visibility requirements since they may not be fully loaded
-                var allPortalLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
-                    {
-                        if (x == null || x.ItemOnGround == null) return false;
-                        
-                        // Map device portals (MultiplexPortal) - check without strict visibility requirements
-                        var metadata = x.ItemOnGround.Metadata?.ToLower() ?? "";
-                        if (metadata.Contains("multiplexportal"))
-                        {
-                            // Only require the label exists, not that it's fully visible yet
-                            return x.Label != null && x.Label.IsValid;
-                        }
-                        
-                        // For other portals, use normal visibility checks
-                        return x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible && IsValidPortal(x);
-                    })
-                    .ToList();
-
-                BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Found {allPortalLabels?.Count ?? 0} portal objects after filtering");
-                
-                if (allPortalLabels != null && allPortalLabels.Count > 0)
-                {
-                    // Log details about each portal found
-                    for (int i = 0; i < allPortalLabels.Count && i < 10; i++) // Limit to 10 to avoid spam
-                    {
-                        var portal = allPortalLabels[i];
-                        var labelText = portal.Label?.Text ?? "NULL";
-                        var metadata = portal.ItemOnGround?.Metadata ?? "NULL";
-                        var entityType = portal.ItemOnGround?.Type.ToString() ?? "NULL";
-                        var distance = portal.ItemOnGround?.DistancePlayer ?? 0;
-                        var isVisible = portal.IsVisible;
-                        var labelIsVisible = portal.Label?.IsVisible ?? false;
-                        
-                        BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG [{i}]: Label='{labelText}', Metadata='{metadata}', Type={entityType}, Distance={distance:F1}, IsVisible={isVisible}, LabelVisible={labelIsVisible}");
-                    }
-                }
+                var allPortalLabels = GetPortalsUsingEntities();
+                BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Found {allPortalLabels?.Count ?? 0} portal objects using entities");
 
                 if (allPortalLabels == null || allPortalLabels.Count == 0)
                 {
-                    BetterFollowbot.Instance.LogMessage("SPECIAL AREA: No portal objects found after filtering");
-                    
-                    // Debug: Check if there are ANY MultiplexPortal entities at all
-                    var multiplexPortals = allLabels?.Where(x => 
-                        x != null && 
-                        x.ItemOnGround != null && 
-                        x.ItemOnGround.Metadata != null &&
-                        x.ItemOnGround.Metadata.ToLower().Contains("multiplexportal")
-                    ).ToList();
-                    
-                    BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Found {multiplexPortals?.Count ?? 0} MultiplexPortal entities (unfiltered)");
-                    
-                    if (multiplexPortals != null && multiplexPortals.Count > 0)
-                    {
-                        for (int i = 0; i < multiplexPortals.Count && i < 5; i++)
-                        {
-                            var portal = multiplexPortals[i];
-                            var labelText = portal.Label?.Text ?? "NULL";
-                            var hasLabel = portal.Label != null;
-                            var labelIsValid = portal.Label?.IsValid ?? false;
-                            var labelIsVisible = portal.Label?.IsVisible ?? false;
-                            var isVisible = portal.IsVisible;
-                            
-                            BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG (Unfiltered) [{i}]: Label='{labelText}', HasLabel={hasLabel}, LabelValid={labelIsValid}, LabelVisible={labelIsVisible}, IsVisible={isVisible}");
-                        }
-                    }
-                    
+                    BetterFollowbot.Instance.LogMessage("SPECIAL AREA: No portal objects found");
                     return null;
                 }
 
@@ -533,6 +441,51 @@ namespace BetterFollowbot
             {
                 BetterFollowbot.Instance.LogError($"PortalManager: Error finding nearest labyrinth portal: {ex.Message}");
                 return null;
+            }
+        }
+
+        public static List<LabelOnGround> GetPortalsUsingEntities()
+        {
+            try
+            {
+                var townPortals = BetterFollowbot.Instance.GameController?.EntityListWrapper?.ValidEntitiesByType[ExileCore.Shared.Enums.EntityType.TownPortal];
+                var areaTransitions = BetterFollowbot.Instance.GameController?.EntityListWrapper?.ValidEntitiesByType[ExileCore.Shared.Enums.EntityType.AreaTransition];
+                
+                var portalEntities = new List<Entity>();
+                if (townPortals != null) portalEntities.AddRange(townPortals);
+                if (areaTransitions != null) portalEntities.AddRange(areaTransitions);
+                
+                BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Found {townPortals?.Count ?? 0} TownPortal entities, {areaTransitions?.Count ?? 0} AreaTransition entities");
+                
+                var allLabels = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels?.ToList();
+                
+                var matchedLabels = new List<LabelOnGround>();
+                foreach (var entity in portalEntities)
+                {
+                    if (entity == null) continue;
+                    
+                    var matchingLabel = allLabels?.FirstOrDefault(label => 
+                        label?.ItemOnGround != null && 
+                        label.ItemOnGround.Address == entity.Address);
+                    
+                    if (matchingLabel != null)
+                    {
+                        matchedLabels.Add(matchingLabel);
+                        BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Matched entity to label '{matchingLabel.Label?.Text}' at distance {entity.DistancePlayer:F1}");
+                    }
+                    else
+                    {
+                        BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Entity at {entity.Pos} has no matching label (Type: {entity.Type})");
+                    }
+                }
+                
+                BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Matched {matchedLabels.Count} portal entities to labels");
+                return matchedLabels;
+            }
+            catch (Exception ex)
+            {
+                BetterFollowbot.Instance.LogError($"PortalManager: Error getting portals using entities: {ex.Message}");
+                return new List<LabelOnGround>();
             }
         }
     }

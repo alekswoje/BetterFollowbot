@@ -748,11 +748,8 @@ namespace BetterFollowbot.Core.Movement
                     return new List<LabelOnGround>();
                 }
 
-                var portalLabels = _core.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
-                    x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
-                    x.ItemOnGround != null &&
-                    IsValidPortal(x))
-                    .ToList();
+                var portalLabels = PortalManager.GetPortalsUsingEntities();
+                _core.LogMessage($"PORTAL DEBUG: GetAllPortals found {portalLabels?.Count ?? 0} portals using entities");
 
                 return portalLabels ?? new List<LabelOnGround>();
             }
@@ -781,14 +778,8 @@ namespace BetterFollowbot.Core.Movement
                     return null;
                 }
 
-                var portalLabels = _core.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
-                    x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
-                    x.ItemOnGround != null &&
-                    (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") ||
-                     x.ItemOnGround.Metadata.ToLower().Contains("portal") ||
-                     x.ItemOnGround.Metadata.ToLower().Contains("transition") ||
-                     PortalManager.IsSpecialPortal(x.Label?.Text?.ToLower() ?? "")))
-                    .ToList();
+                var portalLabels = PortalManager.GetPortalsUsingEntities();
+                _core.LogMessage($"PORTAL DEBUG: GetBestPortalLabel found {portalLabels?.Count ?? 0} portals using entities");
 
                 if (portalLabels == null || portalLabels.Count == 0)
                     return null;

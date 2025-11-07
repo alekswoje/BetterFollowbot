@@ -308,11 +308,11 @@ namespace BetterFollowbot.Automation
             try
             {
                 var inventoryPanel = BetterFollowbot.Instance.GameController?.IngameState?.IngameUi?.InventoryPanel;
-                BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP DEBUG: Inventory panel - Null: {inventoryPanel == null}, Visible: {inventoryPanel?.IsVisible}");
+                BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP DEBUG: Inventory panel - Null: {inventoryPanel == null}");
                 
-                if (inventoryPanel == null || !inventoryPanel.IsVisible)
+                if (inventoryPanel == null)
                 {
-                    BetterFollowbot.Instance.LogMessage("INVENTORY DUMP: Inventory panel not visible");
+                    BetterFollowbot.Instance.LogMessage("INVENTORY DUMP: Inventory panel not found");
                     return;
                 }
 

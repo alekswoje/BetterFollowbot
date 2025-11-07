@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using BetterFollowbot.Interfaces;
 using ExileCore;
@@ -111,7 +112,41 @@ namespace BetterFollowbot.Automation
                                     {
                                         try
                                         {
-                                            // Check the action text to determine invite type
+                                            string inviterName = "";
+                                            try
+                                            {
+                                                if (invite.Children != null && invite.Children.Length > 1)
+                                                {
+                                                    inviterName = invite.Children[1]?.Children?[0]?.Children?[0]?.Children?[0]?.Text ?? "";
+                                                }
+                                            }
+                                            catch
+                                            {
+                                            }
+
+                                            var leaderNames = _settings.autoPilotLeader.Value;
+                                            bool isFromLeader = false;
+
+                                            if (!string.IsNullOrEmpty(leaderNames) && !string.IsNullOrEmpty(inviterName))
+                                            {
+                                                var names = leaderNames.Split(',')
+                                                    .Select(n => n.Trim())
+                                                    .Where(n => !string.IsNullOrEmpty(n))
+                                                    .ToList();
+
+                                                isFromLeader = names.Any(name => 
+                                                    inviterName.Equals(name, StringComparison.OrdinalIgnoreCase));
+                                            }
+
+                                            if (!isFromLeader)
+                                            {
+                                                if (timeSinceLastAttempt >= 15.0)
+                                                {
+                                                    BetterFollowbot.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Ignoring invite from '{inviterName}' (only accepting from: '{leaderNames}')");
+                                                }
+                                                continue;
+                                            }
+
                                             var actionText = invite.ActionText;
                                             if (actionText != null)
                                             {
@@ -121,13 +156,12 @@ namespace BetterFollowbot.Automation
                                                 if (actionText.Contains("party invite") || actionText.Contains("sent you a party invite"))
                                                 {
                                                     inviteType = "PARTY";
-                                                    // Only process party invites if not already in party
                                                     shouldProcess = !isInParty;
                                                     if (isInParty)
                                                     {
                                                         if (timeSinceLastAttempt >= 15.0)
                                                         {
-                                                            BetterFollowbot.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Skipping party invite - already in party ({partyElement.Count} members)");
+                                                            BetterFollowbot.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Skipping party invite from '{inviterName}' - already in party ({partyElement.Count} members)");
                                                         }
                                                         continue;
                                                     }
@@ -135,7 +169,6 @@ namespace BetterFollowbot.Automation
                                                 else if (actionText.Contains("trade request") || actionText.Contains("sent you a trade request"))
                                                 {
                                                     inviteType = "TRADE";
-                                                    // Always process trade requests
                                                     shouldProcess = true;
                                                 }
                                                 else

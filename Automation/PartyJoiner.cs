@@ -208,12 +208,18 @@ namespace BetterFollowbot.Automation
                                                                 if (success)
                                                                 {
                                                                     BetterFollowbot.Instance.LogMessage("AUTO JOIN PARTY & ACCEPT TRADE: Successfully opened trade window!");
+                                                                    BetterFollowbot.Instance.LogMessage($"TRADE DEBUG: autoDumpInventoryOnTrade={_settings.autoDumpInventoryOnTrade.Value}");
                                                                     
                                                                     if (_settings.autoDumpInventoryOnTrade.Value)
                                                                     {
+                                                                        BetterFollowbot.Instance.LogMessage("TRADE DEBUG: Waiting 200ms before dumping inventory");
                                                                         Thread.Sleep(200);
                                                                         DumpInventoryToTrade();
                                                                     }
+                                                                }
+                                                                else
+                                                                {
+                                                                    BetterFollowbot.Instance.LogMessage($"TRADE DEBUG: Trade panel check - Panel null: {tradePanel == null}, Visible: {tradePanel?.IsVisible}");
                                                                 }
                                                             }
 
@@ -243,12 +249,18 @@ namespace BetterFollowbot.Automation
                                                                     if (success)
                                                                     {
                                                                         BetterFollowbot.Instance.LogMessage("AUTO JOIN PARTY & ACCEPT TRADE: Successfully opened trade window on second attempt!");
+                                                                        BetterFollowbot.Instance.LogMessage($"TRADE DEBUG: autoDumpInventoryOnTrade={_settings.autoDumpInventoryOnTrade.Value}");
                                                                         
                                                                         if (_settings.autoDumpInventoryOnTrade.Value)
                                                                         {
+                                                                            BetterFollowbot.Instance.LogMessage("TRADE DEBUG: Waiting 200ms before dumping inventory (second attempt)");
                                                                             Thread.Sleep(200);
                                                                             DumpInventoryToTrade();
                                                                         }
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        BetterFollowbot.Instance.LogMessage($"TRADE DEBUG (2nd attempt): Trade panel check - Panel null: {tradePanel == null}, Visible: {tradePanel?.IsVisible}");
                                                                     }
                                                                 }
 
@@ -304,9 +316,13 @@ namespace BetterFollowbot.Automation
 
         private void DumpInventoryToTrade()
         {
+            BetterFollowbot.Instance.LogMessage("INVENTORY DUMP: Starting dump process");
+            
             try
             {
                 var inventoryPanel = BetterFollowbot.Instance.GameController?.IngameState?.IngameUi?.InventoryPanel;
+                BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP DEBUG: Inventory panel - Null: {inventoryPanel == null}, Visible: {inventoryPanel?.IsVisible}");
+                
                 if (inventoryPanel == null || !inventoryPanel.IsVisible)
                 {
                     BetterFollowbot.Instance.LogMessage("INVENTORY DUMP: Inventory panel not visible");
@@ -314,13 +330,20 @@ namespace BetterFollowbot.Automation
                 }
 
                 var tradePanel = GetTradePanel();
+                BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP DEBUG: Trade panel - Null: {tradePanel == null}, Visible: {tradePanel?.IsVisible}");
+                
                 if (tradePanel == null || !tradePanel.IsVisible)
                 {
                     BetterFollowbot.Instance.LogMessage("INVENTORY DUMP: Trade window not visible");
                     return;
                 }
 
-                var inventoryItems = BetterFollowbot.Instance.GameController?.IngameState?.ServerData?.PlayerInventories?[0]?.Inventory?.InventorySlotItems;
+                var playerInventories = BetterFollowbot.Instance.GameController?.IngameState?.ServerData?.PlayerInventories;
+                BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP DEBUG: PlayerInventories - Null: {playerInventories == null}, Count: {playerInventories?.Count}");
+                
+                var inventoryItems = playerInventories?[0]?.Inventory?.InventorySlotItems;
+                BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP DEBUG: InventorySlotItems - Null: {inventoryItems == null}, Count: {inventoryItems?.Count}");
+                
                 if (inventoryItems == null)
                 {
                     BetterFollowbot.Instance.LogMessage("INVENTORY DUMP: No inventory items found");
@@ -333,13 +356,16 @@ namespace BetterFollowbot.Automation
                     .ThenBy(x => x.PosY)
                     .ToList();
 
-                BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP: Dumping {itemsToDump.Count} items to trade");
+                BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP: Found {itemsToDump.Count} items to dump");
 
                 var prevMousePos = _instance.GetMousePosition();
+                BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP DEBUG: Previous mouse position: {prevMousePos}");
 
+                int dumpedCount = 0;
                 foreach (var item in itemsToDump)
                 {
-                    if (tradePanel == null || !tradePanel.IsVisible)
+                    var tradePanelCheck = GetTradePanel();
+                    if (tradePanelCheck == null || !tradePanelCheck.IsVisible)
                     {
                         BetterFollowbot.Instance.LogMessage("INVENTORY DUMP: Trade window closed, aborting");
                         break;
@@ -347,6 +373,7 @@ namespace BetterFollowbot.Automation
 
                     var itemRect = item.GetClientRect();
                     var itemCenter = itemRect.Center;
+                    BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP DEBUG: Item [{dumpedCount}] at ({item.PosX}, {item.PosY}), Screen center: ({itemCenter.X:F1}, {itemCenter.Y:F1})");
 
                     Keyboard.KeyDown(Keys.LControlKey);
                     Thread.Sleep(30);
@@ -358,15 +385,18 @@ namespace BetterFollowbot.Automation
                     Thread.Sleep(30);
                     Keyboard.KeyUp(Keys.LControlKey);
                     Thread.Sleep(40);
+                    
+                    dumpedCount++;
+                    BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP DEBUG: Dumped item {dumpedCount}/{itemsToDump.Count}");
                 }
 
                 if (prevMousePos.X > 0 && prevMousePos.Y > 0)
                 {
                     Mouse.SetCursorPos(prevMousePos);
                 }
-                BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP: Completed dumping {itemsToDump.Count} items");
+                BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP: Completed dumping {dumpedCount} items");
 
-                if (_settings.autoAcceptTrade.Value)
+                if (_settings.autoClickTradeAcceptButton.Value)
                 {
                     Thread.Sleep(300);
                     ClickTradeAcceptButton();
@@ -380,24 +410,31 @@ namespace BetterFollowbot.Automation
 
         private void ClickTradeAcceptButton()
         {
+            BetterFollowbot.Instance.LogMessage("AUTO CLICK TRADE ACCEPT: Starting");
+            
             try
             {
                 var tradePanel = GetTradePanel();
+                BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Trade panel - Null: {tradePanel == null}, Visible: {tradePanel?.IsVisible}");
+                
                 if (tradePanel == null || !tradePanel.IsVisible)
                 {
-                    BetterFollowbot.Instance.LogMessage("AUTO ACCEPT TRADE: Trade window not visible");
+                    BetterFollowbot.Instance.LogMessage("AUTO CLICK TRADE ACCEPT: Trade window not visible");
                     return;
                 }
 
                 var acceptButton = tradePanel.AcceptButton;
+                BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Accept button - Null: {acceptButton == null}, Visible: {acceptButton?.IsVisible}");
+                
                 if (acceptButton == null || !acceptButton.IsVisible)
                 {
-                    BetterFollowbot.Instance.LogMessage("AUTO ACCEPT TRADE: Accept button not visible");
+                    BetterFollowbot.Instance.LogMessage("AUTO CLICK TRADE ACCEPT: Accept button not visible");
                     return;
                 }
 
                 var buttonRect = acceptButton.GetClientRectCache;
                 var buttonCenter = buttonRect.Center;
+                BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Button center: ({buttonCenter.X:F1}, {buttonCenter.Y:F1})");
 
                 Mouse.SetCursorPos(buttonCenter);
                 Thread.Sleep(100);
@@ -405,11 +442,11 @@ namespace BetterFollowbot.Automation
                 Thread.Sleep(40);
                 Mouse.LeftMouseUp();
 
-                BetterFollowbot.Instance.LogMessage("AUTO ACCEPT TRADE: Clicked accept button");
+                BetterFollowbot.Instance.LogMessage("AUTO CLICK TRADE ACCEPT: Clicked accept button");
             }
             catch (Exception ex)
             {
-                BetterFollowbot.Instance.LogMessage($"AUTO ACCEPT TRADE: Error - {ex.Message}");
+                BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Error - {ex.Message}");
             }
         }
     }

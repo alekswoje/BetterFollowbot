@@ -500,9 +500,9 @@ internal class ImGuiDrawSettings
                 BetterFollowbot.Instance.Settings.autoJoinPartyEvenIfInParty.Value =
                     ImGuiExtension.Checkbox("Join if Currently in Party", BetterFollowbot.Instance.Settings.autoJoinPartyEvenIfInParty.Value);
                 BetterFollowbot.Instance.Settings.autoDumpInventoryOnTrade.Value =
-                    ImGuiExtension.Checkbox("Dump Inventory on Trade Accept", BetterFollowbot.Instance.Settings.autoDumpInventoryOnTrade.Value);
-                BetterFollowbot.Instance.Settings.autoAcceptTrade.Value =
-                    ImGuiExtension.Checkbox("Auto Accept Trade", BetterFollowbot.Instance.Settings.autoAcceptTrade.Value);
+                    ImGuiExtension.Checkbox("Dump Inventory on Trade Open", BetterFollowbot.Instance.Settings.autoDumpInventoryOnTrade.Value);
+                BetterFollowbot.Instance.Settings.autoClickTradeAcceptButton.Value =
+                    ImGuiExtension.Checkbox("Auto Click Trade Accept Button", BetterFollowbot.Instance.Settings.autoClickTradeAcceptButton.Value);
 
                 ImGui.Text($"Current: {BetterFollowbot.Instance.Settings.autoJoinPartyEnabled.Value}");
             }

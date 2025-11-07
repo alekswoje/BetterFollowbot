@@ -136,6 +136,9 @@ public class BetterFollowbotSettings : ISettings
     #region Auto Join Party & Accept Trade
 
     public ToggleNode autoJoinPartyEnabled = new ToggleNode(false);
+    public ToggleNode autoJoinPartyEvenIfInParty = new ToggleNode(true);
+    public ToggleNode autoDumpInventoryOnTrade = new ToggleNode(false);
+    public ToggleNode autoAcceptTrade = new ToggleNode(false);
 
     #endregion
 

@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading;
+using System.Windows.Forms;
 using BetterFollowbot.Interfaces;
 using ExileCore;
 using ExileCore.PoEMemory.Components;
@@ -146,8 +147,8 @@ namespace BetterFollowbot.Automation
                                                 if (actionText.Contains("party invite") || actionText.Contains("sent you a party invite"))
                                                 {
                                                     inviteType = "PARTY";
-                                                    shouldProcess = !isInParty;
-                                                    if (isInParty)
+                                                    shouldProcess = _settings.autoJoinPartyEvenIfInParty.Value || !isInParty;
+                                                    if (!shouldProcess)
                                                     {
                                                         if (timeSinceLastAttempt >= 15.0)
                                                         {
@@ -207,6 +208,12 @@ namespace BetterFollowbot.Automation
                                                                 if (success)
                                                                 {
                                                                     BetterFollowbot.Instance.LogMessage("AUTO JOIN PARTY & ACCEPT TRADE: Successfully opened trade window!");
+                                                                    
+                                                                    if (_settings.autoDumpInventoryOnTrade.Value)
+                                                                    {
+                                                                        Thread.Sleep(200);
+                                                                        DumpInventoryToTrade();
+                                                                    }
                                                                 }
                                                             }
 
@@ -236,6 +243,12 @@ namespace BetterFollowbot.Automation
                                                                     if (success)
                                                                     {
                                                                         BetterFollowbot.Instance.LogMessage("AUTO JOIN PARTY & ACCEPT TRADE: Successfully opened trade window on second attempt!");
+                                                                        
+                                                                        if (_settings.autoDumpInventoryOnTrade.Value)
+                                                                        {
+                                                                            Thread.Sleep(200);
+                                                                            DumpInventoryToTrade();
+                                                                        }
                                                                     }
                                                                 }
 
@@ -286,6 +299,117 @@ namespace BetterFollowbot.Automation
                 {
                     BetterFollowbot.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Exception occurred - {e.Message}");
                 }
+            }
+        }
+
+        private void DumpInventoryToTrade()
+        {
+            try
+            {
+                var inventoryPanel = BetterFollowbot.Instance.GameController?.IngameState?.IngameUi?.InventoryPanel;
+                if (inventoryPanel == null || !inventoryPanel.IsVisible)
+                {
+                    BetterFollowbot.Instance.LogMessage("INVENTORY DUMP: Inventory panel not visible");
+                    return;
+                }
+
+                var tradePanel = GetTradePanel();
+                if (tradePanel == null || !tradePanel.IsVisible)
+                {
+                    BetterFollowbot.Instance.LogMessage("INVENTORY DUMP: Trade window not visible");
+                    return;
+                }
+
+                var inventoryItems = BetterFollowbot.Instance.GameController?.IngameState?.ServerData?.PlayerInventories?[0]?.Inventory?.InventorySlotItems;
+                if (inventoryItems == null)
+                {
+                    BetterFollowbot.Instance.LogMessage("INVENTORY DUMP: No inventory items found");
+                    return;
+                }
+
+                var itemsToDump = inventoryItems
+                    .Where(x => x != null && x.Item != null)
+                    .OrderBy(x => x.PosX)
+                    .ThenBy(x => x.PosY)
+                    .ToList();
+
+                BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP: Dumping {itemsToDump.Count} items to trade");
+
+                var prevMousePos = _instance.GetMousePosition();
+
+                foreach (var item in itemsToDump)
+                {
+                    if (tradePanel == null || !tradePanel.IsVisible)
+                    {
+                        BetterFollowbot.Instance.LogMessage("INVENTORY DUMP: Trade window closed, aborting");
+                        break;
+                    }
+
+                    var itemRect = item.GetClientRect();
+                    var itemCenter = itemRect.Center;
+
+                    Keyboard.KeyDown(Keys.LControlKey);
+                    Thread.Sleep(30);
+                    Mouse.SetCursorPos(itemCenter);
+                    Thread.Sleep(50);
+                    Mouse.LeftMouseDown();
+                    Thread.Sleep(30);
+                    Mouse.LeftMouseUp();
+                    Thread.Sleep(30);
+                    Keyboard.KeyUp(Keys.LControlKey);
+                    Thread.Sleep(40);
+                }
+
+                if (prevMousePos.X > 0 && prevMousePos.Y > 0)
+                {
+                    Mouse.SetCursorPos(prevMousePos);
+                }
+                BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP: Completed dumping {itemsToDump.Count} items");
+
+                if (_settings.autoAcceptTrade.Value)
+                {
+                    Thread.Sleep(300);
+                    ClickTradeAcceptButton();
+                }
+            }
+            catch (Exception ex)
+            {
+                BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP: Error - {ex.Message}");
+            }
+        }
+
+        private void ClickTradeAcceptButton()
+        {
+            try
+            {
+                var tradePanel = GetTradePanel();
+                if (tradePanel == null || !tradePanel.IsVisible)
+                {
+                    BetterFollowbot.Instance.LogMessage("AUTO ACCEPT TRADE: Trade window not visible");
+                    return;
+                }
+
+                var acceptButton = tradePanel.AcceptButton;
+                if (acceptButton == null || !acceptButton.IsVisible)
+                {
+                    BetterFollowbot.Instance.LogMessage("AUTO ACCEPT TRADE: Accept button not visible");
+                    return;
+                }
+
+                var buttonRect = acceptButton.GetClientRectCache;
+                var buttonCenter = buttonRect.Center;
+
+                Mouse.SetCursorPos(buttonCenter);
+                Thread.Sleep(100);
+                Mouse.LeftMouseDown();
+                Thread.Sleep(40);
+                Mouse.LeftMouseUp();
+
+                BetterFollowbot.Instance.LogMessage("AUTO ACCEPT TRADE: Clicked accept button");
+            }
+            catch (Exception ex)
+            {
+                BetterFollowbot.Instance.LogMessage($"AUTO ACCEPT TRADE: Error - {ex.Message}");
             }
         }
     }

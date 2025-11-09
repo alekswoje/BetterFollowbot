@@ -61,6 +61,7 @@ namespace BetterFollowbot.Interfaces
         public Vector2 MovementScreenPos { get; set; }
         public Vector2 TransitionPos { get; set; }
         public Vector2 WaypointScreenPos { get; set; }
+        public Vector2 PlaqueScreenPos { get; set; }
 
         public TaskExecutionResult()
         {

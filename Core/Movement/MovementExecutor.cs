@@ -67,6 +67,7 @@ namespace BetterFollowbot.Core.Movement
 
             Vector2 transitionPos = Vector2.Zero;
             Vector2 waypointScreenPos = Vector2.Zero;
+            Vector2 plaqueScreenPos = Vector2.Zero;
 
             switch (currentTask.Type)
             {
@@ -298,7 +299,13 @@ namespace BetterFollowbot.Core.Movement
                     }
                     else
                     {
-                        // Close enough - click the plaque label
+                        // Close enough - get the label screen position (same as portals)
+                        var plaqueLabelRect = currentTask.LabelOnGround.Label.GetClientRectCache;
+                        var plaqueButtonCenter = plaqueLabelRect.Center;
+                        plaqueScreenPos = new Vector2(plaqueButtonCenter.X, plaqueButtonCenter.Y);
+                        
+                        _core.LogMessage($"PLAQUE: Label button center: ({plaqueButtonCenter.X:F1}, {plaqueButtonCenter.Y:F1})");
+                        
                         shouldClickPlaqueAndContinue = true;
                         Input.KeyUp(_core.Settings.autoPilotMoveKey);
                     }
@@ -447,6 +454,7 @@ namespace BetterFollowbot.Core.Movement
             result.MovementScreenPos = movementScreenPos;
             result.TransitionPos = transitionPos;
             result.WaypointScreenPos = waypointScreenPos;
+            result.PlaqueScreenPos = plaqueScreenPos;
 
             return result;
         }

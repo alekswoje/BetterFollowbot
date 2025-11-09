@@ -972,6 +972,7 @@ namespace BetterFollowbot;
                 movementScreenPos = executionResult.MovementScreenPos;
                 transitionPos = executionResult.TransitionPos;
                 waypointScreenPos = executionResult.WaypointScreenPos;
+                plaqueScreenPos = executionResult.PlaqueScreenPos;
 
 
                 // Handle error cleanup (simplified without try-catch)
@@ -1206,49 +1207,28 @@ namespace BetterFollowbot;
 
                     if (shouldClickPlaqueAndContinue)
                     {
-                        BetterFollowbot.Instance.LogMessage("PLAQUE: Attempting to click trial plaque");
-                        
-                        // Get the plaque label screen position (EXACTLY like portals do)
-                        if (currentTask.LabelOnGround?.Label != null)
-                        {
-                            try
-                            {
-                                var labelElement = currentTask.LabelOnGround.Label;
-                                var labelRect = labelElement.GetClientRectCache;
-                                var windowOffset = BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().TopLeft;
-                                
-                                // GetClientRectCache returns client coordinates, need to add window offset for screen coordinates
-                                plaqueScreenPos = new Vector2(
-                                    labelRect.Center.X + windowOffset.X, 
-                                    labelRect.Center.Y + windowOffset.Y
-                                );
-                                
-                                var labelText = labelElement.Text ?? "Unknown";
-                                BetterFollowbot.Instance.LogMessage($"PLAQUE: Label '{labelText}' - Client coords: ({labelRect.Center.X:F1}, {labelRect.Center.Y:F1}), Window offset: ({windowOffset.X:F1}, {windowOffset.Y:F1}), Screen coords: ({plaqueScreenPos.X:F1}, {plaqueScreenPos.Y:F1})");
-                            }
-                            catch (Exception ex)
-                            {
-                                BetterFollowbot.Instance.LogMessage($"PLAQUE: Error getting label position, using world position: {ex.Message}");
-                                // Fallback to world position if label is unavailable
-                                plaqueScreenPos = Helper.WorldToValidScreenPosition(currentTask.LabelOnGround.ItemOnGround.Pos);
-                            }
-                        }
-                        else
-                        {
-                            // Fallback to world position
-                            plaqueScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
-                        }
+                        BetterFollowbot.Instance.LogMessage($"PLAQUE: Starting plaque click sequence - Moving mouse to plaque position ({plaqueScreenPos.X:F1}, {plaqueScreenPos.Y:F1})");
                         
                         // Add random delay for less detectable behavior
                         var randomDelay = GetRandomActionDelay();
                         if (randomDelay > 0)
                             await Task.Delay(randomDelay);
                         
-                        // Click the plaque label (use same method as portals)
+                        // Click the plaque label (EXACTLY like portals)
                         Mouse.SetCursorPosHuman(plaqueScreenPos);
                         await Task.Delay(100);
+                        
+                        var mousePosAfterMove = BetterFollowbot.Instance.GetMousePosition();
+                        BetterFollowbot.Instance.LogMessage($"PLAQUE: Mouse position after move - X: {mousePosAfterMove.X:F1}, Y: {mousePosAfterMove.Y:F1}");
+                        
+                        // Perform the click
+                        BetterFollowbot.Instance.LogMessage("PLAQUE: Performing left click on plaque");
                         Mouse.LeftClick();
+                        
+                        // Wait for click to process
                         await Task.Delay(300);
+                        
+                        BetterFollowbot.Instance.LogMessage("PLAQUE: Plaque click sequence completed");
                         
                         // Mark this plaque as clicked using its entity address from the task data
                         if (currentTask.Data is long entityAddress)

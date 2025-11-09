@@ -278,16 +278,27 @@ namespace BetterFollowbot.Core.Movement
 
                 case TaskNodeType.ClickPlaque:
                 {
-                    var distance = Vector3.Distance(_core.PlayerPosition, currentTask.WorldPosition);
+                    // Get position from label if available, otherwise use world position
+                    Vector3 plaquePos;
+                    if (currentTask.LabelOnGround?.ItemOnGround != null)
+                    {
+                        plaquePos = currentTask.LabelOnGround.ItemOnGround.Pos;
+                    }
+                    else
+                    {
+                        plaquePos = currentTask.WorldPosition;
+                    }
+                    
+                    var distance = Vector3.Distance(_core.PlayerPosition, plaquePos);
                     if (distance > 50)
                     {
                         // Too far from plaque, keep moving towards it
-                        movementScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
+                        movementScreenPos = Helper.WorldToValidScreenPosition(plaquePos);
                         shouldMovementContinue = true;
                     }
                     else
                     {
-                        // Close enough - click the plaque
+                        // Close enough - click the plaque label
                         shouldClickPlaqueAndContinue = true;
                         Input.KeyUp(_core.Settings.autoPilotMoveKey);
                     }

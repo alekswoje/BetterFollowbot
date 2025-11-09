@@ -889,6 +889,11 @@ namespace BetterFollowbot.Core.Movement
                 if (plaques == null || plaques.Count == 0)
                     return;
 
+                // Get all labels on ground to match with plaque entities
+                var allLabels = _core.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels?.ToList();
+                if (allLabels == null)
+                    return;
+
                 // Check each plaque
                 foreach (var plaque in plaques)
                 {
@@ -910,15 +915,26 @@ namespace BetterFollowbot.Core.Movement
                         if (hasPendingPlaqueTask)
                             continue;
 
-                        // Create a task to click the plaque
-                        var plaquePos = plaque.GetComponent<Render>()?.Pos ?? plaque.Pos;
-                        var plaqueTask = new TaskNode(plaquePos, 50, TaskNodeType.ClickPlaque)
+                        // Find the label associated with this plaque entity
+                        var plaqueLabel = allLabels.FirstOrDefault(label =>
+                            label?.ItemOnGround != null &&
+                            label.ItemOnGround.Address == entityAddress);
+
+                        if (plaqueLabel == null)
+                        {
+                            _core.LogMessage($"PLAQUE: Found plaque entity but no matching label at distance {distance:F1}");
+                            continue;
+                        }
+
+                        // Use the label for the task (just like portals)
+                        var plaqueTask = new TaskNode(plaqueLabel, 50, TaskNodeType.ClickPlaque)
                         {
                             Data = entityAddress // Store the entity address so we can mark it as clicked
                         };
 
                         _taskManager.AddTask(plaqueTask);
-                        _core.LogMessage($"PLAQUE: Found trial plaque at distance {distance:F1}, creating click task");
+                        var labelText = plaqueLabel.Label?.Text ?? "Unknown";
+                        _core.LogMessage($"PLAQUE: Found trial plaque '{labelText}' at distance {distance:F1}, creating click task");
                         
                         // Only create one task at a time
                         break;

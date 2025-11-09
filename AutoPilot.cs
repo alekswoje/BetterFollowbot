@@ -1208,15 +1208,43 @@ namespace BetterFollowbot;
                     {
                         BetterFollowbot.Instance.LogMessage("PLAQUE: Attempting to click trial plaque");
                         
-                        // Get the plaque screen position
-                        plaqueScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
+                        // Get the plaque label screen position (like portals)
+                        if (currentTask.LabelOnGround?.Label != null)
+                        {
+                            try
+                            {
+                                var labelElement = currentTask.LabelOnGround.Label;
+                                var labelRect = labelElement.GetClientRectCache;
+                                var windowOffset = BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().TopLeft;
+                                
+                                // Click the center of the label (the text)
+                                plaqueScreenPos = new Vector2(
+                                    labelRect.Center.X + windowOffset.X,
+                                    labelRect.Center.Y + windowOffset.Y
+                                );
+                                
+                                var labelText = labelElement.Text ?? "Unknown";
+                                BetterFollowbot.Instance.LogMessage($"PLAQUE: Clicking label '{labelText}' at screen position ({plaqueScreenPos.X:F1}, {plaqueScreenPos.Y:F1})");
+                            }
+                            catch (Exception ex)
+                            {
+                                BetterFollowbot.Instance.LogMessage($"PLAQUE: Error getting label position, using world position: {ex.Message}");
+                                // Fallback to world position if label is unavailable
+                                plaqueScreenPos = Helper.WorldToValidScreenPosition(currentTask.LabelOnGround.ItemOnGround.Pos);
+                            }
+                        }
+                        else
+                        {
+                            // Fallback to world position
+                            plaqueScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
+                        }
                         
                         // Add random delay for less detectable behavior
                         var randomDelay = GetRandomActionDelay();
                         if (randomDelay > 0)
                             await Task.Delay(randomDelay);
                         
-                        // Click the plaque
+                        // Click the plaque label
                         Mouse.SetCursorPosAndLeftClickHuman(plaqueScreenPos, 100);
                         await Task.Delay(300);
                         

@@ -423,13 +423,67 @@ namespace BetterFollowbot.Automation
                 var buttonCenter = buttonRect.Center;
                 BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Button center: ({buttonCenter.X:F1}, {buttonCenter.Y:F1})");
 
-                Mouse.SetCursorPos(buttonCenter);
-                Thread.Sleep(100);
-                Mouse.LeftMouseDown();
-                Thread.Sleep(40);
-                Mouse.LeftMouseUp();
+                // Try up to 3 times with exponential backoff
+                const int maxAttempts = 3;
+                int baseDelay = 100; // milliseconds
+                
+                for (int attempt = 1; attempt <= maxAttempts; attempt++)
+                {
+                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Attempt {attempt}/{maxAttempts}");
+                    
+                    Mouse.SetCursorPos(buttonCenter);
+                    Thread.Sleep(100);
+                    Mouse.LeftMouseDown();
+                    Thread.Sleep(40);
+                    Mouse.LeftMouseUp();
 
-                BetterFollowbot.Instance.LogMessage("AUTO CLICK TRADE ACCEPT: Clicked accept button");
+                    BetterFollowbot.Instance.LogMessage("AUTO CLICK TRADE ACCEPT: Clicked accept button");
+                    
+                    // Wait a bit for the trade to register
+                    Thread.Sleep(200);
+                    
+                    // Check if SellerAccepted is true
+                    var tradePanelCheck = GetTradePanel();
+                    if (tradePanelCheck != null)
+                    {
+                        try
+                        {
+                            bool sellerAccepted = tradePanelCheck.SellerAccepted;
+                            BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: SellerAccepted = {sellerAccepted}");
+                            
+                            if (sellerAccepted)
+                            {
+                                BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Successfully accepted trade on attempt {attempt}");
+                                return;
+                            }
+                            else
+                            {
+                                BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: SellerAccepted is false on attempt {attempt}");
+                                
+                                if (attempt < maxAttempts)
+                                {
+                                    // Exponential backoff: 100ms, 200ms, 400ms
+                                    int delay = baseDelay * (int)Math.Pow(2, attempt - 1);
+                                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Waiting {delay}ms before retry");
+                                    Thread.Sleep(delay);
+                                }
+                            }
+                        }
+                        catch (Exception checkEx)
+                        {
+                            BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Could not check SellerAccepted - {checkEx.Message}");
+                            // If we can't check, assume it worked and exit
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        BetterFollowbot.Instance.LogMessage("AUTO CLICK TRADE ACCEPT: Trade window closed after click");
+                        return;
+                    }
+                }
+                
+                BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Failed to accept after {maxAttempts} attempts");
             }
             catch (Exception ex)
             {

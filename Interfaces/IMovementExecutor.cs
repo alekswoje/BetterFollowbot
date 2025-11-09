@@ -47,7 +47,6 @@ namespace BetterFollowbot.Interfaces
         public bool ShouldTerrainDash { get; set; }
         public bool ShouldTransitionAndContinue { get; set; }
         public bool ShouldClaimWaypointAndContinue { get; set; }
-        public bool ShouldClickPlaqueAndContinue { get; set; }
         public bool ShouldDashAndContinue { get; set; }
         public bool ShouldTeleportConfirmAndContinue { get; set; }
         public bool ShouldTeleportButtonAndContinue { get; set; }
@@ -61,7 +60,6 @@ namespace BetterFollowbot.Interfaces
         public Vector2 MovementScreenPos { get; set; }
         public Vector2 TransitionPos { get; set; }
         public Vector2 WaypointScreenPos { get; set; }
-        public Vector2 PlaqueScreenPos { get; set; }
 
         public TaskExecutionResult()
         {

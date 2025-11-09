@@ -38,9 +38,6 @@ namespace BetterFollowbot;
         private string _failedPortalLabel = "";
         private const int MAX_PORTAL_ATTEMPTS = 3;
 
-        // Plaque click tracking - stores entity addresses of clicked plaques to prevent spam clicking
-        private HashSet<long> _clickedPlaques = new HashSet<long>();
-
         /// <summary>
         /// Resets the portal retry counter (called when successfully following leader or changing zones)
         /// </summary>
@@ -53,23 +50,6 @@ namespace BetterFollowbot;
             _portalClickAttempts = 0;
             _lastPortalAttemptZone = "";
             _failedPortalLabel = "";
-        }
-
-        /// <summary>
-        /// Checks if a plaque has already been clicked
-        /// </summary>
-        public bool HasClickedPlaque(long entityAddress)
-        {
-            return _clickedPlaques.Contains(entityAddress);
-        }
-
-        /// <summary>
-        /// Marks a plaque as clicked to prevent spam clicking
-        /// </summary>
-        public void MarkPlaqueAsClicked(long entityAddress)
-        {
-            _clickedPlaques.Add(entityAddress);
-            BetterFollowbot.Instance.LogMessage($"PLAQUE: Marked plaque at address {entityAddress} as clicked");
         }
 
         /// <summary>
@@ -673,10 +653,6 @@ namespace BetterFollowbot;
         // Reset portal retry counter on area change
         ResetPortalRetryCounter();
 
-        // Clear clicked plaques on area change
-        _clickedPlaques.Clear();
-        BetterFollowbot.Instance.LogMessage("PLAQUE: Cleared clicked plaques tracking on area change");
-
         // Clear A* path cache on area change
         _pathfinding.ClearPathCache();
 
@@ -880,7 +856,6 @@ namespace BetterFollowbot;
 
                 bool shouldTransitionAndContinue = false;
                 bool shouldClaimWaypointAndContinue = false;
-                bool shouldClickPlaqueAndContinue = false;
                 bool shouldDashAndContinue = false;
                 bool shouldTeleportConfirmAndContinue = false;
                 bool shouldTeleportButtonAndContinue = false;
@@ -892,9 +867,6 @@ namespace BetterFollowbot;
 
                 // Waypoint-related variables
                 Vector2 waypointScreenPos = Vector2.Zero;
-                
-                // Plaque-related variables
-                Vector2 plaqueScreenPos = Vector2.Zero;
 
                 // PRE-MOVEMENT OVERRIDE CHECK: Check if we should override BEFORE executing movement
                 if (currentTask.Type == TaskNodeType.Movement)
@@ -960,7 +932,6 @@ namespace BetterFollowbot;
                 shouldTerrainDash = executionResult.ShouldTerrainDash;
                 shouldTransitionAndContinue = executionResult.ShouldTransitionAndContinue;
                 shouldClaimWaypointAndContinue = executionResult.ShouldClaimWaypointAndContinue;
-                shouldClickPlaqueAndContinue = executionResult.ShouldClickPlaqueAndContinue;
                 shouldDashAndContinue = executionResult.ShouldDashAndContinue;
                 shouldTeleportConfirmAndContinue = executionResult.ShouldTeleportConfirmAndContinue;
                 shouldTeleportButtonAndContinue = executionResult.ShouldTeleportButtonAndContinue;
@@ -972,7 +943,6 @@ namespace BetterFollowbot;
                 movementScreenPos = executionResult.MovementScreenPos;
                 transitionPos = executionResult.TransitionPos;
                 waypointScreenPos = executionResult.WaypointScreenPos;
-                plaqueScreenPos = executionResult.PlaqueScreenPos;
 
 
                 // Handle error cleanup (simplified without try-catch)
@@ -1202,44 +1172,6 @@ namespace BetterFollowbot;
                             Mouse.SetCursorPosAndLeftClickHuman(waypointScreenPos, 100);
                             await Task.Delay(1000);
                         }
-                        continue;
-                    }
-
-                    if (shouldClickPlaqueAndContinue)
-                    {
-                        BetterFollowbot.Instance.LogMessage($"PLAQUE: Starting plaque click sequence - Moving mouse to plaque position ({plaqueScreenPos.X:F1}, {plaqueScreenPos.Y:F1})");
-                        
-                        // Add random delay for less detectable behavior
-                        var randomDelay = GetRandomActionDelay();
-                        if (randomDelay > 0)
-                            await Task.Delay(randomDelay);
-                        
-                        // Click the plaque label (EXACTLY like portals)
-                        Mouse.SetCursorPosHuman(plaqueScreenPos);
-                        await Task.Delay(100);
-                        
-                        var mousePosAfterMove = BetterFollowbot.Instance.GetMousePosition();
-                        BetterFollowbot.Instance.LogMessage($"PLAQUE: Mouse position after move - X: {mousePosAfterMove.X:F1}, Y: {mousePosAfterMove.Y:F1}");
-                        
-                        // Perform the click
-                        BetterFollowbot.Instance.LogMessage("PLAQUE: Performing left click on plaque");
-                        Mouse.LeftClick();
-                        
-                        // Wait for click to process
-                        await Task.Delay(300);
-                        
-                        BetterFollowbot.Instance.LogMessage("PLAQUE: Plaque click sequence completed");
-                        
-                        // Mark this plaque as clicked using its entity address from the task data
-                        if (currentTask.Data is long entityAddress)
-                        {
-                            MarkPlaqueAsClicked(entityAddress);
-                            BetterFollowbot.Instance.LogMessage($"PLAQUE: Successfully clicked trial plaque at address {entityAddress}");
-                        }
-                        
-                        // Remove the task after clicking
-                        _taskManager.RemoveTask(currentTask);
-                        
                         continue;
                     }
 

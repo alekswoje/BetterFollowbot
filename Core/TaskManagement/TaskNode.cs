@@ -88,7 +88,6 @@ public enum TaskNodeType
     Dash,
     TeleportConfirm,
     TeleportButton,
-    ClickPlaque,        // Click ascendancy trial plaques
     
     // Skill Tasks (NEW - for task-based skill execution)
     FlameLink,          // Target a party member for flame link

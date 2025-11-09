@@ -59,7 +59,6 @@ namespace BetterFollowbot.Core.Movement
 
             bool shouldTransitionAndContinue = false;
             bool shouldClaimWaypointAndContinue = false;
-            bool shouldClickPlaqueAndContinue = false;
             bool shouldDashAndContinue = false;
             bool shouldTeleportConfirmAndContinue = false;
             bool shouldTeleportButtonAndContinue = false;
@@ -67,7 +66,6 @@ namespace BetterFollowbot.Core.Movement
 
             Vector2 transitionPos = Vector2.Zero;
             Vector2 waypointScreenPos = Vector2.Zero;
-            Vector2 plaqueScreenPos = Vector2.Zero;
 
             switch (currentTask.Type)
             {
@@ -277,49 +275,6 @@ namespace BetterFollowbot.Core.Movement
                     break;
                 }
 
-                case TaskNodeType.ClickPlaque:
-                {
-                    // Get position from label if available, otherwise use world position
-                    Vector3 plaquePos;
-                    if (currentTask.LabelOnGround?.ItemOnGround != null)
-                    {
-                        plaquePos = currentTask.LabelOnGround.ItemOnGround.Pos;
-                    }
-                    else
-                    {
-                        plaquePos = currentTask.WorldPosition;
-                    }
-                    
-                    var distance = Vector3.Distance(_core.PlayerPosition, plaquePos);
-                    if (distance > 20)
-                    {
-                        // Too far from plaque, keep moving towards it (must be within 20 units)
-                        movementScreenPos = Helper.WorldToValidScreenPosition(plaquePos);
-                        shouldMovementContinue = true;
-                    }
-                    else
-                    {
-                        // Close enough - get the label screen position (same as portals)
-                        var plaqueLabelRect = currentTask.LabelOnGround.Label.GetClientRectCache;
-                        var plaqueButtonCenter = plaqueLabelRect.Center;
-                        plaqueScreenPos = new Vector2(plaqueButtonCenter.X, plaqueButtonCenter.Y);
-                        
-                        _core.LogMessage($"PLAQUE: Label button center: ({plaqueButtonCenter.X:F1}, {plaqueButtonCenter.Y:F1})");
-                        
-                        shouldClickPlaqueAndContinue = true;
-                        Input.KeyUp(_core.Settings.autoPilotMoveKey);
-                    }
-                    
-                    currentTask.AttemptCount++;
-                    if (currentTask.AttemptCount > 5)
-                    {
-                        // Failed to click after 5 attempts, remove task
-                        _core.LogMessage($"PLAQUE: Failed to click plaque after {currentTask.AttemptCount} attempts, removing task");
-                        _taskManager.RemoveTask(currentTask);
-                    }
-                    break;
-                }
-
                  case TaskNodeType.Dash:
                  {
                      _core.LogMessage($"Executing Dash task - Target: {currentTask.WorldPosition}, Distance: {Vector3.Distance(_core.PlayerPosition, currentTask.WorldPosition):F1}, Attempts: {currentTask.AttemptCount}");
@@ -442,7 +397,6 @@ namespace BetterFollowbot.Core.Movement
             result.ShouldTerrainDash = shouldTerrainDash;
             result.ShouldTransitionAndContinue = shouldTransitionAndContinue;
             result.ShouldClaimWaypointAndContinue = shouldClaimWaypointAndContinue;
-            result.ShouldClickPlaqueAndContinue = shouldClickPlaqueAndContinue;
             result.ShouldDashAndContinue = shouldDashAndContinue;
             result.ShouldTeleportConfirmAndContinue = shouldTeleportConfirmAndContinue;
             result.ShouldTeleportButtonAndContinue = shouldTeleportButtonAndContinue;
@@ -454,7 +408,6 @@ namespace BetterFollowbot.Core.Movement
             result.MovementScreenPos = movementScreenPos;
             result.TransitionPos = transitionPos;
             result.WaypointScreenPos = waypointScreenPos;
-            result.PlaqueScreenPos = plaqueScreenPos;
 
             return result;
         }

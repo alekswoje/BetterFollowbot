@@ -290,9 +290,9 @@ namespace BetterFollowbot.Core.Movement
                     }
                     
                     var distance = Vector3.Distance(_core.PlayerPosition, plaquePos);
-                    if (distance > 50)
+                    if (distance > 20)
                     {
-                        // Too far from plaque, keep moving towards it
+                        // Too far from plaque, keep moving towards it (must be within 20 units)
                         movementScreenPos = Helper.WorldToValidScreenPosition(plaquePos);
                         shouldMovementContinue = true;
                     }

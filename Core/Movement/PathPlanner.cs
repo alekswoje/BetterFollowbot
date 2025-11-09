@@ -926,8 +926,8 @@ namespace BetterFollowbot.Core.Movement
                             continue;
                         }
 
-                        // Use the label for the task (just like portals)
-                        var plaqueTask = new TaskNode(plaqueLabel, 50, TaskNodeType.ClickPlaque)
+                        // Use the label for the task (just like portals) - must be within 20 units to click
+                        var plaqueTask = new TaskNode(plaqueLabel, 20, TaskNodeType.ClickPlaque)
                         {
                             Data = entityAddress // Store the entity address so we can mark it as clicked
                         };

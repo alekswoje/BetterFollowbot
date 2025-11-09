@@ -122,6 +122,9 @@ namespace BetterFollowbot.Core.Movement
                     }
                 }
 
+                // Check for nearby ascendancy trial plaques and auto-click them (ONCE per plaque)
+                CheckAndClickNearbyPlaques();
+
                 // Check for special portals (arena portals) that should be clicked even when not in portal transition mode
                 if (!_portalManager.IsInPortalTransition && leaderPartyElement != null && followTarget != null)
                 {
@@ -855,6 +858,81 @@ namespace BetterFollowbot.Core.Movement
                 t.Type == TaskNodeType.Transition ||
                 t.Type == TaskNodeType.TeleportConfirm ||
                 t.Type == TaskNodeType.TeleportButton);
+        }
+
+        /// <summary>
+        /// Checks for nearby ascendancy trial plaques and creates a task to click them once
+        /// </summary>
+        private void CheckAndClickNearbyPlaques()
+        {
+            try
+            {
+                // Only check if autopilot is enabled
+                if (!_core.Settings.Enable.Value || !_core.Settings.autoPilotEnabled.Value)
+                    return;
+
+                // Don't check for plaques if we have transition tasks (priority to portals/teleports)
+                if (HasConflictingTransitionTasks())
+                    return;
+
+                // Find all IngameIcon entities with the trial plaque metadata
+                var plaques = _core.GameController?.EntityListWrapper?.ValidEntitiesByType[EntityType.IngameIcon]?
+                    .Where(x =>
+                    {
+                        if (x == null || !x.IsValid) return false;
+                        
+                        var metadata = x.Metadata?.ToLower() ?? "";
+                        return metadata.Contains("labyrinthtrialplaque");
+                    })
+                    .ToList();
+
+                if (plaques == null || plaques.Count == 0)
+                    return;
+
+                // Check each plaque
+                foreach (var plaque in plaques)
+                {
+                    try
+                    {
+                        var distance = plaque.DistancePlayer;
+                        var entityAddress = plaque.Address;
+
+                        // Only process plaques within 100 units
+                        if (distance > 100)
+                            continue;
+
+                        // Skip if we've already clicked this plaque
+                        if (BetterFollowbot.Instance.autoPilot.HasClickedPlaque(entityAddress))
+                            continue;
+
+                        // Skip if we already have a plaque click task pending
+                        var hasPendingPlaqueTask = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.ClickPlaque);
+                        if (hasPendingPlaqueTask)
+                            continue;
+
+                        // Create a task to click the plaque
+                        var plaquePos = plaque.GetComponent<Render>()?.Pos ?? plaque.Pos;
+                        var plaqueTask = new TaskNode(plaquePos, 50, TaskNodeType.ClickPlaque)
+                        {
+                            Data = entityAddress // Store the entity address so we can mark it as clicked
+                        };
+
+                        _taskManager.AddTask(plaqueTask);
+                        _core.LogMessage($"PLAQUE: Found trial plaque at distance {distance:F1}, creating click task");
+                        
+                        // Only create one task at a time
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        _core.LogMessage($"PLAQUE: Error processing plaque: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _core.LogMessage($"PLAQUE: Error in CheckAndClickNearbyPlaques: {ex.Message}");
+            }
         }
     }
 }

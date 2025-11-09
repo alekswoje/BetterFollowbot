@@ -57,6 +57,12 @@ public class TaskNode
     /// Additional skill-specific data (player name, mine count, etc.)
     /// </summary>
     public SkillExecutionData SkillData { get; set; }
+    
+    /// <summary>
+    /// General purpose data field for storing additional task information
+    /// Can be used for portal labels, entity addresses, etc.
+    /// </summary>
+    public object Data { get; set; }
 
 
 
@@ -82,6 +88,7 @@ public enum TaskNodeType
     Dash,
     TeleportConfirm,
     TeleportButton,
+    ClickPlaque,        // Click ascendancy trial plaques
     
     // Skill Tasks (NEW - for task-based skill execution)
     FlameLink,          // Target a party member for flame link

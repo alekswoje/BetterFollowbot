@@ -47,6 +47,7 @@ namespace BetterFollowbot.Interfaces
         public bool ShouldTerrainDash { get; set; }
         public bool ShouldTransitionAndContinue { get; set; }
         public bool ShouldClaimWaypointAndContinue { get; set; }
+        public bool ShouldClickPlaqueAndContinue { get; set; }
         public bool ShouldDashAndContinue { get; set; }
         public bool ShouldTeleportConfirmAndContinue { get; set; }
         public bool ShouldTeleportButtonAndContinue { get; set; }

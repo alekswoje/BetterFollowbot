@@ -32,6 +32,46 @@ namespace BetterFollowbot;
         private DateTime _lastMenuCheckLog = DateTime.MinValue;
         private DateTime _lastTeleportConfirmTime = DateTime.MinValue;
 
+        // Portal retry tracking
+        private int _portalClickAttempts = 0;
+        private string _lastPortalAttemptZone = "";
+        private string _failedPortalLabel = "";
+        private const int MAX_PORTAL_ATTEMPTS = 3;
+
+        // Plaque click tracking - stores entity addresses of clicked plaques to prevent spam clicking
+        private HashSet<long> _clickedPlaques = new HashSet<long>();
+
+        /// <summary>
+        /// Resets the portal retry counter (called when successfully following leader or changing zones)
+        /// </summary>
+        private void ResetPortalRetryCounter()
+        {
+            if (_portalClickAttempts > 0)
+            {
+                BetterFollowbot.Instance.LogMessage($"PORTAL RETRY: Resetting portal retry counter (was at {_portalClickAttempts} attempts)");
+            }
+            _portalClickAttempts = 0;
+            _lastPortalAttemptZone = "";
+            _failedPortalLabel = "";
+        }
+
+        /// <summary>
+        /// Checks if a plaque has already been clicked
+        /// </summary>
+        public bool HasClickedPlaque(long entityAddress)
+        {
+            return _clickedPlaques.Contains(entityAddress);
+        }
+
+        /// <summary>
+        /// Marks a plaque as clicked to prevent spam clicking
+        /// </summary>
+        public void MarkPlaqueAsClicked(long entityAddress)
+        {
+            _clickedPlaques.Add(entityAddress);
+            BetterFollowbot.Instance.LogMessage($"PLAQUE: Marked plaque at address {entityAddress} as clicked");
+        }
+
         /// <summary>
         /// Gets a random action delay in milliseconds to make bot behavior less detectable
         /// </summary>
@@ -630,6 +670,13 @@ namespace BetterFollowbot;
     {
         ResetPathing();
 
+        // Reset portal retry counter on area change
+        ResetPortalRetryCounter();
+
+        // Clear clicked plaques on area change
+        _clickedPlaques.Clear();
+        BetterFollowbot.Instance.LogMessage("PLAQUE: Cleared clicked plaques tracking on area change");
+
         // Clear A* path cache on area change
         _pathfinding.ClearPathCache();
 
@@ -833,6 +880,7 @@ namespace BetterFollowbot;
 
                 bool shouldTransitionAndContinue = false;
                 bool shouldClaimWaypointAndContinue = false;
+                bool shouldClickPlaqueAndContinue = false;
                 bool shouldDashAndContinue = false;
                 bool shouldTeleportConfirmAndContinue = false;
                 bool shouldTeleportButtonAndContinue = false;
@@ -844,6 +892,9 @@ namespace BetterFollowbot;
 
                 // Waypoint-related variables
                 Vector2 waypointScreenPos = Vector2.Zero;
+                
+                // Plaque-related variables
+                Vector2 plaqueScreenPos = Vector2.Zero;
 
                 // PRE-MOVEMENT OVERRIDE CHECK: Check if we should override BEFORE executing movement
                 if (currentTask.Type == TaskNodeType.Movement)
@@ -909,6 +960,7 @@ namespace BetterFollowbot;
                 shouldTerrainDash = executionResult.ShouldTerrainDash;
                 shouldTransitionAndContinue = executionResult.ShouldTransitionAndContinue;
                 shouldClaimWaypointAndContinue = executionResult.ShouldClaimWaypointAndContinue;
+                shouldClickPlaqueAndContinue = executionResult.ShouldClickPlaqueAndContinue;
                 shouldDashAndContinue = executionResult.ShouldDashAndContinue;
                 shouldTeleportConfirmAndContinue = executionResult.ShouldTeleportConfirmAndContinue;
                 shouldTeleportButtonAndContinue = executionResult.ShouldTeleportButtonAndContinue;
@@ -1019,7 +1071,53 @@ namespace BetterFollowbot;
 
                     if (shouldTransitionAndContinue)
                     {
-                        BetterFollowbot.Instance.LogMessage("TRANSITION: Starting portal click sequence");
+                        var currentZone = BetterFollowbot.Instance.GameController?.Area?.CurrentArea?.DisplayName ?? "";
+                        var portalLabel = currentTask.Data?.ToString() ?? "Unknown";
+                        
+                        // Check if we've exceeded max portal attempts and should fall back to town portal
+                        if (_portalClickAttempts >= MAX_PORTAL_ATTEMPTS && _lastPortalAttemptZone == currentZone)
+                        {
+                            BetterFollowbot.Instance.LogMessage($"PORTAL RETRY: Exceeded {MAX_PORTAL_ATTEMPTS} failed attempts on portal '{_failedPortalLabel}' - falling back to blue town portal");
+                            
+                            // Try to find a town portal (blue portal) as fallback
+                            var townPortals = BetterFollowbot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels
+                                .Where(x => x?.ItemOnGround != null && 
+                                           x.ItemOnGround.Type == ExileCore.Shared.Enums.EntityType.TownPortal &&
+                                           x.ItemOnGround.DistancePlayer < 500)
+                                .OrderBy(x => x.ItemOnGround.DistancePlayer)
+                                .ToList();
+                            
+                            if (townPortals != null && townPortals.Any())
+                            {
+                                var townPortal = townPortals.First();
+                                var townPortalPos = Helper.WorldToValidScreenPosition(townPortal.ItemOnGround.Pos);
+                                
+                                BetterFollowbot.Instance.LogMessage($"PORTAL RETRY: Found town portal at distance {townPortal.ItemOnGround.DistancePlayer:F1}, attempting to use it");
+                                
+                                // Click the town portal
+                                Mouse.SetCursorPosHuman(townPortalPos);
+                                await Task.Delay(150);
+                                Mouse.LeftClick();
+                                await Task.Delay(500);
+                                
+                                // Reset counters after using town portal
+                                _portalClickAttempts = 0;
+                                _lastPortalAttemptZone = "";
+                                _failedPortalLabel = "";
+                            }
+                            else
+                            {
+                                BetterFollowbot.Instance.LogMessage("PORTAL RETRY: No town portals found nearby, resetting attempts and will try again");
+                                _portalClickAttempts = 0;
+                                _lastPortalAttemptZone = "";
+                                _failedPortalLabel = "";
+                            }
+                            
+                            portalManager.SetPortalTransitionMode(false);
+                            continue;
+                        }
+                        
+                        BetterFollowbot.Instance.LogMessage($"TRANSITION: Starting portal click sequence (attempt {_portalClickAttempts + 1}/{MAX_PORTAL_ATTEMPTS})");
 
                         // Add random delay for less detectable behavior
                         var randomDelay = GetRandomActionDelay();
@@ -1064,7 +1162,26 @@ namespace BetterFollowbot;
 
                         // Wait for transition to start
                         BetterFollowbot.Instance.LogMessage("TRANSITION: Waiting for transition to process");
-                        await Task.Delay(300);
+                        await Task.Delay(500); // Increased from 300ms to give more time for zone change
+
+                        // Check if zone changed after portal click
+                        var newZone = BetterFollowbot.Instance.GameController?.Area?.CurrentArea?.DisplayName ?? "";
+                        if (newZone != currentZone)
+                        {
+                            BetterFollowbot.Instance.LogMessage($"TRANSITION: Portal click successful! Zone changed from '{currentZone}' to '{newZone}'");
+                            // Reset retry counters on success
+                            _portalClickAttempts = 0;
+                            _lastPortalAttemptZone = "";
+                            _failedPortalLabel = "";
+                        }
+                        else
+                        {
+                            // Portal click failed - still in same zone
+                            _portalClickAttempts++;
+                            _lastPortalAttemptZone = currentZone;
+                            _failedPortalLabel = portalLabel;
+                            BetterFollowbot.Instance.LogMessage($"TRANSITION: Portal click may have failed - still in zone '{currentZone}' (attempt {_portalClickAttempts}/{MAX_PORTAL_ATTEMPTS})");
+                        }
 
                         BetterFollowbot.Instance.LogMessage("TRANSITION: Portal click sequence completed");
 
@@ -1084,6 +1201,35 @@ namespace BetterFollowbot;
                             Mouse.SetCursorPosAndLeftClickHuman(waypointScreenPos, 100);
                             await Task.Delay(1000);
                         }
+                        continue;
+                    }
+
+                    if (shouldClickPlaqueAndContinue)
+                    {
+                        BetterFollowbot.Instance.LogMessage("PLAQUE: Attempting to click trial plaque");
+                        
+                        // Get the plaque screen position
+                        plaqueScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
+                        
+                        // Add random delay for less detectable behavior
+                        var randomDelay = GetRandomActionDelay();
+                        if (randomDelay > 0)
+                            await Task.Delay(randomDelay);
+                        
+                        // Click the plaque
+                        Mouse.SetCursorPosAndLeftClickHuman(plaqueScreenPos, 100);
+                        await Task.Delay(300);
+                        
+                        // Mark this plaque as clicked using its entity address from the task data
+                        if (currentTask.Data is long entityAddress)
+                        {
+                            MarkPlaqueAsClicked(entityAddress);
+                            BetterFollowbot.Instance.LogMessage($"PLAQUE: Successfully clicked trial plaque at address {entityAddress}");
+                        }
+                        
+                        // Remove the task after clicking
+                        _taskManager.RemoveTask(currentTask);
+                        
                         continue;
                     }
 

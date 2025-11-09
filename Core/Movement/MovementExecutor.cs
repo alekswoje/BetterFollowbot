@@ -59,6 +59,7 @@ namespace BetterFollowbot.Core.Movement
 
             bool shouldTransitionAndContinue = false;
             bool shouldClaimWaypointAndContinue = false;
+            bool shouldClickPlaqueAndContinue = false;
             bool shouldDashAndContinue = false;
             bool shouldTeleportConfirmAndContinue = false;
             bool shouldTeleportButtonAndContinue = false;
@@ -275,6 +276,32 @@ namespace BetterFollowbot.Core.Movement
                     break;
                 }
 
+                case TaskNodeType.ClickPlaque:
+                {
+                    var distance = Vector3.Distance(_core.PlayerPosition, currentTask.WorldPosition);
+                    if (distance > 50)
+                    {
+                        // Too far from plaque, keep moving towards it
+                        movementScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
+                        shouldMovementContinue = true;
+                    }
+                    else
+                    {
+                        // Close enough - click the plaque
+                        shouldClickPlaqueAndContinue = true;
+                        Input.KeyUp(_core.Settings.autoPilotMoveKey);
+                    }
+                    
+                    currentTask.AttemptCount++;
+                    if (currentTask.AttemptCount > 5)
+                    {
+                        // Failed to click after 5 attempts, remove task
+                        _core.LogMessage($"PLAQUE: Failed to click plaque after {currentTask.AttemptCount} attempts, removing task");
+                        _taskManager.RemoveTask(currentTask);
+                    }
+                    break;
+                }
+
                  case TaskNodeType.Dash:
                  {
                      _core.LogMessage($"Executing Dash task - Target: {currentTask.WorldPosition}, Distance: {Vector3.Distance(_core.PlayerPosition, currentTask.WorldPosition):F1}, Attempts: {currentTask.AttemptCount}");
@@ -397,6 +424,7 @@ namespace BetterFollowbot.Core.Movement
             result.ShouldTerrainDash = shouldTerrainDash;
             result.ShouldTransitionAndContinue = shouldTransitionAndContinue;
             result.ShouldClaimWaypointAndContinue = shouldClaimWaypointAndContinue;
+            result.ShouldClickPlaqueAndContinue = shouldClickPlaqueAndContinue;
             result.ShouldDashAndContinue = shouldDashAndContinue;
             result.ShouldTeleportConfirmAndContinue = shouldTeleportConfirmAndContinue;
             result.ShouldTeleportButtonAndContinue = shouldTeleportButtonAndContinue;

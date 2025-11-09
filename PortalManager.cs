@@ -127,6 +127,24 @@ namespace BetterFollowbot
                     return true;
                 }
 
+                // Check for IngameIcon portals with "Portal" render name
+                if (entityType == ExileCore.Shared.Enums.EntityType.IngameIcon)
+                {
+                    try
+                    {
+                        var renderComponent = portal.ItemOnGround.GetComponent<ExileCore.PoEMemory.Components.Render>();
+                        var renderName = renderComponent?.Name ?? "";
+                        if (renderName.Equals("Portal", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return true;
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore errors and continue to other checks
+                    }
+                }
+
                 // Check for special portals (arena portals, etc.) that might not have standard types
                 var labelText = portal.Label?.Text?.ToLower() ?? "";
                 var isSpecialPortal = IsSpecialPortal(labelText);
@@ -160,6 +178,37 @@ namespace BetterFollowbot
         }
 
         /// <summary>
+        /// Normalizes a zone name by removing level suffixes like (83), (T16), etc.
+        /// This allows proper comparison of zones like "Beach" and "Beach (83)"
+        /// </summary>
+        public static string NormalizeZoneName(string zoneName)
+        {
+            if (string.IsNullOrEmpty(zoneName)) return zoneName;
+            
+            // Remove level indicators like (83), (T16), etc.
+            // Pattern matches: (number) or (T + number) at the end of the string
+            var normalized = System.Text.RegularExpressions.Regex.Replace(
+                zoneName, 
+                @"\s*\([T]?\d+\)\s*$", 
+                "", 
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase
+            ).Trim();
+            
+            return normalized;
+        }
+
+        /// <summary>
+        /// Checks if two zone names are equivalent (ignoring level suffixes)
+        /// </summary>
+        public static bool AreZonesEqual(string zone1, string zone2)
+        {
+            if (string.IsNullOrEmpty(zone1) || string.IsNullOrEmpty(zone2))
+                return false;
+                
+            return NormalizeZoneName(zone1).Equals(NormalizeZoneName(zone2), StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
         /// Checks if an area name is a special area that cannot use party teleport
         /// </summary>
         public static bool IsSpecialArea(string areaName)
@@ -168,18 +217,38 @@ namespace BetterFollowbot
             return SpecialAreas.Any(specialArea =>
                 areaName.Contains(specialArea, StringComparison.OrdinalIgnoreCase));
         }
+        
+        /// <summary>
+        /// Checks if the current zone is a hideout
+        /// </summary>
+        public static bool IsInHideout(string zoneName)
+        {
+            if (string.IsNullOrEmpty(zoneName)) return false;
+            return zoneName.Contains("hideout", StringComparison.OrdinalIgnoreCase);
+        }
 
         /// <summary>
         /// Finds portals that match a specific area name (for special areas that can't use party teleport)
         /// </summary>
-        public static LabelOnGround FindMatchingPortal(string targetAreaName)
+        /// <param name="targetAreaName">The target area name to match</param>
+        /// <param name="preferHideoutPortals">If true and in a hideout, prefer blue town portals over area transitions</param>
+        public static LabelOnGround FindMatchingPortal(string targetAreaName, bool preferHideoutPortals = false)
         {
             try
             {
                 if (string.IsNullOrEmpty(targetAreaName))
                     return null;
 
-                BetterFollowbot.Instance.LogMessage($"SPECIAL AREA: Looking for portals matching '{targetAreaName}'");
+                var currentZone = BetterFollowbot.Instance.GameController?.Area?.CurrentArea?.DisplayName ?? "";
+                var isInHideoutZone = IsInHideout(currentZone);
+                var normalizedTargetArea = NormalizeZoneName(targetAreaName);
+
+                BetterFollowbot.Instance.LogMessage($"SPECIAL AREA: Looking for portals matching '{targetAreaName}' (normalized: '{normalizedTargetArea}')");
+                
+                if (isInHideoutZone && preferHideoutPortals)
+                {
+                    BetterFollowbot.Instance.LogMessage("PORTAL PREFERENCE: In hideout - will prefer TownPortal (blue) over AreaTransition if available");
+                }
 
                 var allPortalLabels = GetPortalsUsingEntities();
                 BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Found {allPortalLabels?.Count ?? 0} portal objects using entities");
@@ -191,21 +260,23 @@ namespace BetterFollowbot
                 }
 
                 // Look for portals that match the target area name
-                BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Starting portal matching for target '{targetAreaName}'");
+                BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Starting portal matching for target '{normalizedTargetArea}'");
                 
                 var matchingPortals = allPortalLabels.Where(x =>
                 {
                     try
                     {
                         var labelText = x.Label?.Text?.ToLower() ?? "";
-                        var targetAreaLower = targetAreaName.ToLower();
+                        var normalizedLabel = NormalizeZoneName(labelText);
+                        var targetAreaLower = normalizedTargetArea.ToLower();
 
-                        BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Checking portal label '{labelText}' against target '{targetAreaLower}'");
+                        BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Checking portal label '{labelText}' (normalized: '{normalizedLabel}') against target '{targetAreaLower}'");
 
-                        // Check if portal label contains the target area name
-                        var matchesArea = labelText.Contains(targetAreaLower) || targetAreaLower.Contains(labelText);
+                        // Check if portal label contains the target area name (with normalization)
+                        var matchesArea = normalizedLabel.Contains(targetAreaLower, StringComparison.OrdinalIgnoreCase) || 
+                                         targetAreaLower.Contains(normalizedLabel, StringComparison.OrdinalIgnoreCase);
                         
-                        BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Direct match result: {matchesArea} (labelText.Contains={labelText.Contains(targetAreaLower)}, targetAreaLower.Contains={targetAreaLower.Contains(labelText)})");
+                        BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Direct match result: {matchesArea}");
                         
                         // Also check for common variations
                         var areaVariations = new[]
@@ -217,10 +288,8 @@ namespace BetterFollowbot
                             targetAreaLower.Replace(" ", "-")     // Dashes (arcane isle hideout → arcane-isle-hideout)
                         };
 
-                        BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Checking variations: {string.Join(", ", areaVariations)}");
-
                         var matchesVariation = areaVariations.Any(variation => 
-                            labelText.Contains(variation) || variation.Contains(labelText));
+                            normalizedLabel.Contains(variation) || variation.Contains(normalizedLabel));
 
                         BetterFollowbot.Instance.LogMessage($"PORTAL DEBUG: Variation match result: {matchesVariation}");
 
@@ -240,19 +309,38 @@ namespace BetterFollowbot
                         BetterFollowbot.Instance.LogError($"SPECIAL AREA: Error checking portal '{x.Label?.Text}': {ex.Message}");
                         return false;
                     }
-                }).OrderBy(x => x.ItemOnGround.DistancePlayer).ToList();
+                }).ToList();
 
-                if (matchingPortals.Count > 0)
-                {
-                    var selectedPortal = matchingPortals.First();
-                    BetterFollowbot.Instance.LogMessage($"SPECIAL AREA: Selected portal '{selectedPortal.Label?.Text}' at distance {selectedPortal.ItemOnGround.DistancePlayer:F1}");
-                    return selectedPortal;
-                }
-                else
+                if (matchingPortals.Count == 0)
                 {
                     BetterFollowbot.Instance.LogMessage($"SPECIAL AREA: No portals found matching '{targetAreaName}'");
                     return null;
                 }
+
+                // Sort by preference: TownPortal first if in hideout and preferHideoutPortals is true
+                if (isInHideoutZone && preferHideoutPortals)
+                {
+                    var townPortals = matchingPortals.Where(x => x.ItemOnGround?.Type.ToString() == "TownPortal").OrderBy(x => x.ItemOnGround.DistancePlayer).ToList();
+                    var areaTransitions = matchingPortals.Where(x => x.ItemOnGround?.Type.ToString() == "AreaTransition").OrderBy(x => x.ItemOnGround.DistancePlayer).ToList();
+                    
+                    if (townPortals.Any())
+                    {
+                        var selectedPortal = townPortals.First();
+                        BetterFollowbot.Instance.LogMessage($"PORTAL PREFERENCE: Selected TownPortal '{selectedPortal.Label?.Text}' at distance {selectedPortal.ItemOnGround.DistancePlayer:F1} (hideout preference)");
+                        return selectedPortal;
+                    }
+                    else if (areaTransitions.Any())
+                    {
+                        var selectedPortal = areaTransitions.First();
+                        BetterFollowbot.Instance.LogMessage($"PORTAL PREFERENCE: No TownPortal found, using AreaTransition '{selectedPortal.Label?.Text}' at distance {selectedPortal.ItemOnGround.DistancePlayer:F1}");
+                        return selectedPortal;
+                    }
+                }
+                
+                // Default: sort by distance
+                var closestPortal = matchingPortals.OrderBy(x => x.ItemOnGround.DistancePlayer).First();
+                BetterFollowbot.Instance.LogMessage($"SPECIAL AREA: Selected portal '{closestPortal.Label?.Text}' at distance {closestPortal.ItemOnGround.DistancePlayer:F1}");
+                return closestPortal;
             }
             catch (Exception ex)
             {
@@ -468,11 +556,33 @@ namespace BetterFollowbot
                 {
                     var townPortals = BetterFollowbot.Instance.GameController?.EntityListWrapper?.ValidEntitiesByType[ExileCore.Shared.Enums.EntityType.TownPortal];
                     var areaTransitions = BetterFollowbot.Instance.GameController?.EntityListWrapper?.ValidEntitiesByType[ExileCore.Shared.Enums.EntityType.AreaTransition];
+                    var ingameIcons = BetterFollowbot.Instance.GameController?.EntityListWrapper?.ValidEntitiesByType[ExileCore.Shared.Enums.EntityType.IngameIcon];
                     
                     if (townPortals != null) portalEntities.AddRange(townPortals);
                     if (areaTransitions != null) portalEntities.AddRange(areaTransitions);
                     
-                    BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Found {townPortals?.Count ?? 0} TownPortal entities, {areaTransitions?.Count ?? 0} AreaTransition entities from ValidEntitiesByType");
+                    // Add IngameIcon portals (filter for ones with "Portal" in render name)
+                    if (ingameIcons != null)
+                    {
+                        var portalIcons = ingameIcons.Where(x => 
+                        {
+                            try
+                            {
+                                var renderComponent = x?.GetComponent<ExileCore.PoEMemory.Components.Render>();
+                                var renderName = renderComponent?.Name ?? "";
+                                return renderName.Equals("Portal", StringComparison.OrdinalIgnoreCase);
+                            }
+                            catch
+                            {
+                                return false;
+                            }
+                        }).ToList();
+                        
+                        portalEntities.AddRange(portalIcons);
+                        BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Found {portalIcons.Count} IngameIcon Portal entities");
+                    }
+                    
+                    BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Found {townPortals?.Count ?? 0} TownPortal entities, {areaTransitions?.Count ?? 0} AreaTransition entities, {ingameIcons?.Count ?? 0} total IngameIcon entities from ValidEntitiesByType");
                 }
                 catch
                 {
@@ -488,11 +598,30 @@ namespace BetterFollowbot
                             x != null && 
                             x.IsValid && 
                             (x.Type == ExileCore.Shared.Enums.EntityType.TownPortal || 
-                             x.Type == ExileCore.Shared.Enums.EntityType.AreaTransition))
+                             x.Type == ExileCore.Shared.Enums.EntityType.AreaTransition ||
+                             x.Type == ExileCore.Shared.Enums.EntityType.IngameIcon))
                             .ToList();
                         
-                        portalEntities.AddRange(directPortals);
-                        BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Found {directPortals.Count} portal entities using direct Entities collection");
+                        // Filter IngameIcon entities to only include those with "Portal" render name
+                        var filteredPortals = directPortals.Where(x =>
+                        {
+                            if (x.Type != ExileCore.Shared.Enums.EntityType.IngameIcon)
+                                return true; // Keep all non-IngameIcon portals
+                            
+                            try
+                            {
+                                var renderComponent = x.GetComponent<ExileCore.PoEMemory.Components.Render>();
+                                var renderName = renderComponent?.Name ?? "";
+                                return renderName.Equals("Portal", StringComparison.OrdinalIgnoreCase);
+                            }
+                            catch
+                            {
+                                return false;
+                            }
+                        }).ToList();
+                        
+                        portalEntities.AddRange(filteredPortals);
+                        BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Found {filteredPortals.Count} portal entities using direct Entities collection (including IngameIcon portals)");
                     }
                 }
                 
@@ -510,7 +639,8 @@ namespace BetterFollowbot
                     if (matchingLabel != null)
                     {
                         matchedLabels.Add(matchingLabel);
-                        BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Matched entity to label '{matchingLabel.Label?.Text}' at distance {entity.DistancePlayer:F1}");
+                        var entityTypeName = entity.Type.ToString();
+                        BetterFollowbot.Instance.LogMessage($"PORTAL ENTITY DEBUG: Matched {entityTypeName} entity to label '{matchingLabel.Label?.Text}' at distance {entity.DistancePlayer:F1}");
                     }
                 }
                 
@@ -529,6 +659,22 @@ namespace BetterFollowbot
                     
                     if (metadata.Contains("multiplexportal"))
                         return true;
+                    
+                    // Check for IngameIcon portals with "Portal" render name
+                    if (entityType == ExileCore.Shared.Enums.EntityType.IngameIcon)
+                    {
+                        try
+                        {
+                            var renderComponent = x.ItemOnGround.GetComponent<ExileCore.PoEMemory.Components.Render>();
+                            var renderName = renderComponent?.Name ?? "";
+                            if (renderName.Equals("Portal", StringComparison.OrdinalIgnoreCase))
+                                return true;
+                        }
+                        catch
+                        {
+                            // Ignore errors
+                        }
+                    }
                     
                     return false;
                 }).ToList() ?? new List<LabelOnGround>();

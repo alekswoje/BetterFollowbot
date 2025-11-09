@@ -221,7 +221,7 @@ namespace BetterFollowbot.Core.Movement
                     }
                 }
 
-                if (followTarget == null && leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(_core.GameController?.Area.CurrentArea.DisplayName))
+                if (followTarget == null && leaderPartyElement != null && !PortalManager.AreZonesEqual(leaderPartyElement.ZoneName, _core.GameController?.Area.CurrentArea.DisplayName))
                 {
                     var currentZone = _core.GameController?.Area.CurrentArea.DisplayName ?? "Unknown";
                     var leaderZone = leaderPartyElement.ZoneName ?? "Unknown";
@@ -271,7 +271,7 @@ namespace BetterFollowbot.Core.Movement
                             else if (PortalManager.IsSpecialArea(leaderPartyElement.ZoneName))
                             {
                                 _core.LogMessage($"ZONE TRANSITION: Leader in special area '{leaderPartyElement.ZoneName}' - using matching portal search instead of party TP");
-                                var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName);
+                                var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName, preferHideoutPortals: true);
                                 if (matchingPortal != null)
                                 {
                                     // Only create transition task if there isn't already one pending
@@ -296,7 +296,7 @@ namespace BetterFollowbot.Core.Movement
                             {
                                 // FIRST: Check for portals that match the leader's area name
                                 _core.LogMessage("ZONE TRANSITION: Checking for portals matching leader's area name first");
-                                var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName);
+                                var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName, preferHideoutPortals: true);
                                 if (matchingPortal != null)
                                 {
                                     // Only create transition task if there isn't already one pending
@@ -358,7 +358,7 @@ namespace BetterFollowbot.Core.Movement
                     // Still check for zone transitions even if entity is null
                     if (leaderPartyElement != null && _core.GameController?.Area.CurrentArea != null)
                     {
-                        var zonesAreDifferent = !leaderPartyElement.ZoneName.Equals(_core.GameController.Area.CurrentArea.DisplayName);
+                        var zonesAreDifferent = !PortalManager.AreZonesEqual(leaderPartyElement.ZoneName, _core.GameController.Area.CurrentArea.DisplayName);
                         if (zonesAreDifferent)
                         {
                             _core.LogMessage($"ZONE TRANSITION: Leader in different zone via party element - Current: '{_core.GameController.Area.CurrentArea.DisplayName}', Leader: '{leaderPartyElement.ZoneName}'");
@@ -376,7 +376,7 @@ namespace BetterFollowbot.Core.Movement
                                 else if (PortalManager.IsSpecialArea(leaderPartyElement.ZoneName))
                                 {
                                     _core.LogMessage($"ZONE TRANSITION: Leader in special area '{leaderPartyElement.ZoneName}' - party TP not available, using matching portal search");
-                                    var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName);
+                                    var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName, preferHideoutPortals: true);
                                     if (matchingPortal != null)
                                     {
                                         _core.LogMessage($"ZONE TRANSITION: Found matching portal '{matchingPortal.Label?.Text}' for special area '{leaderPartyElement.ZoneName}'");
@@ -392,7 +392,7 @@ namespace BetterFollowbot.Core.Movement
                                 {
                                     // FIRST: Check for portals that match the leader's area name
                                     _core.LogMessage("ZONE TRANSITION: Checking for portals matching leader's area name first (null entity case)");
-                                    var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName);
+                                    var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName, preferHideoutPortals: true);
                                     if (matchingPortal != null)
                                     {
                                         _core.LogMessage($"ZONE TRANSITION: Found matching portal '{matchingPortal.Label?.Text}' for leader area '{leaderPartyElement.ZoneName}' (null entity case)");
@@ -449,7 +449,7 @@ namespace BetterFollowbot.Core.Movement
                         {
                             _core.LogMessage($"ZONE TRANSITION DETECTED: Leader moved {distanceMoved:F1} units, likely zone transition");
 
-                            var zonesAreDifferent = leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(_core.GameController?.Area.CurrentArea.DisplayName);
+                            var zonesAreDifferent = leaderPartyElement != null && !PortalManager.AreZonesEqual(leaderPartyElement.ZoneName, _core.GameController?.Area.CurrentArea.DisplayName);
 
                             if (zonesAreDifferent)
                             {
@@ -502,7 +502,7 @@ namespace BetterFollowbot.Core.Movement
                                 else if (leaderPartyElement != null && PortalManager.IsSpecialArea(leaderPartyElement.ZoneName))
                                 {
                                     _core.LogMessage($"ZONE TRANSITION: Leader in special area '{leaderPartyElement.ZoneName}' - using matching portal search instead of party TP");
-                                    var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName);
+                                    var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName, preferHideoutPortals: true);
                                     if (matchingPortal != null)
                                     {
                                         // Only create transition task if there isn't already one pending
@@ -527,7 +527,7 @@ namespace BetterFollowbot.Core.Movement
                                 {
                                     // FIRST: Check for portals that match the leader's area name (endgame maps, etc.)
                                     _core.LogMessage("ZONE TRANSITION: Checking for portals matching leader's area name first (large movement case)");
-                                    var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName);
+                                    var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName, preferHideoutPortals: true);
                                     if (matchingPortal != null)
                                     {
                                         // Only create transition task if there isn't already one pending

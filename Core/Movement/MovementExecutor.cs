@@ -209,9 +209,32 @@ namespace BetterFollowbot.Core.Movement
                     {
                         _core.LogMessage($"TRANSITION: Portal is not on screen at distance {distanceToPortal:F1}, need to move closer");
                         
+                        // Increment attempt count to prevent infinite loops
+                        currentTask.AttemptCount++;
+                        
+                        // Check if portal is unreasonably far away (likely invalid or inaccessible)
+                        var maxPortalDistance = _core.Settings.autoPilotMaxPortalDistance.Value;
+                        if (distanceToPortal > maxPortalDistance)
+                        {
+                            _core.LogMessage($"TRANSITION: Portal is too far away ({distanceToPortal:F1} units > {maxPortalDistance} max), likely invalid or inaccessible");
+                            _core.LogMessage("TRANSITION: Removing transition task, will try party teleport or another method");
+                            _taskManager.RemoveTask(currentTask);
+                            shouldTransitionAndContinue = false;
+                            break;
+                        }
+                        
+                        // Check if we've tried too many times
+                        if (currentTask.AttemptCount > 10)
+                        {
+                            _core.LogMessage($"TRANSITION: Too many attempts ({currentTask.AttemptCount}) to reach portal, giving up");
+                            _taskManager.RemoveTask(currentTask);
+                            shouldTransitionAndContinue = false;
+                            break;
+                        }
+                        
                         if (distanceToPortal > 100)
                         {
-                            _core.LogMessage($"TRANSITION: Creating movement task to approach portal (distance: {distanceToPortal:F1})");
+                            _core.LogMessage($"TRANSITION: Creating movement task to approach portal (distance: {distanceToPortal:F1}, attempt {currentTask.AttemptCount})");
                             var approachTask = new TaskNode(portalPos, 50, TaskNodeType.Movement);
                             _taskManager.RemoveTask(currentTask);
                             _taskManager.AddTask(approachTask);
@@ -221,8 +244,7 @@ namespace BetterFollowbot.Core.Movement
                         }
                         else
                         {
-                            _core.LogMessage("TRANSITION: Close enough but portal UI not rendering properly, retrying");
-                            currentTask.AttemptCount++;
+                            _core.LogMessage($"TRANSITION: Close enough but portal UI not rendering properly, retrying (attempt {currentTask.AttemptCount})");
                             if (currentTask.AttemptCount > 20)
                             {
                                 _core.LogMessage("TRANSITION: Too many retry attempts, removing task");

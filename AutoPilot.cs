@@ -1208,20 +1208,16 @@ namespace BetterFollowbot;
                     {
                         BetterFollowbot.Instance.LogMessage("PLAQUE: Attempting to click trial plaque");
                         
-                        // Get the plaque label screen position (like portals)
+                        // Get the plaque label screen position (EXACTLY like portals do)
                         if (currentTask.LabelOnGround?.Label != null)
                         {
                             try
                             {
                                 var labelElement = currentTask.LabelOnGround.Label;
                                 var labelRect = labelElement.GetClientRectCache;
-                                var windowOffset = BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().TopLeft;
                                 
-                                // Click the center of the label (the text)
-                                plaqueScreenPos = new Vector2(
-                                    labelRect.Center.X + windowOffset.X,
-                                    labelRect.Center.Y + windowOffset.Y
-                                );
+                                // Click the center of the label (same as portals - no window offset needed)
+                                plaqueScreenPos = new Vector2(labelRect.Center.X, labelRect.Center.Y);
                                 
                                 var labelText = labelElement.Text ?? "Unknown";
                                 BetterFollowbot.Instance.LogMessage($"PLAQUE: Clicking label '{labelText}' at screen position ({plaqueScreenPos.X:F1}, {plaqueScreenPos.Y:F1})");

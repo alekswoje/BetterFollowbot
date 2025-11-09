@@ -1215,12 +1215,16 @@ namespace BetterFollowbot;
                             {
                                 var labelElement = currentTask.LabelOnGround.Label;
                                 var labelRect = labelElement.GetClientRectCache;
+                                var windowOffset = BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().TopLeft;
                                 
-                                // Click the center of the label (same as portals - no window offset needed)
-                                plaqueScreenPos = new Vector2(labelRect.Center.X, labelRect.Center.Y);
+                                // GetClientRectCache returns client coordinates, need to add window offset for screen coordinates
+                                plaqueScreenPos = new Vector2(
+                                    labelRect.Center.X + windowOffset.X, 
+                                    labelRect.Center.Y + windowOffset.Y
+                                );
                                 
                                 var labelText = labelElement.Text ?? "Unknown";
-                                BetterFollowbot.Instance.LogMessage($"PLAQUE: Clicking label '{labelText}' at screen position ({plaqueScreenPos.X:F1}, {plaqueScreenPos.Y:F1})");
+                                BetterFollowbot.Instance.LogMessage($"PLAQUE: Label '{labelText}' - Client coords: ({labelRect.Center.X:F1}, {labelRect.Center.Y:F1}), Window offset: ({windowOffset.X:F1}, {windowOffset.Y:F1}), Screen coords: ({plaqueScreenPos.X:F1}, {plaqueScreenPos.Y:F1})");
                             }
                             catch (Exception ex)
                             {
@@ -1240,8 +1244,10 @@ namespace BetterFollowbot;
                         if (randomDelay > 0)
                             await Task.Delay(randomDelay);
                         
-                        // Click the plaque label
-                        Mouse.SetCursorPosAndLeftClickHuman(plaqueScreenPos, 100);
+                        // Click the plaque label (use same method as portals)
+                        Mouse.SetCursorPosHuman(plaqueScreenPos);
+                        await Task.Delay(100);
+                        Mouse.LeftClick();
                         await Task.Delay(300);
                         
                         // Mark this plaque as clicked using its entity address from the task data

@@ -698,6 +698,21 @@ namespace BetterFollowbot;
                 continue;
             }
 
+            // Check if chat is open and close it automatically
+            var chatField = BetterFollowbot.Instance.GameController?.IngameState?.IngameUi?.ChatPanel?.ChatInputElement?.IsVisible;
+            var chatOpen = chatField != null && (bool)chatField;
+            if (chatOpen)
+            {
+                BetterFollowbot.Instance.LogMessage("CHAT CHECK: Chat is open, closing it by right-clicking center of screen");
+                var windowRect = BetterFollowbot.Instance.GameController.Window.GetWindowRectangle();
+                var centerPos = new Vector2(windowRect.Width / 2, windowRect.Height / 2);
+                Mouse.SetCursorPos(centerPos);
+                await Task.Delay(50);
+                Mouse.RightClick();
+                await Task.Delay(100);
+                continue;
+            }
+
             if (BetterFollowbot.Instance.ShouldWaitForLeaderGrace)
             {
                 var hasTransitionTasks = _taskManager.Tasks.Any(t => 

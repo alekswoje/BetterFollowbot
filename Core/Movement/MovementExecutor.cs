@@ -207,7 +207,7 @@ namespace BetterFollowbot.Core.Movement
 
                     if (!isOnScreen)
                     {
-                        _core.LogMessage($"TRANSITION: Portal is not on screen at distance {distanceToPortal:F1}, need to move closer");
+do                         _core.LogMessage($"TRANSITION: Portal is not on screen at distance {distanceToPortal:F1}, need to move closer");
                         
                         // Increment attempt count to prevent infinite loops
                         currentTask.AttemptCount++;

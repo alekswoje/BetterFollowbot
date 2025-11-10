@@ -24,6 +24,15 @@ namespace BetterFollowbot.Core.Movement
 
         // Throttle frequent log messages
         private DateTime _lastPortalThresholdLog = DateTime.MinValue;
+        
+        // Zone transition retry management
+        private int _zoneTransitionAttempts = 0;
+        private DateTime _lastZoneTransitionAttemptTime = DateTime.MinValue;
+        private string _lastAttemptedZoneTransition = "";
+        private bool _triedPortalMethod = false;
+        private bool _triedSwirlyMethod = false;
+        private const int MAX_ZONE_TRANSITION_ATTEMPTS = 3;
+        private const double ZONE_TRANSITION_RETRY_COOLDOWN_SECONDS = 5.0;
 
         /// <summary>
         /// Checks if any blocking UI elements are open that should prevent path planning
@@ -50,6 +59,94 @@ namespace BetterFollowbot.Core.Movement
                 return true;
             }
         }
+        
+        /// <summary>
+        /// Resets the zone transition retry state (called when transition succeeds or zone changes)
+        /// </summary>
+        private void ResetZoneTransitionRetryState()
+        {
+            if (_zoneTransitionAttempts > 0)
+            {
+                _core.LogMessage($"ZONE TRANSITION RETRY: Resetting retry state (was at {_zoneTransitionAttempts} attempts)");
+            }
+            _zoneTransitionAttempts = 0;
+            _lastZoneTransitionAttemptTime = DateTime.MinValue;
+            _lastAttemptedZoneTransition = "";
+            _triedPortalMethod = false;
+            _triedSwirlyMethod = false;
+        }
+        
+        /// <summary>
+        /// Checks if we're currently in the retry cooldown period after failed zone transition attempts
+        /// </summary>
+        private bool IsInZoneTransitionRetryCooldown()
+        {
+            if (_lastZoneTransitionAttemptTime == DateTime.MinValue)
+                return false;
+                
+            var timeSinceLastAttempt = (DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds;
+            return timeSinceLastAttempt < ZONE_TRANSITION_RETRY_COOLDOWN_SECONDS;
+        }
+        
+        /// <summary>
+        /// Records a zone transition attempt
+        /// </summary>
+        private void RecordZoneTransitionAttempt(string transitionKey, string methodName)
+        {
+            // If this is a new transition (different zone), reset counters
+            if (_lastAttemptedZoneTransition != transitionKey)
+            {
+                _core.LogMessage($"ZONE TRANSITION RETRY: New transition detected ('{transitionKey}'), resetting counters");
+                ResetZoneTransitionRetryState();
+                _lastAttemptedZoneTransition = transitionKey;
+            }
+            
+            _zoneTransitionAttempts++;
+            _lastZoneTransitionAttemptTime = DateTime.Now;
+            _core.LogMessage($"ZONE TRANSITION RETRY: Attempt {_zoneTransitionAttempts}/{MAX_ZONE_TRANSITION_ATTEMPTS} using {methodName}");
+        }
+        
+        /// <summary>
+        /// Determines the next transition method to try based on retry state
+        /// Returns: "portal", "swirly", "wait", or "failed"
+        /// </summary>
+        private string GetNextTransitionMethod()
+        {
+            // If we've exceeded max attempts, wait for cooldown
+            if (_zoneTransitionAttempts >= MAX_ZONE_TRANSITION_ATTEMPTS)
+            {
+                if (IsInZoneTransitionRetryCooldown())
+                {
+                    var timeRemaining = ZONE_TRANSITION_RETRY_COOLDOWN_SECONDS - (DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds;
+                    _core.LogMessage($"ZONE TRANSITION RETRY: Waiting {timeRemaining:F1}s before next retry cycle");
+                    return "wait";
+                }
+                else
+                {
+                    // Cooldown expired, reset and start a new cycle
+                    _core.LogMessage("ZONE TRANSITION RETRY: Cooldown expired, starting new retry cycle");
+                    _zoneTransitionAttempts = 0;
+                    _triedPortalMethod = false;
+                    _triedSwirlyMethod = false;
+                }
+            }
+            
+            // Try portal method first (attempts 1-2)
+            if (!_triedPortalMethod || _zoneTransitionAttempts < 2)
+            {
+                return "portal";
+            }
+            // Then try swirly method (attempt 3)
+            else if (!_triedSwirlyMethod)
+            {
+                return "swirly";
+            }
+            // All methods exhausted in this cycle
+            else
+            {
+                return "wait";
+            }
+        }
 
         public PathPlanner(IFollowbotCore core, ILeaderDetector leaderDetector, ITaskManager taskManager, PortalManager portalManager)
         {
@@ -57,6 +154,73 @@ namespace BetterFollowbot.Core.Movement
             _leaderDetector = leaderDetector ?? throw new ArgumentNullException(nameof(leaderDetector));
             _taskManager = taskManager ?? throw new ArgumentNullException(nameof(taskManager));
             _portalManager = portalManager ?? throw new ArgumentNullException(nameof(portalManager));
+        }
+        
+        /// <summary>
+        /// Attempts to create a zone transition task using the appropriate method (portal or swirly)
+        /// Returns true if a task was created successfully
+        /// </summary>
+        private bool TryCreateZoneTransitionTask(PartyElementWindow leaderPartyElement, string method)
+        {
+            if (leaderPartyElement == null)
+                return false;
+                
+            var currentZone = _core.GameController?.Area?.CurrentArea?.DisplayName ?? "";
+            var leaderZone = leaderPartyElement.ZoneName ?? "";
+            var transitionKey = $"{currentZone}->{leaderZone}";
+            
+            if (method == "portal")
+            {
+                _core.LogMessage($"ZONE TRANSITION RETRY: Attempting portal method for transition '{transitionKey}'");
+                
+                // Try matching portal first (for special areas, endgame maps, etc.)
+                var matchingPortal = PortalManager.FindMatchingPortal(leaderZone, preferHideoutPortals: true);
+                if (matchingPortal != null)
+                {
+                    _core.LogMessage($"ZONE TRANSITION RETRY: Found matching portal '{matchingPortal.Label?.Text}'");
+                    _taskManager.AddTask(new TaskNode(matchingPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                    _triedPortalMethod = true;
+                    RecordZoneTransitionAttempt(transitionKey, "Portal (Matching)");
+                    return true;
+                }
+                
+                // Try best portal (closest, etc.)
+                var bestPortal = GetBestPortalLabel(leaderPartyElement, forceSearch: true);
+                if (bestPortal != null)
+                {
+                    _core.LogMessage($"ZONE TRANSITION RETRY: Found nearby portal '{bestPortal.Label?.Text}'");
+                    _taskManager.AddTask(new TaskNode(bestPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                    _triedPortalMethod = true;
+                    RecordZoneTransitionAttempt(transitionKey, "Portal (Nearby)");
+                    return true;
+                }
+                
+                _core.LogMessage("ZONE TRANSITION RETRY: No portals found for portal method");
+                _triedPortalMethod = true;
+                return false;
+            }
+            else if (method == "swirly")
+            {
+                _core.LogMessage($"ZONE TRANSITION RETRY: Attempting swirly method for transition '{transitionKey}'");
+                
+                // Try party teleport button (swirly)
+                var tpButton = GetTpButton(leaderPartyElement);
+                if (!tpButton.Equals(Vector2.Zero))
+                {
+                    _core.LogMessage("ZONE TRANSITION RETRY: Found party teleport button (swirly)");
+                    AutoPilot.IsTeleportInProgress = true;
+                    _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
+                    _triedSwirlyMethod = true;
+                    RecordZoneTransitionAttempt(transitionKey, "Swirly (Party TP)");
+                    return true;
+                }
+                
+                _core.LogMessage("ZONE TRANSITION RETRY: Party teleport button not available");
+                _triedSwirlyMethod = true;
+                return false;
+            }
+            
+            return false;
         }
 
         /// <summary>
@@ -66,6 +230,32 @@ namespace BetterFollowbot.Core.Movement
         {
             try
             {
+                // Reset retry state if we're in the same zone as the leader (successful transition or no transition needed)
+                if (leaderPartyElement != null && _core.GameController?.Area?.CurrentArea != null)
+                {
+                    var currentZone = _core.GameController.Area.CurrentArea.DisplayName ?? "";
+                    var leaderZone = leaderPartyElement.ZoneName ?? "";
+                    var zonesAreEqual = PortalManager.AreZonesEqual(currentZone, leaderZone);
+                    
+                    // If zones are equal and we had a pending transition, reset (successful transition)
+                    if (zonesAreEqual && _zoneTransitionAttempts > 0)
+                    {
+                        _core.LogMessage($"ZONE TRANSITION RETRY: Bot reached leader zone '{currentZone}', resetting retry state");
+                        ResetZoneTransitionRetryState();
+                    }
+                }
+                
+                // Reset retry state if we're close to the leader (successful follow)
+                if (followTarget != null && followTarget.Pos != null && _zoneTransitionAttempts > 0)
+                {
+                    var distanceToLeader = Vector3.Distance(_core.PlayerPosition, followTarget.Pos);
+                    if (distanceToLeader < 500) // Within reasonable follow distance
+                    {
+                        _core.LogMessage($"ZONE TRANSITION RETRY: Bot is close to leader ({distanceToLeader:F1} units), resetting retry state");
+                        ResetZoneTransitionRetryState();
+                    }
+                }
+                
                 if (AutoPilot.IsTeleportInProgress)
                 {
                     _core.LogMessage($"TELEPORT: Blocking all task creation - teleport in progress ({_taskManager.TaskCount} tasks)");
@@ -230,8 +420,7 @@ namespace BetterFollowbot.Core.Movement
 
                     if (!hasTransitionTasks)
                     {
-                        _core.LogMessage("ZONE TRANSITION: Leader in different zone, prioritizing party teleport over portals");
-
+                        // Check for teleport confirmation dialog first
                         var tpConfirmation = GetTpConfirmation();
                         if (tpConfirmation != null)
                         {
@@ -239,113 +428,40 @@ namespace BetterFollowbot.Core.Movement
                             var center = tpConfirmation.GetClientRect().Center;
                             _taskManager.AddTask(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
                         }
+                        // SPECIAL CASE: Labyrinth areas don't support party TP - always use portals
+                        else if (PortalManager.IsInLabyrinthArea && !(_core.GameController?.Area?.CurrentArea?.DisplayName?.Contains("Aspirants' Plaza") ?? false))
+                        {
+                            _core.LogMessage("ZONE TRANSITION: In labyrinth area, using portal-only method");
+                            TryCreateZoneTransitionTask(leaderPartyElement, "portal");
+                        }
+                        // SPECIAL CASE: Special areas like Maligaro's Sanctum don't support party TP
+                        else if (PortalManager.IsSpecialArea(leaderPartyElement.ZoneName))
+                        {
+                            _core.LogMessage($"ZONE TRANSITION: Leader in special area '{leaderPartyElement.ZoneName}', using portal-only method");
+                            TryCreateZoneTransitionTask(leaderPartyElement, "portal");
+                        }
+                        // Normal zones: Use retry system with portal-first, swirly-second strategy
                         else
                         {
-                            // SPECIAL CASE: Labyrinth areas don't support party TP - always use portals
-                            // EXCEPTION: Aspirants' Plaza allows party TP as fallback
-                            if (PortalManager.IsInLabyrinthArea && !(_core.GameController?.Area?.CurrentArea?.DisplayName?.Contains("Aspirants' Plaza") ?? false))
+                            var nextMethod = GetNextTransitionMethod();
+                            
+                            if (nextMethod == "wait")
                             {
-                                _core.LogMessage("ZONE TRANSITION: In labyrinth area, skipping party TP and using portal search");
-                                var portal = GetBestPortalLabel(leaderPartyElement);
-                                if (portal != null)
+                                // In cooldown period, do nothing
+                                var timeRemaining = ZONE_TRANSITION_RETRY_COOLDOWN_SECONDS - (DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds;
+                                if ((DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds % 2 < 0.1) // Log every ~2 seconds
                                 {
-                                    // Only create transition task if there isn't already one pending
-                                    var hasExistingTransitionTask = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition);
-                                    if (!hasExistingTransitionTask)
-                                    {
-                                        _core.LogMessage($"ZONE TRANSITION: Found portal '{portal.Label?.Text}' for labyrinth navigation");
-                                        _taskManager.AddTask(new TaskNode(portal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
-                                        _core.LogMessage("ZONE TRANSITION: Labyrinth portal transition task added to queue");
-                                    }
-                                    else
-                                    {
-                                        _core.LogMessage($"ZONE TRANSITION: Transition task already exists, skipping labyrinth portal creation for '{portal.Label?.Text}'");
-                                    }
-                                }
-                                else
-                                {
-                                    _core.LogMessage("ZONE TRANSITION: No portals found in labyrinth area, cannot follow through transition");
-                                }
-                            }
-                            // SPECIAL CASE: Special areas like Maligaro's Sanctum don't support party TP - use matching portals
-                            else if (PortalManager.IsSpecialArea(leaderPartyElement.ZoneName))
-                            {
-                                _core.LogMessage($"ZONE TRANSITION: Leader in special area '{leaderPartyElement.ZoneName}' - using matching portal search instead of party TP");
-                                var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName, preferHideoutPortals: true);
-                                if (matchingPortal != null)
-                                {
-                                    // Only create transition task if there isn't already one pending
-                                    var hasExistingTransitionTask = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition);
-                                    if (!hasExistingTransitionTask)
-                                    {
-                                        _core.LogMessage($"ZONE TRANSITION: Found matching portal '{matchingPortal.Label?.Text}' for special area '{leaderPartyElement.ZoneName}'");
-                                        _taskManager.AddTask(new TaskNode(matchingPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
-                                        _core.LogMessage("ZONE TRANSITION: Special area portal transition task added to queue");
-                                    }
-                                    else
-                                    {
-                                        _core.LogMessage($"ZONE TRANSITION: Transition task already exists, skipping special area portal creation for '{matchingPortal.Label?.Text}'");
-                                    }
-                                }
-                                else
-                                {
-                                    _core.LogMessage($"ZONE TRANSITION: No matching portals found for special area '{leaderPartyElement.ZoneName}'");
+                                    _core.LogMessage($"ZONE TRANSITION RETRY: Waiting {timeRemaining:F1}s before next retry (both portal and swirly failed)");
                                 }
                             }
                             else
                             {
-                                // FIRST: Check for portals that match the leader's area name
-                                _core.LogMessage("ZONE TRANSITION: Checking for portals matching leader's area name first");
-                                var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName, preferHideoutPortals: true);
-                                if (matchingPortal != null)
+                                _core.LogMessage($"ZONE TRANSITION: Using retry system - trying {nextMethod} method");
+                                var success = TryCreateZoneTransitionTask(leaderPartyElement, nextMethod);
+                                
+                                if (!success)
                                 {
-                                    // Only create transition task if there isn't already one pending
-                                    var hasExistingTransitionTask = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition);
-                                    if (!hasExistingTransitionTask)
-                                    {
-                                        _core.LogMessage($"ZONE TRANSITION: Found matching portal '{matchingPortal.Label?.Text}' for leader area '{leaderPartyElement.ZoneName}'");
-                                        _taskManager.AddTask(new TaskNode(matchingPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
-                                        _core.LogMessage("ZONE TRANSITION: Matching portal transition task added to queue");
-                                    }
-                                    else
-                                    {
-                                        _core.LogMessage($"ZONE TRANSITION: Transition task already exists, skipping matching portal creation for '{matchingPortal.Label?.Text}'");
-                                    }
-                                }
-                                else
-                                {
-                                    _core.LogMessage("ZONE TRANSITION: No matching portals found, falling back to party teleport button");
-                                    var tpButton = GetTpButton(leaderPartyElement);
-                                    if (!tpButton.Equals(Vector2.Zero))
-                                    {
-                                        _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
-                                        AutoPilot.IsTeleportInProgress = true;
-                                        _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
-                                    }
-                                    else
-                                    {
-                                        _core.LogMessage("ZONE TRANSITION: Party teleport button not available, falling back to general portal search");
-                                        var portal = GetBestPortalLabel(leaderPartyElement);
-                                        if (portal != null)
-                                        {
-                                            // Only create transition task if there isn't already one pending
-                                            var hasExistingTransitionTask = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition);
-                                            if (!hasExistingTransitionTask)
-                                            {
-                                                _core.LogMessage($"ZONE TRANSITION: Found portal '{portal.Label?.Text}' leading to leader zone '{leaderPartyElement.ZoneName}'");
-                                                _taskManager.AddTask(new TaskNode(portal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
-                                                _core.LogMessage("ZONE TRANSITION: Portal transition task added to queue");
-                                            }
-                                            else
-                                            {
-                                                _core.LogMessage($"ZONE TRANSITION: Transition task already exists, skipping portal creation for '{portal.Label?.Text}'");
-                                            }
-                                        }
-                                        else
-                                        {
-                                            _core.LogMessage("ZONE TRANSITION: No teleport button or portal available, cannot follow through transition");
-                                        }
-                                    }
+                                    _core.LogMessage($"ZONE TRANSITION: {nextMethod} method failed, will try alternative next time");
                                 }
                             }
                         }
@@ -363,56 +479,42 @@ namespace BetterFollowbot.Core.Movement
                         {
                             _core.LogMessage($"ZONE TRANSITION: Leader in different zone via party element - Current: '{_core.GameController.Area.CurrentArea.DisplayName}', Leader: '{leaderPartyElement.ZoneName}'");
 
-                            // Prioritize party teleport over portal clicking (but not in labyrinth areas or special areas)
                             if (!HasConflictingTransitionTasks())
                             {
-                                // SPECIAL CASE: Labyrinth areas don't support party TP
-                                // EXCEPTION: Aspirants' Plaza allows party TP as fallback
+                                // SPECIAL CASE: Labyrinth areas don't support party TP - always use portals
                                 if (PortalManager.IsInLabyrinthArea && !(_core.GameController?.Area?.CurrentArea?.DisplayName?.Contains("Aspirants' Plaza") ?? false))
                                 {
-                                    _core.LogMessage("ZONE TRANSITION: In labyrinth area, party TP not available - this is normal");
+                                    _core.LogMessage("ZONE TRANSITION: In labyrinth area (null entity case), using portal-only method");
+                                    TryCreateZoneTransitionTask(leaderPartyElement, "portal");
                                 }
                                 // SPECIAL CASE: Special areas like Maligaro's Sanctum don't support party TP
                                 else if (PortalManager.IsSpecialArea(leaderPartyElement.ZoneName))
                                 {
-                                    _core.LogMessage($"ZONE TRANSITION: Leader in special area '{leaderPartyElement.ZoneName}' - party TP not available, using matching portal search");
-                                    var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName, preferHideoutPortals: true);
-                                    if (matchingPortal != null)
-                                    {
-                                        _core.LogMessage($"ZONE TRANSITION: Found matching portal '{matchingPortal.Label?.Text}' for special area '{leaderPartyElement.ZoneName}'");
-                                        _taskManager.AddTask(new TaskNode(matchingPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
-                                        _core.LogMessage("ZONE TRANSITION: Special area portal transition task added to queue");
-                                    }
-                                    else
-                                    {
-                                        _core.LogMessage($"ZONE TRANSITION: No matching portals found for special area '{leaderPartyElement.ZoneName}'");
-                                    }
+                                    _core.LogMessage($"ZONE TRANSITION: Leader in special area '{leaderPartyElement.ZoneName}' (null entity case), using portal-only method");
+                                    TryCreateZoneTransitionTask(leaderPartyElement, "portal");
                                 }
+                                // Normal zones: Use retry system with portal-first, swirly-second strategy
                                 else
                                 {
-                                    // FIRST: Check for portals that match the leader's area name
-                                    _core.LogMessage("ZONE TRANSITION: Checking for portals matching leader's area name first (null entity case)");
-                                    var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName, preferHideoutPortals: true);
-                                    if (matchingPortal != null)
+                                    var nextMethod = GetNextTransitionMethod();
+                                    
+                                    if (nextMethod == "wait")
                                     {
-                                        _core.LogMessage($"ZONE TRANSITION: Found matching portal '{matchingPortal.Label?.Text}' for leader area '{leaderPartyElement.ZoneName}' (null entity case)");
-                                        _taskManager.AddTask(new TaskNode(matchingPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
-                                        _core.LogMessage("ZONE TRANSITION: Matching portal transition task added to queue (null entity case)");
+                                        // In cooldown period, do nothing
+                                        var timeRemaining = ZONE_TRANSITION_RETRY_COOLDOWN_SECONDS - (DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds;
+                                        if ((DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds % 2 < 0.1) // Log every ~2 seconds
+                                        {
+                                            _core.LogMessage($"ZONE TRANSITION RETRY: Waiting {timeRemaining:F1}s before next retry (null entity case)");
+                                        }
                                     }
                                     else
                                     {
-                                        _core.LogMessage("ZONE TRANSITION: No matching portals found, falling back to party teleport button (null entity case)");
-                                        var tpButton = GetTpButton(leaderPartyElement);
-                                        if (!tpButton.Equals(Vector2.Zero))
+                                        _core.LogMessage($"ZONE TRANSITION: Using retry system (null entity case) - trying {nextMethod} method");
+                                        var success = TryCreateZoneTransitionTask(leaderPartyElement, nextMethod);
+                                        
+                                        if (!success)
                                         {
-                                            _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
-                                            AutoPilot.IsTeleportInProgress = true;
-                                            _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
-                                            _core.LogMessage("ZONE TRANSITION: Party teleport task added to queue");
-                                        }
-                                        else
-                                        {
-                                            _core.LogMessage("ZONE TRANSITION: Party teleport button not available for null entity transition");
+                                            _core.LogMessage($"ZONE TRANSITION: {nextMethod} method failed (null entity case)");
                                         }
                                     }
                                 }
@@ -470,157 +572,40 @@ namespace BetterFollowbot.Core.Movement
                                 var center = tpConfirmation.GetClientRect().Center;
                                 _taskManager.AddTask(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
                             }
+                            // SPECIAL CASE: Labyrinth areas don't support party TP - always use portals
+                            else if (PortalManager.IsInLabyrinthArea && !(_core.GameController?.Area?.CurrentArea?.DisplayName?.Contains("Aspirants' Plaza") ?? false))
+                            {
+                                _core.LogMessage("ZONE TRANSITION: In labyrinth area (large movement case), using portal-only method");
+                                TryCreateZoneTransitionTask(leaderPartyElement, "portal");
+                            }
+                            // SPECIAL CASE: Special areas like Maligaro's Sanctum don't support party TP
+                            else if (leaderPartyElement != null && PortalManager.IsSpecialArea(leaderPartyElement.ZoneName))
+                            {
+                                _core.LogMessage($"ZONE TRANSITION: Leader in special area '{leaderPartyElement.ZoneName}' (large movement case), using portal-only method");
+                                TryCreateZoneTransitionTask(leaderPartyElement, "portal");
+                            }
+                            // Normal zones: Use retry system with portal-first, swirly-second strategy
                             else
                             {
-                                // SPECIAL CASE: Labyrinth areas don't support party TP - use portals instead
-                                // EXCEPTION: Aspirants' Plaza allows party TP as fallback
-                                if (PortalManager.IsInLabyrinthArea && !(_core.GameController?.Area?.CurrentArea?.DisplayName?.Contains("Aspirants' Plaza") ?? false))
+                                var nextMethod = GetNextTransitionMethod();
+                                
+                                if (nextMethod == "wait")
                                 {
-                                    _core.LogMessage("ZONE TRANSITION: In labyrinth area, using portal search instead of party TP");
-                                    var portal = GetBestPortalLabel(leaderPartyElement);
-                                    if (portal != null)
+                                    // In cooldown period, do nothing
+                                    var timeRemaining = ZONE_TRANSITION_RETRY_COOLDOWN_SECONDS - (DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds;
+                                    if ((DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds % 2 < 0.1) // Log every ~2 seconds
                                     {
-                                        // Only create transition task if there isn't already one pending
-                                        var hasExistingTransitionTask = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition);
-                                        if (!hasExistingTransitionTask)
-                                        {
-                                            _core.LogMessage($"ZONE TRANSITION: Found portal '{portal.Label?.Text}' for labyrinth navigation after large movement");
-                                            _taskManager.AddTask(new TaskNode(portal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
-                                            _core.LogMessage("ZONE TRANSITION: Labyrinth portal transition task added to queue");
-                                        }
-                                        else
-                                        {
-                                            _core.LogMessage($"ZONE TRANSITION: Transition task already exists, skipping labyrinth portal creation for '{portal.Label?.Text}'");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        _core.LogMessage("ZONE TRANSITION: No portals found in labyrinth area after large movement");
-                                    }
-                                }
-                                // SPECIAL CASE: Special areas like Maligaro's Sanctum don't support party TP - use matching portals
-                                else if (leaderPartyElement != null && PortalManager.IsSpecialArea(leaderPartyElement.ZoneName))
-                                {
-                                    _core.LogMessage($"ZONE TRANSITION: Leader in special area '{leaderPartyElement.ZoneName}' - using matching portal search instead of party TP");
-                                    var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName, preferHideoutPortals: true);
-                                    if (matchingPortal != null)
-                                    {
-                                        // Only create transition task if there isn't already one pending
-                                        var hasExistingTransitionTask = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition);
-                                        if (!hasExistingTransitionTask)
-                                        {
-                                            _core.LogMessage($"ZONE TRANSITION: Found matching portal '{matchingPortal.Label?.Text}' for special area '{leaderPartyElement.ZoneName}'");
-                                            _taskManager.AddTask(new TaskNode(matchingPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
-                                            _core.LogMessage("ZONE TRANSITION: Special area portal transition task added to queue");
-                                        }
-                                        else
-                                        {
-                                            _core.LogMessage($"ZONE TRANSITION: Transition task already exists, skipping special area portal creation for '{matchingPortal.Label?.Text}'");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        _core.LogMessage($"ZONE TRANSITION: No matching portals found for special area '{leaderPartyElement.ZoneName}'");
+                                        _core.LogMessage($"ZONE TRANSITION RETRY: Waiting {timeRemaining:F1}s before next retry (large movement case)");
                                     }
                                 }
                                 else
                                 {
-                                    // FIRST: Check for portals that match the leader's area name (endgame maps, etc.)
-                                    _core.LogMessage("ZONE TRANSITION: Checking for portals matching leader's area name first (large movement case)");
-                                    var matchingPortal = PortalManager.FindMatchingPortal(leaderPartyElement.ZoneName, preferHideoutPortals: true);
-                                    if (matchingPortal != null)
+                                    _core.LogMessage($"ZONE TRANSITION: Using retry system (large movement case) - trying {nextMethod} method");
+                                    var success = TryCreateZoneTransitionTask(leaderPartyElement, nextMethod);
+                                    
+                                    if (!success)
                                     {
-                                        // Only create transition task if there isn't already one pending
-                                        var hasExistingTransitionTask = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition);
-                                        if (!hasExistingTransitionTask)
-                                        {
-                                            _core.LogMessage($"ZONE TRANSITION: Found matching portal '{matchingPortal.Label?.Text}' for leader area '{leaderPartyElement.ZoneName}' (large movement)");
-                                            _taskManager.AddTask(new TaskNode(matchingPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
-                                            _core.LogMessage("ZONE TRANSITION: Matching portal transition task added to queue (large movement)");
-                                        }
-                                        else
-                                        {
-                                            _core.LogMessage($"ZONE TRANSITION: Transition task already exists, skipping matching portal creation for '{matchingPortal.Label?.Text}'");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        _core.LogMessage("ZONE TRANSITION: No matching portals found, falling back to party teleport button");
-                                        // SECOND: Try party teleport button if no matching portal
-                                        var tpButton = GetTpButton(leaderPartyElement);
-                                        if (!tpButton.Equals(Vector2.Zero))
-                                        {
-                                            _core.LogMessage("ZONE TRANSITION: Using party teleport button (blue swirly icon) for zone transition");
-                                            // SET GLOBAL FLAG: Prevent SMITE and other skills from interfering
-                                            AutoPilot.IsTeleportInProgress = true;
-                                            _taskManager.AddTask(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
-                                        }
-                                        else
-                                        {
-                                            _core.LogMessage("ZONE TRANSITION: Party teleport button not available, checking for portals as fallback");
-
-                                            var transition = GetBestPortalLabel(leaderPartyElement, forceSearch: true);
-
-                                            if (transition == null)
-                                            {
-                                                _core.LogMessage("ZONE TRANSITION: No portal matched by name, looking for closest portal");
-
-                                                var allPortals = _core.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
-                                                    x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
-                                                    x.ItemOnGround != null &&
-                                                    (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") || x.ItemOnGround.Metadata.ToLower().Contains("portal")))
-                                                    .OrderBy(x => Vector3.Distance(_core.PlayerPosition, x.ItemOnGround.Pos))
-                                                    .ToList();
-
-                                                if (allPortals != null && allPortals.Count > 0)
-                                                {
-                                                    var selectedPortal = allPortals.First();
-                                                    var selectedDistance = Vector3.Distance(_core.PlayerPosition, selectedPortal.ItemOnGround.Pos);
-
-                                                    _core.LogMessage($"ZONE TRANSITION: Found portal '{selectedPortal.Label?.Text}' at distance {selectedDistance:F1}");
-                                                    if (selectedDistance < 200)
-                                                    {
-                                                        _core.LogMessage($"ZONE TRANSITION: Using portal '{selectedPortal.Label?.Text}' as fallback");
-                                                        transition = selectedPortal; // Set transition so we use this portal
-
-                                                        // Add the transition task since party teleport failed
-                                                        // Only create transition task if there isn't already one pending
-                                                        var hasExistingTransitionTask = _taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition);
-                                                        if (!hasExistingTransitionTask)
-                                                        {
-                                                            _taskManager.AddTask(new TaskNode(selectedPortal, 200, TaskNodeType.Transition));
-                                                            _core.LogMessage("ZONE TRANSITION: Portal transition task added as fallback");
-                                                        }
-                                                        else
-                                                        {
-                                                            _core.LogMessage("ZONE TRANSITION: Transition task already exists, skipping fallback portal creation");
-                                                        }
-                                                    }
-                                                    else
-                                                    {
-                                                        _core.LogMessage($"ZONE TRANSITION: Portal too far ({selectedDistance:F1}), no transition method available");
-                                                    }
-                                                }
-                                            }
-
-                                            // Check for Portal within Screen Distance (original logic) - only if we haven't already added a task
-                                            if (transition != null && transition.ItemOnGround.DistancePlayer < 80)
-                                            {
-                                                if (!_taskManager.Tasks.Any(t => t.Type == TaskNodeType.Transition))
-                                                {
-                                                    _core.LogMessage($"ZONE TRANSITION: Found nearby portal '{transition.Label?.Text}', adding transition task");
-                                                    _taskManager.AddTask(new TaskNode(transition, 200, TaskNodeType.Transition));
-                                                }
-                                                else
-                                                {
-                                                    _core.LogMessage($"ZONE TRANSITION: Transition task already exists, portal handling already in progress");
-                                                }
-                                            }
-                                            else
-                                            {
-                                                _core.LogMessage("ZONE TRANSITION: No party teleport button or suitable portal found, cannot follow through transition");
-                                            }
-                                        }
+                                        _core.LogMessage($"ZONE TRANSITION: {nextMethod} method failed (large movement case)");
                                     }
                                 }
                             }

@@ -29,9 +29,10 @@ namespace BetterFollowbot.Core.Movement
         private int _zoneTransitionAttempts = 0;
         private DateTime _lastZoneTransitionAttemptTime = DateTime.MinValue;
         private string _lastAttemptedZoneTransition = "";
-        private bool _triedPortalMethod = false;
+        private bool _triedMatchingPortalMethod = false;
         private bool _triedSwirlyMethod = false;
-        private const int MAX_ZONE_TRANSITION_ATTEMPTS = 3;
+        private bool _triedAnyPortalMethod = false;
+        private const int MAX_ZONE_TRANSITION_ATTEMPTS = 4;
         private const double ZONE_TRANSITION_RETRY_COOLDOWN_SECONDS = 5.0;
 
         /// <summary>
@@ -72,8 +73,9 @@ namespace BetterFollowbot.Core.Movement
             _zoneTransitionAttempts = 0;
             _lastZoneTransitionAttemptTime = DateTime.MinValue;
             _lastAttemptedZoneTransition = "";
-            _triedPortalMethod = false;
+            _triedMatchingPortalMethod = false;
             _triedSwirlyMethod = false;
+            _triedAnyPortalMethod = false;
         }
         
         /// <summary>
@@ -108,7 +110,8 @@ namespace BetterFollowbot.Core.Movement
         
         /// <summary>
         /// Determines the next transition method to try based on retry state
-        /// Returns: "portal", "swirly", "wait", or "failed"
+        /// Priority: 1) Matching portal, 2) Swirly, 3) Any portal (fallback), 4) Wait
+        /// Returns: "matching_portal", "swirly", "any_portal", or "wait"
         /// </summary>
         private string GetNextTransitionMethod()
         {
@@ -126,20 +129,26 @@ namespace BetterFollowbot.Core.Movement
                     // Cooldown expired, reset and start a new cycle
                     _core.LogMessage("ZONE TRANSITION RETRY: Cooldown expired, starting new retry cycle");
                     _zoneTransitionAttempts = 0;
-                    _triedPortalMethod = false;
+                    _triedMatchingPortalMethod = false;
                     _triedSwirlyMethod = false;
+                    _triedAnyPortalMethod = false;
                 }
             }
             
-            // Try portal method first (attempts 1-2)
-            if (!_triedPortalMethod || _zoneTransitionAttempts < 2)
+            // Priority 1: Try matching portal first (attempt 1)
+            if (!_triedMatchingPortalMethod)
             {
-                return "portal";
+                return "matching_portal";
             }
-            // Then try swirly method (attempt 3)
+            // Priority 2: Try swirly method (attempt 2)
             else if (!_triedSwirlyMethod)
             {
                 return "swirly";
+            }
+            // Priority 3: Try any nearby portal as fallback (attempt 3)
+            else if (!_triedAnyPortalMethod)
+            {
+                return "any_portal";
             }
             // All methods exhausted in this cycle
             else
@@ -157,7 +166,8 @@ namespace BetterFollowbot.Core.Movement
         }
         
         /// <summary>
-        /// Attempts to create a zone transition task using the appropriate method (portal or swirly)
+        /// Attempts to create a zone transition task using the appropriate method
+        /// Priority: 1) Matching portal, 2) Swirly, 3) Any portal (fallback)
         /// Returns true if a task was created successfully
         /// </summary>
         private bool TryCreateZoneTransitionTask(PartyElementWindow leaderPartyElement, string method)
@@ -170,50 +180,31 @@ namespace BetterFollowbot.Core.Movement
             var transitionKey = $"{currentZone}->{leaderZone}";
             const float MAX_PORTAL_DISTANCE = 750f; // Don't try portals farther than this
             
-            if (method == "portal")
+            if (method == "matching_portal")
             {
-                _core.LogMessage($"ZONE TRANSITION RETRY: Attempting portal method for transition '{transitionKey}'");
+                _core.LogMessage($"ZONE TRANSITION RETRY: Attempting matching portal method for transition '{transitionKey}'");
                 
-                // Try matching portal first (for special areas, endgame maps, etc.)
+                // Try to find a portal that matches the leader's zone name
                 var matchingPortal = PortalManager.FindMatchingPortal(leaderZone, preferHideoutPortals: true);
                 if (matchingPortal != null)
                 {
                     var portalDistance = matchingPortal.ItemOnGround?.DistancePlayer ?? 9999f;
                     if (portalDistance > MAX_PORTAL_DISTANCE)
                     {
-                        _core.LogMessage($"ZONE TRANSITION RETRY: Found matching portal '{matchingPortal.Label?.Text}' but it's too far away ({portalDistance:F1} > {MAX_PORTAL_DISTANCE}), skipping portal method");
-                        _triedPortalMethod = true;
+                        _core.LogMessage($"ZONE TRANSITION RETRY: Found matching portal '{matchingPortal.Label?.Text}' but it's too far away ({portalDistance:F1} > {MAX_PORTAL_DISTANCE}), will try swirly instead");
+                        _triedMatchingPortalMethod = true;
                         return false; // Skip to swirly method
                     }
                     
                     _core.LogMessage($"ZONE TRANSITION RETRY: Found matching portal '{matchingPortal.Label?.Text}' at distance {portalDistance:F1}");
                     _taskManager.AddTask(new TaskNode(matchingPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
-                    _triedPortalMethod = true;
-                    RecordZoneTransitionAttempt(transitionKey, "Portal (Matching)");
+                    _triedMatchingPortalMethod = true;
+                    RecordZoneTransitionAttempt(transitionKey, "Matching Portal");
                     return true;
                 }
                 
-                // Try best portal (closest, etc.)
-                var bestPortal = GetBestPortalLabel(leaderPartyElement, forceSearch: true);
-                if (bestPortal != null)
-                {
-                    var portalDistance = bestPortal.ItemOnGround?.DistancePlayer ?? 9999f;
-                    if (portalDistance > MAX_PORTAL_DISTANCE)
-                    {
-                        _core.LogMessage($"ZONE TRANSITION RETRY: Found nearby portal '{bestPortal.Label?.Text}' but it's too far away ({portalDistance:F1} > {MAX_PORTAL_DISTANCE}), skipping portal method");
-                        _triedPortalMethod = true;
-                        return false; // Skip to swirly method
-                    }
-                    
-                    _core.LogMessage($"ZONE TRANSITION RETRY: Found nearby portal '{bestPortal.Label?.Text}' at distance {portalDistance:F1}");
-                    _taskManager.AddTask(new TaskNode(bestPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
-                    _triedPortalMethod = true;
-                    RecordZoneTransitionAttempt(transitionKey, "Portal (Nearby)");
-                    return true;
-                }
-                
-                _core.LogMessage("ZONE TRANSITION RETRY: No portals found for portal method");
-                _triedPortalMethod = true;
+                _core.LogMessage("ZONE TRANSITION RETRY: No matching portals found, will try swirly");
+                _triedMatchingPortalMethod = true;
                 return false;
             }
             else if (method == "swirly")
@@ -232,8 +223,35 @@ namespace BetterFollowbot.Core.Movement
                     return true;
                 }
                 
-                _core.LogMessage("ZONE TRANSITION RETRY: Party teleport button not available");
+                _core.LogMessage("ZONE TRANSITION RETRY: Party teleport button not available, will try any nearby portal as fallback");
                 _triedSwirlyMethod = true;
+                return false;
+            }
+            else if (method == "any_portal")
+            {
+                _core.LogMessage($"ZONE TRANSITION RETRY: Attempting any portal fallback method for transition '{transitionKey}'");
+                
+                // Try any nearby portal as fallback (doesn't need to match zone name)
+                var bestPortal = GetBestPortalLabel(leaderPartyElement, forceSearch: true);
+                if (bestPortal != null)
+                {
+                    var portalDistance = bestPortal.ItemOnGround?.DistancePlayer ?? 9999f;
+                    if (portalDistance > MAX_PORTAL_DISTANCE)
+                    {
+                        _core.LogMessage($"ZONE TRANSITION RETRY: Found nearby portal '{bestPortal.Label?.Text}' but it's too far away ({portalDistance:F1} > {MAX_PORTAL_DISTANCE}), all methods exhausted");
+                        _triedAnyPortalMethod = true;
+                        return false;
+                    }
+                    
+                    _core.LogMessage($"ZONE TRANSITION RETRY: Found nearby portal '{bestPortal.Label?.Text}' at distance {portalDistance:F1} as fallback");
+                    _taskManager.AddTask(new TaskNode(bestPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                    _triedAnyPortalMethod = true;
+                    RecordZoneTransitionAttempt(transitionKey, "Any Portal (Fallback)");
+                    return true;
+                }
+                
+                _core.LogMessage("ZONE TRANSITION RETRY: No nearby portals found as fallback, all methods exhausted");
+                _triedAnyPortalMethod = true;
                 return false;
             }
             
@@ -449,13 +467,13 @@ namespace BetterFollowbot.Core.Movement
                         else if (PortalManager.IsInLabyrinthArea && !(_core.GameController?.Area?.CurrentArea?.DisplayName?.Contains("Aspirants' Plaza") ?? false))
                         {
                             _core.LogMessage("ZONE TRANSITION: In labyrinth area, using portal-only method");
-                            TryCreateZoneTransitionTask(leaderPartyElement, "portal");
+                            TryCreateZoneTransitionTask(leaderPartyElement, "matching_portal");
                         }
                         // SPECIAL CASE: Special areas like Maligaro's Sanctum don't support party TP
                         else if (PortalManager.IsSpecialArea(leaderPartyElement.ZoneName))
                         {
                             _core.LogMessage($"ZONE TRANSITION: Leader in special area '{leaderPartyElement.ZoneName}', using portal-only method");
-                            TryCreateZoneTransitionTask(leaderPartyElement, "portal");
+                            TryCreateZoneTransitionTask(leaderPartyElement, "matching_portal");
                         }
                         // Normal zones: Use retry system with portal-first, swirly-second strategy
                         else
@@ -502,13 +520,13 @@ namespace BetterFollowbot.Core.Movement
                                 if (PortalManager.IsInLabyrinthArea && !(_core.GameController?.Area?.CurrentArea?.DisplayName?.Contains("Aspirants' Plaza") ?? false))
                                 {
                                     _core.LogMessage("ZONE TRANSITION: In labyrinth area (null entity case), using portal-only method");
-                                    TryCreateZoneTransitionTask(leaderPartyElement, "portal");
+                                    TryCreateZoneTransitionTask(leaderPartyElement, "matching_portal");
                                 }
                                 // SPECIAL CASE: Special areas like Maligaro's Sanctum don't support party TP
                                 else if (PortalManager.IsSpecialArea(leaderPartyElement.ZoneName))
                                 {
                                     _core.LogMessage($"ZONE TRANSITION: Leader in special area '{leaderPartyElement.ZoneName}' (null entity case), using portal-only method");
-                                    TryCreateZoneTransitionTask(leaderPartyElement, "portal");
+                                    TryCreateZoneTransitionTask(leaderPartyElement, "matching_portal");
                                 }
                                 // Normal zones: Use retry system with portal-first, swirly-second strategy
                                 else
@@ -593,13 +611,13 @@ namespace BetterFollowbot.Core.Movement
                             else if (PortalManager.IsInLabyrinthArea && !(_core.GameController?.Area?.CurrentArea?.DisplayName?.Contains("Aspirants' Plaza") ?? false))
                             {
                                 _core.LogMessage("ZONE TRANSITION: In labyrinth area (large movement case), using portal-only method");
-                                TryCreateZoneTransitionTask(leaderPartyElement, "portal");
+                                TryCreateZoneTransitionTask(leaderPartyElement, "matching_portal");
                             }
                             // SPECIAL CASE: Special areas like Maligaro's Sanctum don't support party TP
                             else if (leaderPartyElement != null && PortalManager.IsSpecialArea(leaderPartyElement.ZoneName))
                             {
                                 _core.LogMessage($"ZONE TRANSITION: Leader in special area '{leaderPartyElement.ZoneName}' (large movement case), using portal-only method");
-                                TryCreateZoneTransitionTask(leaderPartyElement, "portal");
+                                TryCreateZoneTransitionTask(leaderPartyElement, "matching_portal");
                             }
                             // Normal zones: Use retry system with portal-first, swirly-second strategy
                             else

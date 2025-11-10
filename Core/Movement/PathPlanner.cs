@@ -168,6 +168,7 @@ namespace BetterFollowbot.Core.Movement
             var currentZone = _core.GameController?.Area?.CurrentArea?.DisplayName ?? "";
             var leaderZone = leaderPartyElement.ZoneName ?? "";
             var transitionKey = $"{currentZone}->{leaderZone}";
+            const float MAX_PORTAL_DISTANCE = 750f; // Don't try portals farther than this
             
             if (method == "portal")
             {
@@ -177,7 +178,15 @@ namespace BetterFollowbot.Core.Movement
                 var matchingPortal = PortalManager.FindMatchingPortal(leaderZone, preferHideoutPortals: true);
                 if (matchingPortal != null)
                 {
-                    _core.LogMessage($"ZONE TRANSITION RETRY: Found matching portal '{matchingPortal.Label?.Text}'");
+                    var portalDistance = matchingPortal.ItemOnGround?.DistancePlayer ?? 9999f;
+                    if (portalDistance > MAX_PORTAL_DISTANCE)
+                    {
+                        _core.LogMessage($"ZONE TRANSITION RETRY: Found matching portal '{matchingPortal.Label?.Text}' but it's too far away ({portalDistance:F1} > {MAX_PORTAL_DISTANCE}), skipping portal method");
+                        _triedPortalMethod = true;
+                        return false; // Skip to swirly method
+                    }
+                    
+                    _core.LogMessage($"ZONE TRANSITION RETRY: Found matching portal '{matchingPortal.Label?.Text}' at distance {portalDistance:F1}");
                     _taskManager.AddTask(new TaskNode(matchingPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
                     _triedPortalMethod = true;
                     RecordZoneTransitionAttempt(transitionKey, "Portal (Matching)");
@@ -188,7 +197,15 @@ namespace BetterFollowbot.Core.Movement
                 var bestPortal = GetBestPortalLabel(leaderPartyElement, forceSearch: true);
                 if (bestPortal != null)
                 {
-                    _core.LogMessage($"ZONE TRANSITION RETRY: Found nearby portal '{bestPortal.Label?.Text}'");
+                    var portalDistance = bestPortal.ItemOnGround?.DistancePlayer ?? 9999f;
+                    if (portalDistance > MAX_PORTAL_DISTANCE)
+                    {
+                        _core.LogMessage($"ZONE TRANSITION RETRY: Found nearby portal '{bestPortal.Label?.Text}' but it's too far away ({portalDistance:F1} > {MAX_PORTAL_DISTANCE}), skipping portal method");
+                        _triedPortalMethod = true;
+                        return false; // Skip to swirly method
+                    }
+                    
+                    _core.LogMessage($"ZONE TRANSITION RETRY: Found nearby portal '{bestPortal.Label?.Text}' at distance {portalDistance:F1}");
                     _taskManager.AddTask(new TaskNode(bestPortal, _core.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
                     _triedPortalMethod = true;
                     RecordZoneTransitionAttempt(transitionKey, "Portal (Nearby)");
@@ -248,10 +265,10 @@ namespace BetterFollowbot.Core.Movement
                 // Reset retry state if we're close to the leader (successful follow)
                 if (followTarget != null && followTarget.Pos != null && _zoneTransitionAttempts > 0)
                 {
-                    var distanceToLeader = Vector3.Distance(_core.PlayerPosition, followTarget.Pos);
-                    if (distanceToLeader < 500) // Within reasonable follow distance
+                    var distanceForReset = Vector3.Distance(_core.PlayerPosition, followTarget.Pos);
+                    if (distanceForReset < 500) // Within reasonable follow distance
                     {
-                        _core.LogMessage($"ZONE TRANSITION RETRY: Bot is close to leader ({distanceToLeader:F1} units), resetting retry state");
+                        _core.LogMessage($"ZONE TRANSITION RETRY: Bot is close to leader ({distanceForReset:F1} units), resetting retry state");
                         ResetZoneTransitionRetryState();
                     }
                 }

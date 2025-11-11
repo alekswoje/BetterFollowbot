@@ -176,12 +176,13 @@ namespace BetterFollowbot.Core.Movement
 
                     var isPortalVisible = currentTask.LabelOnGround?.Label?.IsVisible ?? false;
                     var isPortalValid = currentTask.LabelOnGround?.Label?.IsValid ?? false;
+                    var isEntityValid = currentTask.LabelOnGround?.ItemOnGround?.IsValid ?? false;
 
-                    _core.LogMessage($"TRANSITION: Portal visibility - Visible: {isPortalVisible}, Valid: {isPortalValid}");
+                    _core.LogMessage($"TRANSITION: Portal validity - Label Visible: {isPortalVisible}, Label Valid: {isPortalValid}, Entity Valid: {isEntityValid}");
 
-                    if (!isPortalVisible || !isPortalValid)
+                    if (!isPortalVisible || !isPortalValid || !isEntityValid)
                     {
-                        _core.LogMessage("TRANSITION: Portal no longer visible or valid, removing task to search for new portals");
+                        _core.LogMessage("TRANSITION: Portal no longer visible, valid, or entity destroyed - removing task to search for new portals");
                         _taskManager.RemoveTask(currentTask);
                         shouldTransitionAndContinue = false; // Don't continue with transition
                         break; // Exit the switch case - PathPlanner will find a new portal

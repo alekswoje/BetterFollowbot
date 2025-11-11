@@ -514,8 +514,8 @@ namespace BetterFollowbot.Automation
 
                     BetterFollowbot.Instance.LogMessage("AUTO CLICK TRADE ACCEPT: Clicked accept button");
                     
-                    // Wait a bit for the trade to register
-                    Thread.Sleep(200);
+                    // Wait longer for the trade to register and UI to update
+                    Thread.Sleep(400);
                     
                     // Check if SellerAccepted is true
                     var tradePanelCheck = GetTradePanel();

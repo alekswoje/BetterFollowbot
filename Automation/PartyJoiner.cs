@@ -388,7 +388,8 @@ namespace BetterFollowbot.Automation
 
                 if (_settings.autoClickTradeAcceptButton.Value)
                 {
-                    Thread.Sleep(300);
+                    // Give UI time to update button state after dump
+                    Thread.Sleep(500);
                     ClickTradeAcceptButton();
                 }
             }
@@ -423,9 +424,30 @@ namespace BetterFollowbot.Automation
                     
                     // CRITICAL FIX: Refresh button position on EACH attempt (UI might shift between attempts)
                     var acceptButton = tradePanel.AcceptButton;
-                    if (acceptButton == null || !acceptButton.IsVisible)
+                    
+                    // Enhanced debugging to understand button state
+                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Button null: {acceptButton == null}");
+                    if (acceptButton != null)
                     {
-                        BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Accept button not found or not visible on attempt {attempt}");
+                        try
+                        {
+                            var isVisible = acceptButton.IsVisible;
+                            var isVisibleLocal = acceptButton.IsVisibleLocal;
+                            var isValid = acceptButton.IsValid;
+                            BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - IsVisible: {isVisible}, IsVisibleLocal: {isVisibleLocal}, IsValid: {isValid}");
+                        }
+                        catch (Exception ex)
+                        {
+                            BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Error checking button properties: {ex.Message}");
+                        }
+                    }
+                    
+                    // Check if button is ready (try both visibility properties)
+                    bool isButtonReady = acceptButton != null && (acceptButton.IsVisible || acceptButton.IsVisibleLocal);
+                    
+                    if (!isButtonReady)
+                    {
+                        BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Accept button not ready on attempt {attempt}, waiting...");
                         Thread.Sleep(baseDelay * attempt); // Exponential backoff
                         continue;
                     }

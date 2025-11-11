@@ -25,14 +25,14 @@ namespace BetterFollowbot.Core.Movement
         // Throttle frequent log messages
         private DateTime _lastPortalThresholdLog = DateTime.MinValue;
         
-        // Zone transition retry management
+        // Zone transition retry management - NEVER GIVE UP, keep trying every 5 seconds
         private int _zoneTransitionAttempts = 0;
         private DateTime _lastZoneTransitionAttemptTime = DateTime.MinValue;
         private string _lastAttemptedZoneTransition = "";
         private bool _triedMatchingPortalMethod = false;
         private bool _triedSwirlyMethod = false;
         private bool _triedAnyPortalMethod = false;
-        private const int MAX_ZONE_TRANSITION_ATTEMPTS = 4;
+        private const int MAX_ZONE_TRANSITION_ATTEMPTS = 999999; // Effectively infinite - never give up
         private const double ZONE_TRANSITION_RETRY_COOLDOWN_SECONDS = 5.0;
 
         /// <summary>
@@ -91,7 +91,7 @@ namespace BetterFollowbot.Core.Movement
         }
         
         /// <summary>
-        /// Records a zone transition attempt
+        /// Records a zone transition attempt - tracks attempts but NEVER GIVES UP
         /// </summary>
         private void RecordZoneTransitionAttempt(string transitionKey, string methodName)
         {
@@ -105,52 +105,52 @@ namespace BetterFollowbot.Core.Movement
             
             _zoneTransitionAttempts++;
             _lastZoneTransitionAttemptTime = DateTime.Now;
-            _core.LogMessage($"ZONE TRANSITION RETRY: Attempt {_zoneTransitionAttempts}/{MAX_ZONE_TRANSITION_ATTEMPTS} using {methodName}");
+            _core.LogMessage($"ZONE TRANSITION RETRY: Attempt {_zoneTransitionAttempts} using {methodName} (will keep trying every 5s - NEVER GIVING UP)");
         }
         
         /// <summary>
         /// Determines the next transition method to try based on retry state
-        /// Priority: 1) Matching portal, 2) Swirly, 3) Any portal (fallback), 4) Wait
+        /// Priority: 1) Matching portal, 2) Swirly, 3) Any portal (fallback), 4) Wait and cycle again
+        /// NEVER GIVES UP - continuously cycles through all methods every 5 seconds
         /// Returns: "matching_portal", "swirly", "any_portal", or "wait"
         /// </summary>
         private string GetNextTransitionMethod()
         {
-            // If we've exceeded max attempts, wait for cooldown
-            if (_zoneTransitionAttempts >= MAX_ZONE_TRANSITION_ATTEMPTS)
+            // Check if we're in cooldown after completing a full cycle
+            if (_triedMatchingPortalMethod && _triedSwirlyMethod && _triedAnyPortalMethod)
             {
                 if (IsInZoneTransitionRetryCooldown())
                 {
                     var timeRemaining = ZONE_TRANSITION_RETRY_COOLDOWN_SECONDS - (DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds;
-                    _core.LogMessage($"ZONE TRANSITION RETRY: Waiting {timeRemaining:F1}s before next retry cycle");
+                    _core.LogMessage($"ZONE TRANSITION RETRY: Waiting {timeRemaining:F1}s before next retry cycle (attempt {_zoneTransitionAttempts})");
                     return "wait";
                 }
                 else
                 {
-                    // Cooldown expired, reset and start a new cycle
-                    _core.LogMessage("ZONE TRANSITION RETRY: Cooldown expired, starting new retry cycle");
-                    _zoneTransitionAttempts = 0;
+                    // Cooldown expired, reset and start a new cycle - NEVER GIVE UP!
+                    _core.LogMessage($"ZONE TRANSITION RETRY: Cooldown expired, starting new retry cycle (total attempts: {_zoneTransitionAttempts})");
                     _triedMatchingPortalMethod = false;
                     _triedSwirlyMethod = false;
                     _triedAnyPortalMethod = false;
                 }
             }
             
-            // Priority 1: Try matching portal first (attempt 1)
+            // Priority 1: Try matching portal first
             if (!_triedMatchingPortalMethod)
             {
                 return "matching_portal";
             }
-            // Priority 2: Try swirly method (attempt 2)
+            // Priority 2: Try swirly method (party teleport button)
             else if (!_triedSwirlyMethod)
             {
                 return "swirly";
             }
-            // Priority 3: Try any nearby portal as fallback (attempt 3)
+            // Priority 3: Try any nearby portal as fallback
             else if (!_triedAnyPortalMethod)
             {
                 return "any_portal";
             }
-            // All methods exhausted in this cycle
+            // All methods exhausted in this cycle, wait for cooldown
             else
             {
                 return "wait";
@@ -203,7 +203,7 @@ namespace BetterFollowbot.Core.Movement
                     return true;
                 }
                 
-                _core.LogMessage("ZONE TRANSITION RETRY: No matching portals found, will try swirly");
+                _core.LogMessage("ZONE TRANSITION RETRY: No matching portals found, will try swirly next");
                 _triedMatchingPortalMethod = true;
                 return false;
             }
@@ -223,7 +223,7 @@ namespace BetterFollowbot.Core.Movement
                     return true;
                 }
                 
-                _core.LogMessage("ZONE TRANSITION RETRY: Party teleport button not available, will try any nearby portal as fallback");
+                _core.LogMessage("ZONE TRANSITION RETRY: Party teleport button (swirly) not available, will search for any nearby portal next");
                 _triedSwirlyMethod = true;
                 return false;
             }
@@ -238,7 +238,7 @@ namespace BetterFollowbot.Core.Movement
                     var portalDistance = bestPortal.ItemOnGround?.DistancePlayer ?? 9999f;
                     if (portalDistance > MAX_PORTAL_DISTANCE)
                     {
-                        _core.LogMessage($"ZONE TRANSITION RETRY: Found nearby portal '{bestPortal.Label?.Text}' but it's too far away ({portalDistance:F1} > {MAX_PORTAL_DISTANCE}), all methods exhausted");
+                        _core.LogMessage($"ZONE TRANSITION RETRY: Found nearby portal '{bestPortal.Label?.Text}' but it's too far away ({portalDistance:F1} > {MAX_PORTAL_DISTANCE}), will retry after cooldown");
                         _triedAnyPortalMethod = true;
                         return false;
                     }
@@ -250,7 +250,7 @@ namespace BetterFollowbot.Core.Movement
                     return true;
                 }
                 
-                _core.LogMessage("ZONE TRANSITION RETRY: No nearby portals found as fallback, all methods exhausted");
+                _core.LogMessage("ZONE TRANSITION RETRY: No nearby portals found as fallback, will retry after cooldown - NEVER GIVING UP");
                 _triedAnyPortalMethod = true;
                 return false;
             }

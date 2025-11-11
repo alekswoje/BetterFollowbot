@@ -164,7 +164,7 @@ namespace BetterFollowbot.Core.Movement
                     break;
                 case TaskNodeType.Transition:
                 {
-                    _core.LogMessage($"TRANSITION: Executing transition task - Attempt {currentTask.AttemptCount + 1}/6");
+                    _core.LogMessage($"TRANSITION: Executing transition task - Attempt {currentTask.AttemptCount + 1} (no timeout)");
 
                     shouldTransitionAndContinue = true;
 
@@ -181,10 +181,10 @@ namespace BetterFollowbot.Core.Movement
 
                     if (!isPortalVisible || !isPortalValid)
                     {
-                        _core.LogMessage("TRANSITION: Portal no longer visible or valid, removing task");
+                        _core.LogMessage("TRANSITION: Portal no longer visible or valid, removing task to search for new portals");
                         _taskManager.RemoveTask(currentTask);
                         shouldTransitionAndContinue = false; // Don't continue with transition
-                        break; // Exit the switch case
+                        break; // Exit the switch case - PathPlanner will find a new portal
                     }
 
                     //Click the transition
@@ -209,7 +209,7 @@ namespace BetterFollowbot.Core.Movement
                     {
                         _core.LogMessage($"TRANSITION: Portal is not on screen at distance {distanceToPortal:F1}, need to move closer");
                         
-                        // Increment attempt count to prevent infinite loops
+                        // Increment attempt count to track progress
                         currentTask.AttemptCount++;
                         
                         // Check if portal is unreasonably far away (likely invalid or inaccessible)
@@ -217,20 +217,15 @@ namespace BetterFollowbot.Core.Movement
                         if (distanceToPortal > maxPortalDistance)
                         {
                             _core.LogMessage($"TRANSITION: Portal is too far away ({distanceToPortal:F1} units > {maxPortalDistance} max), likely invalid or inaccessible");
-                            _core.LogMessage("TRANSITION: Removing transition task, will try party teleport or another method");
+                            _core.LogMessage("TRANSITION: Removing transition task, PathPlanner will try party teleport or another portal");
                             _taskManager.RemoveTask(currentTask);
                             shouldTransitionAndContinue = false;
                             break;
                         }
                         
-                        // Check if we've tried too many times
-                        if (currentTask.AttemptCount > 10)
-                        {
-                            _core.LogMessage($"TRANSITION: Too many attempts ({currentTask.AttemptCount}) to reach portal, giving up");
-                            _taskManager.RemoveTask(currentTask);
-                            shouldTransitionAndContinue = false;
-                            break;
-                        }
+                        // CHANGED: Never give up on transition attempts - keep trying different methods
+                        // PathPlanner will cycle through: matching portal -> swirly -> any portal
+                        _core.LogMessage($"TRANSITION: Will keep trying - attempt {currentTask.AttemptCount}");
                         
                         if (distanceToPortal > 100)
                         {
@@ -245,9 +240,10 @@ namespace BetterFollowbot.Core.Movement
                         else
                         {
                             _core.LogMessage($"TRANSITION: Close enough but portal UI not rendering properly, retrying (attempt {currentTask.AttemptCount})");
+                            // CHANGED: Don't give up after 20 attempts - reset attempt count and try again
                             if (currentTask.AttemptCount > 20)
                             {
-                                _core.LogMessage("TRANSITION: Too many retry attempts, removing task");
+                                _core.LogMessage("TRANSITION: Many retry attempts, removing task to search for alternative portal or swirly");
                                 _taskManager.RemoveTask(currentTask);
                             }
                             shouldTransitionAndContinue = false;

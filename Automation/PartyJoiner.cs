@@ -466,34 +466,12 @@ namespace BetterFollowbot.Automation
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Rect: X:{buttonRect.X:F1} Y:{buttonRect.Y:F1} W:{buttonRect.Width:F1} H:{buttonRect.Height:F1}");
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Calculated center: ({buttonClientCenter.X:F1}, {buttonClientCenter.Y:F1}), Window offset: ({windowOffset.X:F1}, {windowOffset.Y:F1}), Screen center: ({buttonScreenCenter.X:F1}, {buttonScreenCenter.Y:F1})");
                     
-                    // Try normal mouse positioning first
-                    Mouse.SetCursorPos(buttonScreenCenter);
-                    Thread.Sleep(150); // Give mouse time to move
+                    // Move mouse to button center and click
+                    // Note: GetMousePosition() returns UI coordinates, not screen coordinates, so we can't verify position
+                    Mouse.SetCursorPosHuman(buttonScreenCenter);
+                    Thread.Sleep(200); // Give mouse time to settle
                     
-                    // Verify mouse position before clicking
-                    var currentMousePos = _instance.GetMousePosition();
-                    var distanceFromTarget = Vector2.Distance(currentMousePos, buttonScreenCenter);
-                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Mouse position check - Current: ({currentMousePos.X:F1}, {currentMousePos.Y:F1}), Target: ({buttonScreenCenter.X:F1}, {buttonScreenCenter.Y:F1}), Distance: {distanceFromTarget:F1}");
-                    
-                    // If normal positioning failed badly, try human-like positioning as fallback
-                    if (distanceFromTarget > 50)
-                    {
-                        BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: SetCursorPos failed, trying SetCursorPosHuman on attempt {attempt}");
-                        Mouse.SetCursorPosHuman(buttonScreenCenter);
-                        Thread.Sleep(200);
-                        
-                        currentMousePos = _instance.GetMousePosition();
-                        distanceFromTarget = Vector2.Distance(currentMousePos, buttonScreenCenter);
-                        BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: After SetCursorPosHuman - Current: ({currentMousePos.X:F1}, {currentMousePos.Y:F1}), Distance: {distanceFromTarget:F1}");
-                    }
-                    
-                    // More lenient check - 50 pixels tolerance
-                    if (distanceFromTarget > 50)
-                    {
-                        BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Mouse positioning failed on attempt {attempt} - too far from target ({distanceFromTarget:F1} pixels)");
-                        Thread.Sleep(baseDelay * attempt); // Exponential backoff
-                        continue;
-                    }
+                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Clicking at ({buttonScreenCenter.X:F1}, {buttonScreenCenter.Y:F1})");
                     
                     Mouse.LeftMouseDown();
                     Thread.Sleep(40);

@@ -485,22 +485,10 @@ namespace BetterFollowbot.Automation
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Calculated center from Cache: ({calculatedCenterCacheX:F1}, {calculatedCenterCacheY:F1})");
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Calculated center from Direct: ({calculatedCenterDirectX:F1}, {calculatedCenterDirectY:F1})");
                     
-                    // Try using AcceptButton.Center directly if it exists
-                    Vector2 buttonScreenCenter;
-                    try
-                    {
-                        var buttonDirectCenter = acceptButton.Center;
-                        buttonScreenCenter = new Vector2(buttonDirectCenter.X + windowOffset.X, buttonDirectCenter.Y + windowOffset.Y);
-                        BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Using AcceptButton.Center directly: ({buttonScreenCenter.X:F1}, {buttonScreenCenter.Y:F1})");
-                    }
-                    catch
-                    {
-                        // Fallback to calculated center
-                        float finalCenterX = buttonRectDirect.X + (buttonRectDirect.Width / 2f);
-                        float finalCenterY = buttonRectDirect.Y + (buttonRectDirect.Height / 2f);
-                        buttonScreenCenter = new Vector2(finalCenterX + windowOffset.X, finalCenterY + windowOffset.Y);
-                        BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Fallback to calculated center: ({buttonScreenCenter.X:F1}, {buttonScreenCenter.Y:F1})");
-                    }
+                    // TESTING: Try using DevTree coordinates directly (X:268.76 Y:592.88 from your screenshot)
+                    // This is a TEST to see if DevTree coordinates work
+                    Vector2 buttonScreenCenter = new Vector2(268.76f, 592.88f);
+                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - TESTING with DevTree coordinates: ({buttonScreenCenter.X:F1}, {buttonScreenCenter.Y:F1})");
                     
                     // Use direct SetCursorPos instead of SetCursorPosHuman to avoid overshooting
                     Mouse.SetCursorPos(buttonScreenCenter);

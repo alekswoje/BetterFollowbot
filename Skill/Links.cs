@@ -225,8 +225,23 @@ namespace BetterFollowbot.Skills
 
                         if (canLink)
                         {
+                            // Add randomness to cursor position and timing for more human-like behavior
+                            var random = new Random();
                             var targetScreenPosForMouse = _instance.GameController.IngameState.Camera.WorldToScreen(playerEntity.Pos);
-                            Mouse.SetCursorPos(targetScreenPosForMouse);
+                            
+                            // Add random offset to cursor position (±10 pixels)
+                            var randomOffsetX = (float)(random.NextDouble() * 20 - 10);
+                            var randomOffsetY = (float)(random.NextDouble() * 20 - 10);
+                            var randomizedPos = new Vector2(
+                                targetScreenPosForMouse.X + randomOffsetX,
+                                targetScreenPosForMouse.Y + randomOffsetY
+                            );
+                            
+                            Mouse.SetCursorPos(randomizedPos);
+                            
+                            // Random delay before casting (50-150ms)
+                            var randomDelay = random.Next(50, 150);
+                            System.Threading.Thread.Sleep(randomDelay);
 
                             var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
                             if (skillKey != default(Keys))
@@ -237,9 +252,9 @@ namespace BetterFollowbot.Skills
 
                             var timerKey = $"{partyElement.PlayerName}_{linkType}";
                             _lastLinkTime[timerKey] = DateTime.Now;
-                            linkSkill.Cooldown = 100;
+                            linkSkill.Cooldown = 1000; // 1 second cooldown between link casts
 
-                            _instance.LogMessage($"{linkType.ToUpper()}: Linked to {partyElement.PlayerName} (auto-link, Distance: {distanceToCursor:F1})");
+                            _instance.LogMessage($"{linkType.ToUpper()}: Linked to {partyElement.PlayerName} (auto-link, Distance: {distanceToCursor:F1}, Delay: {randomDelay}ms)");
                             return;
                         }
                     }

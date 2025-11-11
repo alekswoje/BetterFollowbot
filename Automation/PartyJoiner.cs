@@ -456,39 +456,11 @@ namespace BetterFollowbot.Automation
                     var windowRect = BetterFollowbot.Instance.GameController.Window.GetWindowRectangle();
                     var buttonRect = acceptButton.GetClientRectCache;
                     
-                    // Try using GetClientRect instead of GetClientRectCache - might have different coordinate system
-                    var buttonRectDirect = acceptButton.GetClientRect();
-                    
-                    // Try accessing Center property directly from button element
-                    try
-                    {
-                        var buttonDirectCenter = acceptButton.Center;
-                        BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - AcceptButton.Center directly: ({buttonDirectCenter.X:F1}, {buttonDirectCenter.Y:F1})");
-                    }
-                    catch (Exception ex)
-                    {
-                        BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - AcceptButton.Center not accessible: {ex.Message}");
-                    }
-                    
-                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Window rect: TopLeft:({windowRect.TopLeft.X:F1},{windowRect.TopLeft.Y:F1}) Size:({windowRect.Width:F1}x{windowRect.Height:F1})");
-                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Button GetClientRectCache: X:{buttonRect.X:F1} Y:{buttonRect.Y:F1} W:{buttonRect.Width:F1} H:{buttonRect.Height:F1}");
-                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Button GetClientRect: X:{buttonRectDirect.X:F1} Y:{buttonRectDirect.Y:F1} W:{buttonRectDirect.Width:F1} H:{buttonRectDirect.Height:F1}");
-                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Button Rect.Center property: ({buttonRect.Center.X:F1}, {buttonRect.Center.Y:F1})");
-                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Button TopLeft: ({buttonRect.TopLeft.X:F1}, {buttonRect.TopLeft.Y:F1})");
-                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Button BottomRight: ({buttonRect.BottomRight.X:F1}, {buttonRect.BottomRight.Y:F1})");
-                    
-                    // Calculate centers from both
-                    float calculatedCenterCacheX = buttonRect.X + (buttonRect.Width / 2f);
-                    float calculatedCenterCacheY = buttonRect.Y + (buttonRect.Height / 2f);
-                    float calculatedCenterDirectX = buttonRectDirect.X + (buttonRectDirect.Width / 2f);
-                    float calculatedCenterDirectY = buttonRectDirect.Y + (buttonRectDirect.Height / 2f);
-                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Calculated center from Cache: ({calculatedCenterCacheX:F1}, {calculatedCenterCacheY:F1})");
-                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Calculated center from Direct: ({calculatedCenterDirectX:F1}, {calculatedCenterDirectY:F1})");
-                    
-                    // TESTING: Try using DevTree coordinates directly (X:268.76 Y:592.88 from your screenshot)
-                    // This is a TEST to see if DevTree coordinates work
-                    Vector2 buttonScreenCenter = new Vector2(268.76f, 592.88f);
-                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - TESTING with DevTree coordinates: ({buttonScreenCenter.X:F1}, {buttonScreenCenter.Y:F1})");
+                    // TODO: Fix coordinate system mismatch between ExileAPI and actual button position
+                    // ExileAPI methods return wrong coordinates - needs investigation
+                    // For now, this feature is non-functional
+                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Feature disabled - coordinate system issue needs fixing");
+                    return;
                     
                     // Use direct SetCursorPos instead of SetCursorPosHuman to avoid overshooting
                     Mouse.SetCursorPos(buttonScreenCenter);

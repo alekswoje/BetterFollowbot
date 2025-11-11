@@ -413,22 +413,6 @@ namespace BetterFollowbot.Automation
                     return;
                 }
 
-                var acceptButton = tradePanel.AcceptButton;
-                BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Accept button - Null: {acceptButton == null}");
-                
-                if (acceptButton == null)
-                {
-                    BetterFollowbot.Instance.LogMessage("AUTO CLICK TRADE ACCEPT: Accept button not found");
-                    return;
-                }
-
-                // CRITICAL FIX: Add window offset to convert client coordinates to screen coordinates
-                var windowOffset = BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().TopLeft;
-                var buttonRect = acceptButton.GetClientRectCache;
-                var buttonClientCenter = buttonRect.Center;
-                var buttonScreenCenter = new Vector2(buttonClientCenter.X + windowOffset.X, buttonClientCenter.Y + windowOffset.Y);
-                BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Button client center: ({buttonClientCenter.X:F1}, {buttonClientCenter.Y:F1}), Window offset: ({windowOffset.X:F1}, {windowOffset.Y:F1}), Screen center: ({buttonScreenCenter.X:F1}, {buttonScreenCenter.Y:F1})");
-
                 // Try up to 3 times with exponential backoff
                 const int maxAttempts = 3;
                 int baseDelay = 100; // milliseconds
@@ -437,8 +421,37 @@ namespace BetterFollowbot.Automation
                 {
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Attempt {attempt}/{maxAttempts}");
                     
+                    // CRITICAL FIX: Refresh button position on EACH attempt (UI might shift between attempts)
+                    var acceptButton = tradePanel.AcceptButton;
+                    if (acceptButton == null || !acceptButton.IsVisible)
+                    {
+                        BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Accept button not found or not visible on attempt {attempt}");
+                        Thread.Sleep(baseDelay * attempt); // Exponential backoff
+                        continue;
+                    }
+                    
+                    // Get fresh position right before clicking
+                    var windowOffset = BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().TopLeft;
+                    var buttonRect = acceptButton.GetClientRectCache;
+                    var buttonClientCenter = buttonRect.Center;
+                    var buttonScreenCenter = new Vector2(buttonClientCenter.X + windowOffset.X, buttonClientCenter.Y + windowOffset.Y);
+                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Button client center: ({buttonClientCenter.X:F1}, {buttonClientCenter.Y:F1}), Window offset: ({windowOffset.X:F1}, {windowOffset.Y:F1}), Screen center: ({buttonScreenCenter.X:F1}, {buttonScreenCenter.Y:F1})");
+                    
                     Mouse.SetCursorPos(buttonScreenCenter);
-                    Thread.Sleep(100);
+                    Thread.Sleep(150); // Give mouse time to move
+                    
+                    // Verify mouse position before clicking
+                    var currentMousePos = _instance.GetMousePosition();
+                    var distanceFromTarget = Vector2.Distance(currentMousePos, buttonScreenCenter);
+                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Mouse position check - Current: ({currentMousePos.X:F1}, {currentMousePos.Y:F1}), Target: ({buttonScreenCenter.X:F1}, {buttonScreenCenter.Y:F1}), Distance: {distanceFromTarget:F1}");
+                    
+                    if (distanceFromTarget > 20)
+                    {
+                        BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Mouse positioning failed on attempt {attempt} - too far from target ({distanceFromTarget:F1} pixels)");
+                        Thread.Sleep(baseDelay * attempt); // Exponential backoff
+                        continue;
+                    }
+                    
                     Mouse.LeftMouseDown();
                     Thread.Sleep(40);
                     Mouse.LeftMouseUp();

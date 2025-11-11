@@ -28,7 +28,7 @@ namespace BetterFollowbot.Skills
             _lastLinkTime = new System.Collections.Generic.Dictionary<string, DateTime>();
         }
 
-        public bool IsEnabled => _settings.linksEnabled || _settings.flameLinkEnabled || _settings.protectiveLinkEnabled || _settings.destructiveLinkEnabled;
+        public bool IsEnabled => _settings.linksEnabled || _settings.flameLinkEnabled || _settings.protectiveLinkEnabled || _settings.destructiveLinkEnabled || _settings.soulLinkEnabled;
 
         public string SkillName => "Links";
 
@@ -65,6 +65,11 @@ namespace BetterFollowbot.Skills
             {
                 ProcessLinkSkill(SkillInfo.destructiveLink, "destructive_link_target", "destructive_link");
             }
+
+            if (_settings.soulLinkEnabled)
+            {
+                ProcessLinkSkill(SkillInfo.soulLink, "soul_link_target", "soul_link");
+            }
         }
 
         /// <summary>
@@ -98,6 +103,13 @@ namespace BetterFollowbot.Skills
             {
                 var destructiveLinkTasks = CreateLinkTasks(SkillInfo.destructiveLink, "destructive_link_target", "destructive_link", TaskNodeType.DestructiveLink);
                 tasks.AddRange(destructiveLinkTasks);
+            }
+            
+            // Create soul link tasks
+            if (_settings.soulLinkEnabled)
+            {
+                var soulLinkTasks = CreateLinkTasks(SkillInfo.soulLink, "soul_link_target", "soul_link", TaskNodeType.SoulLink);
+                tasks.AddRange(soulLinkTasks);
             }
             
             return tasks;

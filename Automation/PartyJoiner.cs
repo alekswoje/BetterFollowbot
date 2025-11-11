@@ -174,14 +174,17 @@ namespace BetterFollowbot.Automation
                                                     var acceptButton = invite.AcceptButton;
                                                     if (acceptButton != null && acceptButton.IsVisible)
                                                     {
+                                                        // CRITICAL FIX: Add window offset to convert client coordinates to screen coordinates
+                                                        var windowOffset = _instance.GameController.Window.GetWindowRectangle().TopLeft;
                                                         var buttonRect = acceptButton.GetClientRectCache;
-                                                        var buttonCenter = buttonRect.Center;
+                                                        var buttonClientCenter = buttonRect.Center;
+                                                        var buttonScreenCenter = new Vector2(buttonClientCenter.X + windowOffset.X, buttonClientCenter.Y + windowOffset.Y);
 
-                                                        Mouse.SetCursorPos(buttonCenter);
+                                                        Mouse.SetCursorPos(buttonScreenCenter);
                                                         Thread.Sleep(300);
 
                                                         var currentMousePos = _instance.GetMousePosition();
-                                                        var distanceFromTarget = Vector2.Distance(currentMousePos, buttonCenter);
+                                                        var distanceFromTarget = Vector2.Distance(currentMousePos, buttonScreenCenter);
 
                                                         if (distanceFromTarget < 15)
                                                         {
@@ -419,9 +422,12 @@ namespace BetterFollowbot.Automation
                     return;
                 }
 
+                // CRITICAL FIX: Add window offset to convert client coordinates to screen coordinates
+                var windowOffset = BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().TopLeft;
                 var buttonRect = acceptButton.GetClientRectCache;
-                var buttonCenter = buttonRect.Center;
-                BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Button center: ({buttonCenter.X:F1}, {buttonCenter.Y:F1})");
+                var buttonClientCenter = buttonRect.Center;
+                var buttonScreenCenter = new Vector2(buttonClientCenter.X + windowOffset.X, buttonClientCenter.Y + windowOffset.Y);
+                BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Button client center: ({buttonClientCenter.X:F1}, {buttonClientCenter.Y:F1}), Window offset: ({windowOffset.X:F1}, {windowOffset.Y:F1}), Screen center: ({buttonScreenCenter.X:F1}, {buttonScreenCenter.Y:F1})");
 
                 // Try up to 3 times with exponential backoff
                 const int maxAttempts = 3;
@@ -431,7 +437,7 @@ namespace BetterFollowbot.Automation
                 {
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Attempt {attempt}/{maxAttempts}");
                     
-                    Mouse.SetCursorPos(buttonCenter);
+                    Mouse.SetCursorPos(buttonScreenCenter);
                     Thread.Sleep(100);
                     Mouse.LeftMouseDown();
                     Thread.Sleep(40);

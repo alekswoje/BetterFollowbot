@@ -457,7 +457,7 @@ namespace BetterFollowbot.Automation
                     var buttonRect = acceptButton.GetClientRectCache;
                     
                     // Try using GetClientRect instead of GetClientRectCache - might have different coordinate system
-                    var buttonRectDirect = acceptButton.GetClientRectCache();
+                    var buttonRectDirect = acceptButton.GetClientRect();
                     
                     // Try accessing Center property directly from button element
                     try

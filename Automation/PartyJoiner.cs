@@ -455,10 +455,18 @@ namespace BetterFollowbot.Automation
                     // Get fresh position right before clicking
                     var windowOffset = BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().TopLeft;
                     var buttonRect = acceptButton.GetClientRectCache;
-                    var buttonClientCenter = buttonRect.Center;
-                    var buttonScreenCenter = new Vector2(buttonClientCenter.X + windowOffset.X, buttonClientCenter.Y + windowOffset.Y);
-                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Button client center: ({buttonClientCenter.X:F1}, {buttonClientCenter.Y:F1}), Window offset: ({windowOffset.X:F1}, {windowOffset.Y:F1}), Screen center: ({buttonScreenCenter.X:F1}, {buttonScreenCenter.Y:F1})");
                     
+                    // CRITICAL FIX: Calculate center manually from rect bounds instead of using cached Center property
+                    // GetClientRectCache.Center can return stale/transformed coordinates
+                    float buttonCenterX = buttonRect.X + (buttonRect.Width / 2f);
+                    float buttonCenterY = buttonRect.Y + (buttonRect.Height / 2f);
+                    var buttonClientCenter = new Vector2(buttonCenterX, buttonCenterY);
+                    var buttonScreenCenter = new Vector2(buttonClientCenter.X + windowOffset.X, buttonClientCenter.Y + windowOffset.Y);
+                    
+                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Rect: X:{buttonRect.X:F1} Y:{buttonRect.Y:F1} W:{buttonRect.Width:F1} H:{buttonRect.Height:F1}");
+                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Calculated center: ({buttonClientCenter.X:F1}, {buttonClientCenter.Y:F1}), Window offset: ({windowOffset.X:F1}, {windowOffset.Y:F1}), Screen center: ({buttonScreenCenter.X:F1}, {buttonScreenCenter.Y:F1})");
+                    
+                    // Try normal mouse positioning first
                     Mouse.SetCursorPos(buttonScreenCenter);
                     Thread.Sleep(150); // Give mouse time to move
                     
@@ -467,7 +475,20 @@ namespace BetterFollowbot.Automation
                     var distanceFromTarget = Vector2.Distance(currentMousePos, buttonScreenCenter);
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Mouse position check - Current: ({currentMousePos.X:F1}, {currentMousePos.Y:F1}), Target: ({buttonScreenCenter.X:F1}, {buttonScreenCenter.Y:F1}), Distance: {distanceFromTarget:F1}");
                     
-                    if (distanceFromTarget > 20)
+                    // If normal positioning failed badly, try human-like positioning as fallback
+                    if (distanceFromTarget > 50)
+                    {
+                        BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: SetCursorPos failed, trying SetCursorPosHuman on attempt {attempt}");
+                        Mouse.SetCursorPosHuman(buttonScreenCenter);
+                        Thread.Sleep(200);
+                        
+                        currentMousePos = _instance.GetMousePosition();
+                        distanceFromTarget = Vector2.Distance(currentMousePos, buttonScreenCenter);
+                        BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: After SetCursorPosHuman - Current: ({currentMousePos.X:F1}, {currentMousePos.Y:F1}), Distance: {distanceFromTarget:F1}");
+                    }
+                    
+                    // More lenient check - 50 pixels tolerance
+                    if (distanceFromTarget > 50)
                     {
                         BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Mouse positioning failed on attempt {attempt} - too far from target ({distanceFromTarget:F1} pixels)");
                         Thread.Sleep(baseDelay * attempt); // Exponential backoff

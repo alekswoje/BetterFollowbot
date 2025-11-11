@@ -452,17 +452,17 @@ namespace BetterFollowbot.Automation
                     }
                     
                     // Get fresh position right before clicking
+                    // Use GetClientRectCache which properly accounts for container inheritance
                     var windowOffset = BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().TopLeft;
-                    var windowRect = BetterFollowbot.Instance.GameController.Window.GetWindowRectangle();
                     var buttonRect = acceptButton.GetClientRectCache;
                     
-                    // TODO: Fix coordinate system mismatch between ExileAPI and actual button position
-                    // ExileAPI methods return wrong coordinates - needs investigation
-                    // For now, this feature is non-functional
-                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Feature disabled - coordinate system issue needs fixing");
-                    return;
+                    // Use Center from GetClientRectCache (accounts for all parent containers)
+                    var buttonCenter = buttonRect.Center;
+                    var buttonScreenCenter = new Vector2(buttonCenter.X + windowOffset.X, buttonCenter.Y + windowOffset.Y);
                     
-                    // Use direct SetCursorPos instead of SetCursorPosHuman to avoid overshooting
+                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - GetClientRectCache.Center: ({buttonCenter.X:F1}, {buttonCenter.Y:F1}), Final: ({buttonScreenCenter.X:F1}, {buttonScreenCenter.Y:F1})");
+                    
+                    // Use direct SetCursorPos for accuracy
                     Mouse.SetCursorPos(buttonScreenCenter);
                     Thread.Sleep(150); // Give mouse time to settle
                     

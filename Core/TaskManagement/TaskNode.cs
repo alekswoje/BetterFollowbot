@@ -93,6 +93,7 @@ public enum TaskNodeType
     FlameLink,          // Target a party member for flame link
     ProtectiveLink,     // Target a party member for protective link
     DestructiveLink,    // Target a party member for destructive link
+    SoulLink,           // Target a party member for soul link
     SmiteBuff,          // Use smite skill
     Warcry,             // Use warcry skill
     Mine,               // Deploy/detonate mines

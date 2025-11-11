@@ -52,6 +52,7 @@ public class BetterFollowbotSettings : ISettings
     public ToggleNode flameLinkEnabled = new ToggleNode(false);
     public ToggleNode protectiveLinkEnabled = new ToggleNode(false);
     public ToggleNode destructiveLinkEnabled = new ToggleNode(false);
+    public ToggleNode soulLinkEnabled = new ToggleNode(false);
     public RangeNode<int> flameLinkRange = new RangeNode<int>(40, 10, 100);
     public RangeNode<int> flameLinkTimeThreshold = new RangeNode<int>(4, 1, 10);
 

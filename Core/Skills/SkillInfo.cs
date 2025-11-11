@@ -81,6 +81,7 @@ internal static class SkillInfo
     internal static Skill flameLink = new Skill();
     internal static Skill protectiveLink = new Skill();
     internal static Skill destructiveLink = new Skill();
+    internal static Skill soulLink = new Skill();
     internal static Skill smite = new Skill();
 
     // Vaal Skills
@@ -166,6 +167,7 @@ internal static class SkillInfo
         flameLink = new Skill();
         protectiveLink = new Skill();
         destructiveLink = new Skill();
+        soulLink = new Skill();
         smite = new Skill();
         vaalHaste = new Skill();
         vaalDiscipline = new Skill();
@@ -522,6 +524,10 @@ internal static class SkillInfo
                 case "destructive_link":
                     destructiveLink.Id = skill.Id;
                     destructiveLink.BuffName = "destructive_link_source";
+                    break;
+                case "soul_link":
+                    soulLink.Id = skill.Id;
+                    soulLink.BuffName = "soul_link_source";
                     break;
                 case "smite":
                     smite.Id = skill.Id;

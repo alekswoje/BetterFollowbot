@@ -381,6 +381,8 @@ namespace BetterFollowbot.Core.Movement
                  // NEW: Skill task execution
                  case TaskNodeType.FlameLink:
                  case TaskNodeType.ProtectiveLink:
+                 case TaskNodeType.DestructiveLink:
+                 case TaskNodeType.SoulLink:
                  {
                      ExecuteLinkSkillTask(currentTask);
                      break;

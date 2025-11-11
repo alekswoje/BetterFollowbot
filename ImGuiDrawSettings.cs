@@ -150,7 +150,8 @@ internal class ImGuiDrawSettings
             bool linksEnabled = BetterFollowbot.Instance.Settings.linksEnabled || 
                                BetterFollowbot.Instance.Settings.flameLinkEnabled || 
                                BetterFollowbot.Instance.Settings.protectiveLinkEnabled ||
-                               BetterFollowbot.Instance.Settings.destructiveLinkEnabled;
+                               BetterFollowbot.Instance.Settings.destructiveLinkEnabled ||
+                               BetterFollowbot.Instance.Settings.soulLinkEnabled;
             ImGui.PushStyleColor(ImGuiCol.Header, linksEnabled ? green : red);
             ImGui.PushID(28);
             if (ImGui.TreeNodeEx("Links", collapsingHeaderFlags))
@@ -176,6 +177,11 @@ internal class ImGuiDrawSettings
                 ImGui.Text("Destructive Link:");
                 BetterFollowbot.Instance.Settings.destructiveLinkEnabled.Value = ImGuiExtension.Checkbox("  Destructive Link",
                     BetterFollowbot.Instance.Settings.destructiveLinkEnabled.Value);
+                
+                ImGui.Separator();
+                ImGui.Text("Soul Link:");
+                BetterFollowbot.Instance.Settings.soulLinkEnabled.Value = ImGuiExtension.Checkbox("  Soul Link",
+                    BetterFollowbot.Instance.Settings.soulLinkEnabled.Value);
             }
         }
         catch (Exception e)

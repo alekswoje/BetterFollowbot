@@ -457,7 +457,7 @@ namespace BetterFollowbot.Automation
                     var buttonRect = acceptButton.GetClientRectCache;
                     
                     // Try using GetClientRect instead of GetClientRectCache - might have different coordinate system
-                    var buttonRectDirect = acceptButton.GetClientRect();
+                    var buttonRectDirect = acceptButton.GetClientRectCache();
                     
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Window rect: TopLeft:({windowRect.TopLeft.X:F1},{windowRect.TopLeft.Y:F1}) Size:({windowRect.Width:F1}x{windowRect.Height:F1})");
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Button GetClientRectCache: X:{buttonRect.X:F1} Y:{buttonRect.Y:F1} W:{buttonRect.Width:F1} H:{buttonRect.Height:F1}");

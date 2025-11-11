@@ -49,10 +49,6 @@ public class BetterFollowbotSettings : ISettings
     #region Link Skills
 
     public ToggleNode linksEnabled = new ToggleNode(false);
-    public ToggleNode flameLinkEnabled = new ToggleNode(false);
-    public ToggleNode protectiveLinkEnabled = new ToggleNode(false);
-    public ToggleNode destructiveLinkEnabled = new ToggleNode(false);
-    public ToggleNode soulLinkEnabled = new ToggleNode(false);
     public RangeNode<int> flameLinkRange = new RangeNode<int>(40, 10, 100);
     public RangeNode<int> flameLinkTimeThreshold = new RangeNode<int>(4, 1, 10);
 
@@ -76,15 +72,6 @@ public class BetterFollowbotSettings : ISettings
     #region Warcries
 
     public ToggleNode warcriesEnabled = new ToggleNode(false);
-    public ToggleNode ancestralCryEnabled = new ToggleNode(false);
-    public ToggleNode infernalCryEnabled = new ToggleNode(false);
-    public ToggleNode generalsCryEnabled = new ToggleNode(false);
-    public ToggleNode intimidatingCryEnabled = new ToggleNode(false);
-    public ToggleNode rallyingCryEnabled = new ToggleNode(false);
-    public ToggleNode vengefulCryEnabled = new ToggleNode(false);
-    public ToggleNode enduringCryEnabled = new ToggleNode(false);
-    public ToggleNode seismicCryEnabled = new ToggleNode(false);
-    public ToggleNode battlemagesCryEnabled = new ToggleNode(false);
 
     #endregion
 

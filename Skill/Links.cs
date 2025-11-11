@@ -28,7 +28,7 @@ namespace BetterFollowbot.Skills
             _lastLinkTime = new System.Collections.Generic.Dictionary<string, DateTime>();
         }
 
-        public bool IsEnabled => _settings.linksEnabled || _settings.flameLinkEnabled || _settings.protectiveLinkEnabled || _settings.destructiveLinkEnabled || _settings.soulLinkEnabled;
+        public bool IsEnabled => _settings.linksEnabled;
 
         public string SkillName => "Links";
 
@@ -46,27 +46,32 @@ namespace BetterFollowbot.Skills
             if (!_instance.GameController.IsForeGroundCache) return;
             if (_instance.GameController?.Area?.CurrentArea?.IsTown == true) return;
             if (_instance.GameController?.Area?.CurrentArea?.IsHideout == true && _settings.disableSkillsInHideout) return;
-            if (!_instance.CanUseSkill("Links")) return;
+            
+            // Don't use global skill cooldown - let links cast whenever buffs are needed
+            // Only check GCD to prevent skill spam
+            if (!_instance.Gcd()) return;
             
             // Only use skills when within follow range of the leader
             if (!_instance.IsWithinFollowRange()) return;
 
-            if (_settings.flameLinkEnabled)
+            // Auto-detect and use any available link skills
+            // These will only cast if buffs are actually needed (checked inside ProcessLinkSkill)
+            if (SkillInfo.flameLink.Id > 0)
             {
                 ProcessLinkSkill(SkillInfo.flameLink, "flame_link_target", "flame_link");
             }
 
-            if (_settings.protectiveLinkEnabled)
+            if (SkillInfo.protectiveLink.Id > 0)
             {
                 ProcessLinkSkill(SkillInfo.protectiveLink, "bulwark_link_target", "protective_link");
             }
 
-            if (_settings.destructiveLinkEnabled)
+            if (SkillInfo.destructiveLink.Id > 0)
             {
                 ProcessLinkSkill(SkillInfo.destructiveLink, "destructive_link_target", "destructive_link");
             }
 
-            if (_settings.soulLinkEnabled)
+            if (SkillInfo.soulLink.Id > 0)
             {
                 ProcessLinkSkill(SkillInfo.soulLink, "soul_link_target", "soul_link");
             }
@@ -84,29 +89,26 @@ namespace BetterFollowbot.Skills
             if (!_instance.IsWithinFollowRange())
                 return tasks;
             
-            // Create flame link tasks
-            if (_settings.flameLinkEnabled)
+            // Auto-detect and create tasks for any available link skills
+            if (SkillInfo.flameLink.Id > 0)
             {
                 var flameLinkTasks = CreateLinkTasks(SkillInfo.flameLink, "flame_link_target", "flame_link", TaskNodeType.FlameLink);
                 tasks.AddRange(flameLinkTasks);
             }
             
-            // Create protective link tasks
-            if (_settings.protectiveLinkEnabled)
+            if (SkillInfo.protectiveLink.Id > 0)
             {
                 var protectiveLinkTasks = CreateLinkTasks(SkillInfo.protectiveLink, "bulwark_link_target", "protective_link", TaskNodeType.ProtectiveLink);
                 tasks.AddRange(protectiveLinkTasks);
             }
             
-            // Create destructive link tasks
-            if (_settings.destructiveLinkEnabled)
+            if (SkillInfo.destructiveLink.Id > 0)
             {
                 var destructiveLinkTasks = CreateLinkTasks(SkillInfo.destructiveLink, "destructive_link_target", "destructive_link", TaskNodeType.DestructiveLink);
                 tasks.AddRange(destructiveLinkTasks);
             }
             
-            // Create soul link tasks
-            if (_settings.soulLinkEnabled)
+            if (SkillInfo.soulLink.Id > 0)
             {
                 var soulLinkTasks = CreateLinkTasks(SkillInfo.soulLink, "soul_link_target", "soul_link", TaskNodeType.SoulLink);
                 tasks.AddRange(soulLinkTasks);
@@ -133,9 +135,6 @@ namespace BetterFollowbot.Skills
                 .Where(x => x != null && x.IsValid && !x.IsHostile)
                 .ToList();
 
-            var linkSourceBuff = _instance.Buffs.FirstOrDefault(x => x.Name == linkSkill.BuffName);
-            var linkSourceTimeLeft = linkSourceBuff?.Timer ?? 0;
-
             foreach (var partyElement in partyElements)
             {
                 if (partyElement?.PlayerName == null) continue;
@@ -146,70 +145,41 @@ namespace BetterFollowbot.Skills
 
                 if (playerEntity != null)
                 {
-                    var playerBuffs = playerEntity.GetComponent<Buffs>()?.BuffsList ?? new System.Collections.Generic.List<Buff>();
-                    var linkTargetBuff = playerBuffs.FirstOrDefault(x => x.Name == targetBuffName);
+                    var linkSourceBuff = _instance.Buffs.FirstOrDefault(x => x.Name == linkSkill.BuffName);
+                    var linkSourceTimeLeft = linkSourceBuff?.Timer ?? 0;
+                    
+                    // Always try to link when near leader - cast continuously
+                    var mouseScreenPos = _instance.GetMousePosition();
+                    var targetScreenPos = Helper.WorldToValidScreenPosition(playerEntity.Pos);
+                    var distanceToCursor = Vector2.Distance(mouseScreenPos, targetScreenPos);
 
-                    bool needsLinking = false;
-                    string reason = "";
+                    var maxDistance = 150;
+                    var canLink = (linkSourceBuff == null || distanceToCursor < maxDistance) &&
+                                  (linkSourceTimeLeft > 2 || linkSourceBuff == null);
 
-                    var timerKey = $"{partyElement.PlayerName}_{linkType}";
-                    if (!_lastLinkTime.ContainsKey(timerKey))
+                    if (canLink)
                     {
-                        _lastLinkTime[timerKey] = DateTime.MinValue;
-                    }
-
-                    var timeSinceLastLink = (DateTime.Now - _lastLinkTime[timerKey]).TotalSeconds;
-
-                    if (linkTargetBuff == null)
-                    {
-                        needsLinking = true;
-                        reason = "no buff";
-                    }
-                    else if (linkTargetBuff.Timer < 5)
-                    {
-                        needsLinking = true;
-                        reason = $"buff low ({linkTargetBuff.Timer:F1}s)";
-                    }
-                    else if (timeSinceLastLink >= 4)
-                    {
-                        needsLinking = true;
-                        reason = $"refresh ({timeSinceLastLink:F1}s since last link)";
-                    }
-
-                    if (needsLinking)
-                    {
-                        var mouseScreenPos = _instance.GetMousePosition();
-                        var targetScreenPos = Helper.WorldToValidScreenPosition(playerEntity.Pos);
-                        var distanceToCursor = Vector2.Distance(mouseScreenPos, targetScreenPos);
-
-                        var maxDistance = 150;
-                        var canLink = (linkSourceBuff == null || distanceToCursor < maxDistance) &&
-                                      (linkSourceTimeLeft > 2 || linkSourceBuff == null);
-
-                        if (canLink)
+                        // Create a task to cast link on this party member
+                        var linkTask = new TaskNode(playerEntity.Pos, 0, taskType)
                         {
-                            // Create a task instead of executing immediately
-                            var linkTask = new TaskNode(playerEntity.Pos, 0, taskType)
+                            SkillName = linkType,
+                            TargetEntity = playerEntity,
+                            SkillSlotIndex = skill.SkillSlotIndex,
+                            SkillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex),
+                            SkillData = new SkillExecutionData
                             {
-                                SkillName = linkType,
-                                TargetEntity = playerEntity,
-                                SkillSlotIndex = skill.SkillSlotIndex,
-                                SkillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex),
-                                SkillData = new SkillExecutionData
-                                {
-                                    TargetPlayerName = partyElement.PlayerName,
-                                    Reason = reason,
-                                    DistanceToTarget = distanceToCursor,
-                                    TimeSinceLastUse = (float)timeSinceLastLink
-                                }
-                            };
-                            
-                            tasks.Add(linkTask);
-                            _instance.LogMessage($"SKILL TASK CREATED: {linkType.ToUpper()} task for {partyElement.PlayerName} ({reason}, Distance: {distanceToCursor:F1})");
-                            
-                            // Only create one link task per update to avoid flooding the queue
-                            break;
-                        }
+                                TargetPlayerName = partyElement.PlayerName,
+                                Reason = "auto-link",
+                                DistanceToTarget = distanceToCursor,
+                                TimeSinceLastUse = 0
+                            }
+                        };
+                        
+                        tasks.Add(linkTask);
+                        _instance.LogMessage($"SKILL TASK CREATED: {linkType.ToUpper()} task for {partyElement.PlayerName} (auto-link, Distance: {distanceToCursor:F1})");
+                        
+                        // Only create one link task per update to avoid flooding the queue
+                        break;
                     }
                 }
             }
@@ -244,64 +214,33 @@ namespace BetterFollowbot.Skills
                     {
                         partyElement.Data.PlayerEntity = playerEntity;
 
-                        var playerBuffs = playerEntity.GetComponent<Buffs>()?.BuffsList ?? new System.Collections.Generic.List<Buff>();
-                        var linkTargetBuff = playerBuffs.FirstOrDefault(x => x.Name == targetBuffName);
+                        // Always try to link when near leader - cast continuously
+                        var mouseScreenPos = _instance.GetMousePosition();
+                        var targetScreenPos = Helper.WorldToValidScreenPosition(playerEntity.Pos);
+                        var distanceToCursor = Vector2.Distance(mouseScreenPos, targetScreenPos);
 
-                        bool needsLinking = false;
-                        string reason = "";
+                        var maxDistance = 150;
+                        var canLink = (linkSourceBuff == null || distanceToCursor < maxDistance) &&
+                                      (linkSourceTimeLeft > 2 || linkSourceBuff == null);
 
-                        var timerKey = $"{partyElement.PlayerName}_{linkType}";
-                        if (!_lastLinkTime.ContainsKey(timerKey))
+                        if (canLink)
                         {
-                            _lastLinkTime[timerKey] = DateTime.MinValue;
-                        }
+                            var targetScreenPosForMouse = _instance.GameController.IngameState.Camera.WorldToScreen(playerEntity.Pos);
+                            Mouse.SetCursorPos(targetScreenPosForMouse);
 
-                        var timeSinceLastLink = (DateTime.Now - _lastLinkTime[timerKey]).TotalSeconds;
-
-                        if (linkTargetBuff == null)
-                        {
-                            needsLinking = true;
-                            reason = "no buff";
-                        }
-                        else if (linkTargetBuff.Timer < 5)
-                        {
-                            needsLinking = true;
-                            reason = $"buff low ({linkTargetBuff.Timer:F1}s)";
-                        }
-                        else if (timeSinceLastLink >= 4)
-                        {
-                            needsLinking = true;
-                            reason = $"refresh ({timeSinceLastLink:F1}s since last link)";
-                        }
-
-                        if (needsLinking)
-                        {
-                            var mouseScreenPos = _instance.GetMousePosition();
-                            var targetScreenPos = Helper.WorldToValidScreenPosition(playerEntity.Pos);
-                            var distanceToCursor = Vector2.Distance(mouseScreenPos, targetScreenPos);
-
-                            var maxDistance = 150;
-                            var canLink = (linkSourceBuff == null || distanceToCursor < maxDistance) &&
-                                          (linkSourceTimeLeft > 2 || linkSourceBuff == null);
-
-                            if (canLink)
+                            var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
+                            if (skillKey != default(Keys))
                             {
-                                var targetScreenPosForMouse = _instance.GameController.IngameState.Camera.WorldToScreen(playerEntity.Pos);
-                                Mouse.SetCursorPos(targetScreenPosForMouse);
-
-                                var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
-                                if (skillKey != default(Keys))
-                                {
-                                    Keyboard.KeyPress(skillKey);
-                                    _instance.RecordSkillUse("Links");
-                                }
-
-                                _lastLinkTime[timerKey] = DateTime.Now;
-                                linkSkill.Cooldown = 100;
-
-                                _instance.LogMessage($"{linkType.ToUpper()}: Linked to {partyElement.PlayerName} ({reason}, Distance: {distanceToCursor:F1})");
-                                return;
+                                Keyboard.KeyPress(skillKey);
+                                _instance.RecordSkillUse("Links");
                             }
+
+                            var timerKey = $"{partyElement.PlayerName}_{linkType}";
+                            _lastLinkTime[timerKey] = DateTime.Now;
+                            linkSkill.Cooldown = 100;
+
+                            _instance.LogMessage($"{linkType.ToUpper()}: Linked to {partyElement.PlayerName} (auto-link, Distance: {distanceToCursor:F1})");
+                            return;
                         }
                     }
                 }

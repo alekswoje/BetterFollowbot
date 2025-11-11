@@ -86,8 +86,9 @@ namespace BetterFollowbot.Skill
             if (_instance.GameController?.Area?.CurrentArea?.IsHideout == true && _settings.disableSkillsInHideout)
                 return;
 
-            // Check individual skill cooldown
-            if (!_instance.CanUseSkill("Warcries"))
+            // Don't use global skill cooldown - let warcries cast whenever available
+            // Only check GCD to prevent skill spam
+            if (!_instance.Gcd())
                 return;
 
             // Only use skills when within follow range of the leader
@@ -133,18 +134,20 @@ namespace BetterFollowbot.Skill
 
         private bool IsWarcryEnabled(ActorSkill skill)
         {
-            // Check if this skill matches any enabled warcry
+            // Auto-detect if this skill is a warcry (check if it matches any known warcry)
             var skillName = skill.InternalName?.ToLower() ?? "";
             
-            return (skillName.Contains("ancestral_cry") && _settings.ancestralCryEnabled) ||
-                   (skillName.Contains("infernal_cry") && _settings.infernalCryEnabled) ||
-                   (skillName.Contains("generals_cry") && _settings.generalsCryEnabled) ||
-                   (skillName.Contains("intimidating_cry") && _settings.intimidatingCryEnabled) ||
-                   (skillName.Contains("rallying_cry") && _settings.rallyingCryEnabled) ||
-                   (skillName.Contains("vengeful_cry") && _settings.vengefulCryEnabled) ||
-                   (skillName.Contains("enduring_cry") && _settings.enduringCryEnabled) ||
-                   (skillName.Contains("seismic_cry") && _settings.seismicCryEnabled) ||
-                   (skillName.Contains("battlemages_cry") && _settings.battlemagesCryEnabled);
+            return skillName.Contains("ancestral_cry") ||
+                   skillName.Contains("infernal_cry") ||
+                   skillName.Contains("generals_cry") ||
+                   skillName.Contains("intimidating_cry") ||
+                   skillName.Contains("rallying_cry") ||
+                   skillName.Contains("vengeful_cry") ||
+                   skillName.Contains("enduring_cry") ||
+                   skillName.Contains("seismic_cry") ||
+                   skillName.Contains("battlemages_cry") ||
+                   skillName.Contains("spiritual_cry") ||
+                   skillName.Contains("inspiring_cry");
         }
 
         private string GetWarcryName(ActorSkill skill)

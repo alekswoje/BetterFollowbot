@@ -147,41 +147,26 @@ internal class ImGuiDrawSettings
         try
         {
             // Links
-            bool linksEnabled = BetterFollowbot.Instance.Settings.linksEnabled || 
-                               BetterFollowbot.Instance.Settings.flameLinkEnabled || 
-                               BetterFollowbot.Instance.Settings.protectiveLinkEnabled ||
-                               BetterFollowbot.Instance.Settings.destructiveLinkEnabled ||
-                               BetterFollowbot.Instance.Settings.soulLinkEnabled;
+            bool linksEnabled = BetterFollowbot.Instance.Settings.linksEnabled;
             ImGui.PushStyleColor(ImGuiCol.Header, linksEnabled ? green : red);
             ImGui.PushID(28);
             if (ImGui.TreeNodeEx("Links", collapsingHeaderFlags))
             {
-                BetterFollowbot.Instance.Settings.linksEnabled.Value = ImGuiExtension.Checkbox("Enable Links",
+                BetterFollowbot.Instance.Settings.linksEnabled.Value = ImGuiExtension.Checkbox("Enable All Links",
                     BetterFollowbot.Instance.Settings.linksEnabled.Value);
                 
                 ImGui.Separator();
-                ImGui.Text("Flame Link:");
-                BetterFollowbot.Instance.Settings.flameLinkEnabled.Value = ImGuiExtension.Checkbox("  Flame Link",
-                    BetterFollowbot.Instance.Settings.flameLinkEnabled.Value);
+                ImGui.Text("All detected link skills will be used automatically:");
+                ImGui.Text("- Flame Link");
+                ImGui.Text("- Protective Link");
+                ImGui.Text("- Destructive Link");
+                ImGui.Text("- Soul Link");
+                ImGui.Separator();
+                
                 BetterFollowbot.Instance.Settings.flameLinkRange.Value =
-                    ImGuiExtension.IntSlider("  Range", BetterFollowbot.Instance.Settings.flameLinkRange);
+                    ImGuiExtension.IntSlider("Link Range", BetterFollowbot.Instance.Settings.flameLinkRange);
                 BetterFollowbot.Instance.Settings.flameLinkTimeThreshold.Value =
-                    ImGuiExtension.IntSlider("  Recast Timer", BetterFollowbot.Instance.Settings.flameLinkTimeThreshold);
-                
-                ImGui.Separator();
-                ImGui.Text("Protective Link:");
-                BetterFollowbot.Instance.Settings.protectiveLinkEnabled.Value = ImGuiExtension.Checkbox("  Protective Link",
-                    BetterFollowbot.Instance.Settings.protectiveLinkEnabled.Value);
-                
-                ImGui.Separator();
-                ImGui.Text("Destructive Link:");
-                BetterFollowbot.Instance.Settings.destructiveLinkEnabled.Value = ImGuiExtension.Checkbox("  Destructive Link",
-                    BetterFollowbot.Instance.Settings.destructiveLinkEnabled.Value);
-                
-                ImGui.Separator();
-                ImGui.Text("Soul Link:");
-                BetterFollowbot.Instance.Settings.soulLinkEnabled.Value = ImGuiExtension.Checkbox("  Soul Link",
-                    BetterFollowbot.Instance.Settings.soulLinkEnabled.Value);
+                    ImGuiExtension.IntSlider("Recast Timer (threshold)", BetterFollowbot.Instance.Settings.flameLinkTimeThreshold);
             }
         }
         catch (Exception e)
@@ -278,76 +263,20 @@ internal class ImGuiDrawSettings
             ImGui.PushID(37);
             if (ImGui.TreeNodeEx("Warcries", collapsingHeaderFlags))
             {
-                // Master enable/disable for all warcries
-                bool masterWarcryEnabled = BetterFollowbot.Instance.Settings.warcriesEnabled.Value;
-                bool newMasterState = ImGuiExtension.Checkbox("Enable Warcries", masterWarcryEnabled);
-
-                if (newMasterState != masterWarcryEnabled)
-                {
-                    BetterFollowbot.Instance.Settings.warcriesEnabled.Value = newMasterState;
-                }
-
-                if (warcriesEnabled)
-                {
-                    ImGui.Indent();
-                    
-                    // Individual warcry checkboxes
-                    bool ancestralCryValue = BetterFollowbot.Instance.Settings.ancestralCryEnabled.Value;
-                    if (ImGuiExtension.Checkbox("Ancestral Cry", ancestralCryValue) != ancestralCryValue)
-                    {
-                        BetterFollowbot.Instance.Settings.ancestralCryEnabled.Value = !ancestralCryValue;
-                    }
-
-                    bool infernalCryValue = BetterFollowbot.Instance.Settings.infernalCryEnabled.Value;
-                    if (ImGuiExtension.Checkbox("Infernal Cry", infernalCryValue) != infernalCryValue)
-                    {
-                        BetterFollowbot.Instance.Settings.infernalCryEnabled.Value = !infernalCryValue;
-                    }
-
-                    bool generalsCryValue = BetterFollowbot.Instance.Settings.generalsCryEnabled.Value;
-                    if (ImGuiExtension.Checkbox("General's Cry", generalsCryValue) != generalsCryValue)
-                    {
-                        BetterFollowbot.Instance.Settings.generalsCryEnabled.Value = !generalsCryValue;
-                    }
-
-                    bool intimidatingCryValue = BetterFollowbot.Instance.Settings.intimidatingCryEnabled.Value;
-                    if (ImGuiExtension.Checkbox("Intimidating Cry", intimidatingCryValue) != intimidatingCryValue)
-                    {
-                        BetterFollowbot.Instance.Settings.intimidatingCryEnabled.Value = !intimidatingCryValue;
-                    }
-
-                    bool rallyingCryValue = BetterFollowbot.Instance.Settings.rallyingCryEnabled.Value;
-                    if (ImGuiExtension.Checkbox("Rallying Cry", rallyingCryValue) != rallyingCryValue)
-                    {
-                        BetterFollowbot.Instance.Settings.rallyingCryEnabled.Value = !rallyingCryValue;
-                    }
-
-                    bool vengefulCryValue = BetterFollowbot.Instance.Settings.vengefulCryEnabled.Value;
-                    if (ImGuiExtension.Checkbox("Vengeful Cry", vengefulCryValue) != vengefulCryValue)
-                    {
-                        BetterFollowbot.Instance.Settings.vengefulCryEnabled.Value = !vengefulCryValue;
-                    }
-
-                    bool enduringCryValue = BetterFollowbot.Instance.Settings.enduringCryEnabled.Value;
-                    if (ImGuiExtension.Checkbox("Enduring Cry", enduringCryValue) != enduringCryValue)
-                    {
-                        BetterFollowbot.Instance.Settings.enduringCryEnabled.Value = !enduringCryValue;
-                    }
-
-                    bool seismicCryValue = BetterFollowbot.Instance.Settings.seismicCryEnabled.Value;
-                    if (ImGuiExtension.Checkbox("Seismic Cry", seismicCryValue) != seismicCryValue)
-                    {
-                        BetterFollowbot.Instance.Settings.seismicCryEnabled.Value = !seismicCryValue;
-                    }
-
-                    bool battlemagesCryValue = BetterFollowbot.Instance.Settings.battlemagesCryEnabled.Value;
-                    if (ImGuiExtension.Checkbox("Battlemage's Cry", battlemagesCryValue) != battlemagesCryValue)
-                    {
-                        BetterFollowbot.Instance.Settings.battlemagesCryEnabled.Value = !battlemagesCryValue;
-                    }
-
-                    ImGui.Unindent();
-                }
+                BetterFollowbot.Instance.Settings.warcriesEnabled.Value = ImGuiExtension.Checkbox("Enable All Warcries",
+                    BetterFollowbot.Instance.Settings.warcriesEnabled.Value);
+                
+                ImGui.Separator();
+                ImGui.Text("All detected warcries will be used automatically:");
+                ImGui.Text("- Ancestral Cry");
+                ImGui.Text("- Infernal Cry");
+                ImGui.Text("- General's Cry");
+                ImGui.Text("- Intimidating Cry");
+                ImGui.Text("- Rallying Cry");
+                ImGui.Text("- Vengeful Cry");
+                ImGui.Text("- Enduring Cry");
+                ImGui.Text("- Seismic Cry");
+                ImGui.Text("- Battlemage's Cry");
             }
         }
         catch (Exception e)

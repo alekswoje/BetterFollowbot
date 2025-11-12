@@ -174,18 +174,16 @@ namespace BetterFollowbot.Automation
                                                     var acceptButton = invite.AcceptButton;
                                                     if (acceptButton != null && acceptButton.IsVisible)
                                                     {
-                                                        // CRITICAL FIX: Add window offset to convert client coordinates to screen coordinates
                                                         var random = new Random();
-                                                        var windowOffset = _instance.GameController.Window.GetWindowRectangle().TopLeft;
                                                         var buttonRect = acceptButton.GetClientRectCache;
-                                                        var buttonClientCenter = buttonRect.Center;
+                                                        var buttonCenter = buttonRect.Center;
                                                         
                                                         // Add random offset to cursor position (±5 pixels)
                                                         var randomOffsetX = (float)(random.NextDouble() * 10 - 5);
                                                         var randomOffsetY = (float)(random.NextDouble() * 10 - 5);
                                                         var buttonScreenCenter = new Vector2(
-                                                            buttonClientCenter.X + windowOffset.X + randomOffsetX,
-                                                            buttonClientCenter.Y + windowOffset.Y + randomOffsetY
+                                                            buttonCenter.X + randomOffsetX,
+                                                            buttonCenter.Y + randomOffsetY
                                                         );
 
                                                         Mouse.SetCursorPos(buttonScreenCenter);
@@ -472,20 +470,16 @@ namespace BetterFollowbot.Automation
                     
                     // Get fresh position right before clicking
                     // Use GetClientRectCache which properly accounts for container inheritance
-                    var windowOffset = BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().TopLeft;
                     var buttonRect = acceptButton.GetClientRectCache;
-                    
-                    // Use Center from GetClientRectCache (accounts for all parent containers)
                     var buttonCenter = buttonRect.Center;
-                    var buttonScreenCenter = new Vector2(buttonCenter.X + windowOffset.X, buttonCenter.Y + windowOffset.Y);
                     
-                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - GetClientRectCache.Center: ({buttonCenter.X:F1}, {buttonCenter.Y:F1}), Final: ({buttonScreenCenter.X:F1}, {buttonScreenCenter.Y:F1})");
+                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - GetClientRectCache.Center: ({buttonCenter.X:F1}, {buttonCenter.Y:F1})");
                     
                     // Use direct SetCursorPos for accuracy
-                    Mouse.SetCursorPos(buttonScreenCenter);
+                    Mouse.SetCursorPos(buttonCenter);
                     Thread.Sleep(150); // Give mouse time to settle
                     
-                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Clicking at ({buttonScreenCenter.X:F1}, {buttonScreenCenter.Y:F1})");
+                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Clicking at ({buttonCenter.X:F1}, {buttonCenter.Y:F1})");
                     
                     Mouse.LeftMouseDown();
                     Thread.Sleep(40);

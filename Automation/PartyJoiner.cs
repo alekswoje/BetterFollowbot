@@ -178,7 +178,6 @@ namespace BetterFollowbot.Automation
                                                         var buttonRect = acceptButton.GetClientRectCache;
                                                         var buttonCenter = buttonRect.Center;
                                                         
-                                                        // Add random offset to cursor position (±5 pixels)
                                                         var randomOffsetX = (float)(random.NextDouble() * 10 - 5);
                                                         var randomOffsetY = (float)(random.NextDouble() * 10 - 5);
                                                         var buttonScreenCenter = new Vector2(
@@ -371,7 +370,6 @@ namespace BetterFollowbot.Automation
                     var itemRect = item.GetClientRect();
                     var itemCenter = itemRect.Center;
                     
-                    // Add random offset to cursor position (±5 pixels)
                     var randomOffsetX = (float)(random.NextDouble() * 10 - 5);
                     var randomOffsetY = (float)(random.NextDouble() * 10 - 5);
                     var randomizedItemPos = new Vector2(
@@ -381,7 +379,6 @@ namespace BetterFollowbot.Automation
                     
                     BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP DEBUG: Item [{dumpedCount}] at ({item.PosX}, {item.PosY}), Screen center: ({randomizedItemPos.X:F1}, {randomizedItemPos.Y:F1})");
 
-                    // Random delays for more human-like behavior
                     Keyboard.KeyDown(Keys.LControlKey);
                     Thread.Sleep(random.Next(25, 40));
                     Mouse.SetCursorPos(randomizedItemPos);
@@ -430,18 +427,16 @@ namespace BetterFollowbot.Automation
                     return;
                 }
 
-                // Try up to 3 times with exponential backoff
                 const int maxAttempts = 3;
-                int baseDelay = 100; // milliseconds
+                int baseDelay = 100;
                 
                 for (int attempt = 1; attempt <= maxAttempts; attempt++)
                 {
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Attempt {attempt}/{maxAttempts}");
                     
-                    // CRITICAL FIX: Refresh button position on EACH attempt (UI might shift between attempts)
+                    // Refresh button position on EACH attempt (UI might shift between attempts)
                     var acceptButton = tradePanel.AcceptButton;
                     
-                    // Enhanced debugging to understand button state
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Button null: {acceptButton == null}");
                     if (acceptButton != null)
                     {
@@ -458,26 +453,23 @@ namespace BetterFollowbot.Automation
                         }
                     }
                     
-                    // Check if button is ready (try both visibility properties)
                     bool isButtonReady = acceptButton != null && (acceptButton.IsVisible || acceptButton.IsVisibleLocal);
                     
                     if (!isButtonReady)
                     {
                         BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Accept button not ready on attempt {attempt}, waiting...");
-                        Thread.Sleep(baseDelay * attempt); // Exponential backoff
+                        Thread.Sleep(baseDelay * attempt);
                         continue;
                     }
                     
-                    // Get fresh position right before clicking
                     // Use GetClientRectCache which properly accounts for container inheritance
                     var buttonRect = acceptButton.GetClientRectCache;
                     var buttonCenter = buttonRect.Center;
                     
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - GetClientRectCache.Center: ({buttonCenter.X:F1}, {buttonCenter.Y:F1})");
                     
-                    // Use direct SetCursorPos for accuracy
                     Mouse.SetCursorPos(buttonCenter);
-                    Thread.Sleep(150); // Give mouse time to settle
+                    Thread.Sleep(150);
                     
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Clicking at ({buttonCenter.X:F1}, {buttonCenter.Y:F1})");
                     
@@ -487,10 +479,8 @@ namespace BetterFollowbot.Automation
 
                     BetterFollowbot.Instance.LogMessage("AUTO CLICK TRADE ACCEPT: Clicked accept button");
                     
-                    // Wait longer for the trade to register and UI to update
                     Thread.Sleep(400);
                     
-                    // Check if SellerAccepted is true
                     var tradePanelCheck = GetTradePanel();
                     if (tradePanelCheck != null)
                     {

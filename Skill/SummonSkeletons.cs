@@ -145,7 +145,7 @@ namespace BetterFollowbot.Skills
                                         var skillKey = _instance.GetSkillInputKey(summonSkeletonsSkill.SkillSlotIndex);
                                         if (skillKey != default(Keys))
                                         {
-                                            Keyboard.KeyPress(skillKey);
+                                            Keyboard.KeyPressRandom(skillKey);
                                             _instance.RecordSkillUse("SummonSkeletons");
                                         }
                                         _instance.LastTimeAny = DateTime.Now; // Update global cooldown

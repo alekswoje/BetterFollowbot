@@ -175,13 +175,21 @@ namespace BetterFollowbot.Automation
                                                     if (acceptButton != null && acceptButton.IsVisible)
                                                     {
                                                         // CRITICAL FIX: Add window offset to convert client coordinates to screen coordinates
+                                                        var random = new Random();
                                                         var windowOffset = _instance.GameController.Window.GetWindowRectangle().TopLeft;
                                                         var buttonRect = acceptButton.GetClientRectCache;
                                                         var buttonClientCenter = buttonRect.Center;
-                                                        var buttonScreenCenter = new Vector2(buttonClientCenter.X + windowOffset.X, buttonClientCenter.Y + windowOffset.Y);
+                                                        
+                                                        // Add random offset to cursor position (±5 pixels)
+                                                        var randomOffsetX = (float)(random.NextDouble() * 10 - 5);
+                                                        var randomOffsetY = (float)(random.NextDouble() * 10 - 5);
+                                                        var buttonScreenCenter = new Vector2(
+                                                            buttonClientCenter.X + windowOffset.X + randomOffsetX,
+                                                            buttonClientCenter.Y + windowOffset.Y + randomOffsetY
+                                                        );
 
                                                         Mouse.SetCursorPos(buttonScreenCenter);
-                                                        Thread.Sleep(300);
+                                                        Thread.Sleep(random.Next(250, 350));
 
                                                         var currentMousePos = _instance.GetMousePosition();
                                                         var distanceFromTarget = Vector2.Distance(currentMousePos, buttonScreenCenter);
@@ -189,9 +197,9 @@ namespace BetterFollowbot.Automation
                                                         if (distanceFromTarget < 15)
                                                         {
                                                             Mouse.LeftMouseDown();
-                                                            Thread.Sleep(40);
+                                                            Thread.Sleep(random.Next(35, 50));
                                                             Mouse.LeftMouseUp();
-                                                            Thread.Sleep(300);
+                                                            Thread.Sleep(random.Next(250, 350));
 
                                                             bool success = false;
                                                             if (inviteType == "PARTY")
@@ -222,11 +230,11 @@ namespace BetterFollowbot.Automation
 
                                                             if (!success)
                                                             {
-                                                                Thread.Sleep(600);
+                                                                Thread.Sleep(random.Next(550, 650));
                                                                 Mouse.LeftMouseDown();
-                                                                Thread.Sleep(40);
+                                                                Thread.Sleep(random.Next(35, 50));
                                                                 Mouse.LeftMouseUp();
-                                                                Thread.Sleep(300);
+                                                                Thread.Sleep(random.Next(250, 350));
 
                                                                 if (inviteType == "PARTY")
                                                                 {
@@ -351,6 +359,7 @@ namespace BetterFollowbot.Automation
                 var prevMousePos = _instance.GetMousePosition();
                 BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP DEBUG: Previous mouse position: {prevMousePos}");
 
+                var random = new Random();
                 int dumpedCount = 0;
                 foreach (var item in itemsToDump)
                 {
@@ -363,18 +372,28 @@ namespace BetterFollowbot.Automation
 
                     var itemRect = item.GetClientRect();
                     var itemCenter = itemRect.Center;
-                    BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP DEBUG: Item [{dumpedCount}] at ({item.PosX}, {item.PosY}), Screen center: ({itemCenter.X:F1}, {itemCenter.Y:F1})");
+                    
+                    // Add random offset to cursor position (±5 pixels)
+                    var randomOffsetX = (float)(random.NextDouble() * 10 - 5);
+                    var randomOffsetY = (float)(random.NextDouble() * 10 - 5);
+                    var randomizedItemPos = new Vector2(
+                        itemCenter.X + randomOffsetX,
+                        itemCenter.Y + randomOffsetY
+                    );
+                    
+                    BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP DEBUG: Item [{dumpedCount}] at ({item.PosX}, {item.PosY}), Screen center: ({randomizedItemPos.X:F1}, {randomizedItemPos.Y:F1})");
 
+                    // Random delays for more human-like behavior
                     Keyboard.KeyDown(Keys.LControlKey);
-                    Thread.Sleep(30);
-                    Mouse.SetCursorPos(itemCenter);
-                    Thread.Sleep(50);
+                    Thread.Sleep(random.Next(25, 40));
+                    Mouse.SetCursorPos(randomizedItemPos);
+                    Thread.Sleep(random.Next(40, 70));
                     Mouse.LeftMouseDown();
-                    Thread.Sleep(30);
+                    Thread.Sleep(random.Next(25, 45));
                     Mouse.LeftMouseUp();
-                    Thread.Sleep(30);
+                    Thread.Sleep(random.Next(25, 40));
                     Keyboard.KeyUp(Keys.LControlKey);
-                    Thread.Sleep(40);
+                    Thread.Sleep(random.Next(35, 55));
                     
                     dumpedCount++;
                     BetterFollowbot.Instance.LogMessage($"INVENTORY DUMP DEBUG: Dumped item {dumpedCount}/{itemsToDump.Count}");

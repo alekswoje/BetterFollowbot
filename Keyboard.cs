@@ -40,6 +40,22 @@ public static class Keyboard
             BetterFollowbot.Instance.LastTimeAny = DateTime.Now;
         KeyPressRoutine(key);
     }
+    
+    /// <summary>
+    /// Key press with random timing for more human-like behavior
+    /// </summary>
+    public static void KeyPressRandom(Keys key, int minDelayMs = 30, int maxDelayMs = 80, bool anyDelay = true)
+    {
+        if (anyDelay)
+            BetterFollowbot.Instance.LastTimeAny = DateTime.Now;
+        
+        var random = new Random();
+        var delay = random.Next(minDelayMs, maxDelayMs);
+        
+        KeyDown(key);
+        System.Threading.Thread.Sleep(delay);
+        KeyUp(key);
+    }
 
     private static void KeyPressRoutine(Keys key)
     {

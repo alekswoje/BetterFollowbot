@@ -124,7 +124,7 @@ namespace BetterFollowbot.Skills
                             var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
                             if (skillKey != default(Keys))
                             {
-                                Keyboard.KeyPress(skillKey);
+                                Keyboard.KeyPressRandom(skillKey);
                                 _instance.RecordSkillUse("AuraBlessing");
                             }
                             SkillInfo.holyRelict.Cooldown = 200; // 2 second cooldown to prevent double-spawning
@@ -156,7 +156,7 @@ namespace BetterFollowbot.Skills
                     // If we have the minion but don't have the aura buff, cast Zealotry
                     if (missingAura && hasMinion)
                     {
-                        Keyboard.KeyPress(_instance.GetSkillInputKey(skill.SkillSlotIndex));
+                        Keyboard.KeyPressRandom(_instance.GetSkillInputKey(skill.SkillSlotIndex));
                         _instance.RecordSkillUse("AuraBlessing");
                     }
                 }

@@ -173,7 +173,7 @@ namespace BetterFollowbot.Skills
                                     var skillKey = _instance.GetSkillInputKey(summonRagingSpiritsSkill.SkillSlotIndex);
                                     if (skillKey != Keys.None)
                                     {
-                                        Keyboard.KeyPress(skillKey);
+                                        Keyboard.KeyPressRandom(skillKey);
                                         _instance.RecordSkillUse("SummonRagingSpirits");
                                     }
                                     _instance.LastTimeAny = DateTime.Now; // Update global cooldown

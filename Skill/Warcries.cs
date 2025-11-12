@@ -119,7 +119,7 @@ namespace BetterFollowbot.Skill
                     var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
                     if (skillKey != default(Keys))
                     {
-                        Keyboard.KeyPress(skillKey);
+                        Keyboard.KeyPressRandom(skillKey);
                         var warcryName = GetWarcryName(skill);
                         _instance.RecordSkillUse("Warcries");
                         _instance.LogMessage($"WARCRY: Used {warcryName} successfully");

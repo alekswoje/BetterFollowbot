@@ -167,7 +167,7 @@ namespace BetterFollowbot.Skills
                                 if (skillKey != default(Keys))
                                 {
                                     _instance.LogMessage($"SMITE DEBUG: Pressing key {skillKey}");
-                                    Keyboard.KeyPress(skillKey);
+                                    Keyboard.KeyPressRandom(skillKey);
                                     _instance.RecordSkillUse("SmiteBuff");
                                     // Set cooldown in milliseconds (100ms = 0.1s) - ManageCooldown will handle the countdown
                                     SkillInfo.smite.Cooldown = 100;

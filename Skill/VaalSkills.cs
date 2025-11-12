@@ -126,7 +126,7 @@ namespace BetterFollowbot.Skills
                             var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
                             if (skillKey != default(Keys))
                             {
-                                Keyboard.KeyPress(skillKey);
+                                Keyboard.KeyPressRandom(skillKey);
                                 _instance.RecordSkillUse("VaalSkills");
                                 _instance.LogMessage($"VAAL HASTE: Used successfully");
                             }
@@ -206,7 +206,7 @@ namespace BetterFollowbot.Skills
                                 var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
                                 if (skillKey != default(Keys))
                                 {
-                                    Keyboard.KeyPress(skillKey);
+                                    Keyboard.KeyPressRandom(skillKey);
                                     _instance.RecordSkillUse("VaalSkills");
                                     _instance.LogMessage($"VAAL DISCIPLINE: Used successfully (ES below {threshold:P0})");
                                 }

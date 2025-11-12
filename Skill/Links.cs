@@ -246,7 +246,7 @@ namespace BetterFollowbot.Skills
                             var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
                             if (skillKey != default(Keys))
                             {
-                                Keyboard.KeyPress(skillKey);
+                                Keyboard.KeyPressRandom(skillKey);
                                 _instance.RecordSkillUse("Links");
                             }
 

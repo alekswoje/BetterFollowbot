@@ -214,13 +214,24 @@ namespace BetterFollowbot.Skills
                                         return;
                                     }
 
-                                    // Move cursor to screen center before placing totem
+                                    // Move cursor to screen center before placing totem with random offset
+                                    var random = new Random();
                                     var screenRect = _instance.GameController.Window.GetWindowRectangle();
                                     var screenCenter = new Vector2(screenRect.Width / 2, screenRect.Height / 2);
-                                    Mouse.SetCursorPos(screenCenter);
+                                    
+                                    // Add random offset (±30 pixels)
+                                    var randomOffsetX = (float)(random.NextDouble() * 60 - 30);
+                                    var randomOffsetY = (float)(random.NextDouble() * 60 - 30);
+                                    var randomizedPos = new Vector2(
+                                        screenCenter.X + randomOffsetX,
+                                        screenCenter.Y + randomOffsetY
+                                    );
+                                    
+                                    Mouse.SetCursorPos(randomizedPos);
 
-                                    // Small delay to ensure mouse movement is registered
-                                    System.Threading.Thread.Sleep(50);
+                                    // Random delay before placing totem (50-100ms)
+                                    var randomDelay = random.Next(50, 100);
+                                    System.Threading.Thread.Sleep(randomDelay);
 
                                     // Check if the skill is available and can be used
                                     if (skill.SkillSlotIndex < 0 || skill.SkillSlotIndex >= 12)
@@ -240,7 +251,7 @@ namespace BetterFollowbot.Skills
                                     // Place the totem
                                     if (skillKey != default(Keys))
                                     {
-                                        Keyboard.KeyPress(skillKey);
+                                        Keyboard.KeyPressRandom(skillKey);
                                         _instance.RecordSkillUse("RejuvenationTotem");
                                     }
 

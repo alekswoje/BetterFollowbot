@@ -263,18 +263,29 @@ namespace BetterFollowbot.Skill
 
                                 if (bestTarget != null)
                                 {
-                                    // Move mouse to target position
+                                    // Move mouse to target position with random offset
+                                    var random = new Random();
                                     var targetScreenPos = _instance.GameController.IngameState.Camera.WorldToScreen(bestTarget.Pos);
-                                    Mouse.SetCursorPos(new Vector2(targetScreenPos.X, targetScreenPos.Y));
+                                    
+                                    // Add random offset (±15 pixels)
+                                    var randomOffsetX = (float)(random.NextDouble() * 30 - 15);
+                                    var randomOffsetY = (float)(random.NextDouble() * 30 - 15);
+                                    var randomizedPos = new Vector2(
+                                        targetScreenPos.X + randomOffsetX,
+                                        targetScreenPos.Y + randomOffsetY
+                                    );
+                                    
+                                    Mouse.SetCursorPos(randomizedPos);
 
-                                    // Small delay to ensure mouse movement is registered
-                                    System.Threading.Thread.Sleep(50);
+                                    // Random delay before placing mine (50-100ms)
+                                    var randomDelay = random.Next(50, 100);
+                                    System.Threading.Thread.Sleep(randomDelay);
 
                                     // Activate the mine skill
                                     var skillKey = _instance.GetSkillInputKey(skill.SkillSlotIndex);
                                     if (skillKey != default(Keys))
                                     {
-                                        Keyboard.KeyPress(skillKey);
+                                        Keyboard.KeyPressRandom(skillKey);
                                         _instance.RecordSkillUse("Mines");
                                     }
                                     mineSkill.Cooldown = 100; // Set cooldown to prevent spam

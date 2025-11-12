@@ -581,10 +581,10 @@ namespace BetterFollowbot.Core.Movement
                     
                     // CRITICAL FIX: Check if leader is in a different zone even if they're not moving
                     // This handles the case where leader went through portal and is now stationary
-                    var zonesAreDifferent = leaderPartyElement != null && 
+                    var isLeaderInDifferentZone = leaderPartyElement != null && 
                                            !PortalManager.AreZonesEqual(leaderPartyElement.ZoneName, _core.GameController?.Area?.CurrentArea?.DisplayName);
                     
-                    if (zonesAreDifferent && distanceToLeader > 1000)
+                    if (isLeaderInDifferentZone && distanceToLeader > 1000)
                     {
                         _core.LogMessage($"ZONE TRANSITION DETECTED: Leader is far ({distanceToLeader:F1} units) and in different zone - Current: '{_core.GameController?.Area?.CurrentArea?.DisplayName}', Leader: '{leaderPartyElement?.ZoneName}'");
                         

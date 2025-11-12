@@ -495,8 +495,8 @@ internal class ImGuiDrawSettings
                     ImGui.Text($"Nearby Allied Players (within 2000 units): {nearbyAlliedPlayers}");
                     
                     // Get APM statistics
-                    var apmBreakdown = BetterFollowbot.Core.APMTracker.GetAPMBreakdown();
-                    var currentAPM = BetterFollowbot.Core.APMTracker.GetCurrentAPM();
+                    var apmBreakdown = Core.APMTracker.GetAPMBreakdown();
+                    var currentAPM = Core.APMTracker.GetCurrentAPM();
                     
                     ImGui.Separator();
                     ImGui.Text("=== Actions Per Minute (APM) ===");
@@ -507,7 +507,7 @@ internal class ImGuiDrawSettings
                     ImGui.Separator();
                     if (ImGui.Button("Reset APM Stats"))
                     {
-                        BetterFollowbot.Core.APMTracker.Reset();
+                        Core.APMTracker.Reset();
                     }
                 }
             }

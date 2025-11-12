@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using ExileCore.Shared;
 using SharpDX;
+using BetterFollowbot.Core;
 
 namespace BetterFollowbot;
 
@@ -28,6 +29,7 @@ public static class Mouse
     public static void LeftMouseDown()
     {
         mouse_event(MouseeventfLeftdown, 0, 0, 0, 0);
+        APMTracker.RecordAction(); // Track action for APM
     }
 
     public static void LeftMouseUp()

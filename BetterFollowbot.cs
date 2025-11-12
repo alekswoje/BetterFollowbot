@@ -159,6 +159,32 @@ public class BetterFollowbot : BaseSettingsPlugin<BetterFollowbotSettings>, IFol
         return GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Monster]
             .Count(monster => IsValidMonsterForCount(monster, maxDistance, rarity));
     }
+    
+    /// <summary>
+    /// Gets the count of nearby allied players (party members and other friendly players)
+    /// </summary>
+    public int GetNearbyAlliedPlayersCount(float maxDistance = 2000f)
+    {
+        try
+        {
+            if (localPlayer == null) return 0;
+            
+            var alliedPlayers = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
+                .Where(player => 
+                    player != null && 
+                    player.IsValid && 
+                    !player.IsHostile && 
+                    player.Address != localPlayer.Address && // Exclude self
+                    player.DistancePlayer <= maxDistance)
+                .ToList();
+            
+            return alliedPlayers.Count;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
 
     /// <summary>
     /// Validates if a monster is valid for counting (used by GetMonsterWithin) with ReAgent-style validation

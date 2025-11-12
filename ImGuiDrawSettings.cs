@@ -471,6 +471,51 @@ internal class ImGuiDrawSettings
         {
             BetterFollowbot.Instance.LogMessage($"GENERAL SETTINGS UI ERROR: {e.Message}");
         }
+        
+        // Host Mode
+        ImGui.PopStyleColor();
+        ImGui.PopID();
+        ImGui.Separator();
+        ImGui.PushStyleColor(ImGuiCol.Header, green);
+        ImGui.PushID(10000);
+        try
+        {
+            if (ImGui.TreeNodeEx("Host Mode", collapsingHeaderFlags))
+            {
+                BetterFollowbot.Instance.Settings.hostModeEnabled.Value =
+                    ImGuiExtension.Checkbox("Enable Host Mode", BetterFollowbot.Instance.Settings.hostModeEnabled.Value);
+                
+                if (BetterFollowbot.Instance.Settings.hostModeEnabled.Value)
+                {
+                    ImGui.Separator();
+                    ImGui.Text("=== Host Statistics ===");
+                    
+                    // Get nearby allied players count
+                    var nearbyAlliedPlayers = BetterFollowbot.Instance.GetNearbyAlliedPlayersCount(2000f);
+                    ImGui.Text($"Nearby Allied Players (within 2000 units): {nearbyAlliedPlayers}");
+                    
+                    // Get APM statistics
+                    var apmBreakdown = BetterFollowbot.Core.APMTracker.GetAPMBreakdown();
+                    var currentAPM = BetterFollowbot.Core.APMTracker.GetCurrentAPM();
+                    
+                    ImGui.Separator();
+                    ImGui.Text("=== Actions Per Minute (APM) ===");
+                    ImGui.Text($"Last 10 seconds: {apmBreakdown.last10s} APM");
+                    ImGui.Text($"Last 30 seconds: {apmBreakdown.last30s} APM");
+                    ImGui.Text($"Last 60 seconds: {currentAPM} APM");
+                    
+                    ImGui.Separator();
+                    if (ImGui.Button("Reset APM Stats"))
+                    {
+                        BetterFollowbot.Core.APMTracker.Reset();
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            BetterFollowbot.Instance.LogMessage($"HOST MODE UI ERROR: {e.Message}");
+        }
 
         //ImGui.End();
     }

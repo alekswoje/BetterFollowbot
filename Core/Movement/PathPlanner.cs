@@ -578,6 +578,36 @@ namespace BetterFollowbot.Core.Movement
                         _core.LogMessage("ZONE TRANSITION: Transition/teleport task already active, skipping movement processing");
                         return;
                     }
+                    
+                    // CRITICAL FIX: Check if leader is in a different zone even if they're not moving
+                    // This handles the case where leader went through portal and is now stationary
+                    var zonesAreDifferent = leaderPartyElement != null && 
+                                           !PortalManager.AreZonesEqual(leaderPartyElement.ZoneName, _core.GameController?.Area?.CurrentArea?.DisplayName);
+                    
+                    if (zonesAreDifferent && distanceToLeader > 1000)
+                    {
+                        _core.LogMessage($"ZONE TRANSITION DETECTED: Leader is far ({distanceToLeader:F1} units) and in different zone - Current: '{_core.GameController?.Area?.CurrentArea?.DisplayName}', Leader: '{leaderPartyElement?.ZoneName}'");
+                        
+                        // Check for teleport confirmation dialog first
+                        var tpConfirmation = GetTpConfirmation();
+                        if (tpConfirmation != null)
+                        {
+                            _core.LogMessage("ZONE TRANSITION: Teleport confirmation dialog already open, handling it");
+                            var center = tpConfirmation.GetClientRect().Center;
+                            _taskManager.AddTask(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
+                            return;
+                        }
+                        
+                        // Try zone transition methods
+                        var nextMethod = GetNextTransitionMethod();
+                        if (nextMethod != "wait")
+                        {
+                            _core.LogMessage($"ZONE TRANSITION: Trying {nextMethod} method for stationary leader in different zone");
+                            TryCreateZoneTransitionTask(leaderPartyElement, nextMethod);
+                            return;
+                        }
+                    }
+                    
                     if (lastTargetPosition != Vector3.Zero && distanceMoved > _core.Settings.autoPilotClearPathDistance.Value)
                     {
                         var isLikelyZoneTransition = distanceMoved > 1000;

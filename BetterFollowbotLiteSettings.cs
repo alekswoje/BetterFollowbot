@@ -137,6 +137,12 @@ public class BetterFollowbotSettings : ISettings
     public RangeNode<float> skillCooldown = new RangeNode<float>(0.2f, 0.05f, 1.0f);
 
     #endregion
+    
+    #region Host Mode
+
+    public ToggleNode hostModeEnabled = new ToggleNode(false);
+
+    #endregion
 
     #region Input Keys
 

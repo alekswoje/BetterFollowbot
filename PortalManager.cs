@@ -40,7 +40,8 @@ namespace BetterFollowbot
                     "tower rooftop", "caldera of the king", "the black core", "the black heart", "sanctum of innocence",
                     "the chamber of innocence", "tukohama's keep", "the karui fortress", "prison rooftop",
                     "valley of the fire drinker", "the cloven pass", "valley of the soul drinker", "the spawning ground",
-                    "passage", "the brine king's throne", "the fortress encampment", "den of despair", "arakali's web"
+                    "passage", "the brine king's throne", "the fortress encampment", "den of despair", "arakali's web",
+                    "hive fortress"
                 }, "Arena"
             }
         };

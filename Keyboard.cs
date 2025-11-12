@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using BetterFollowbot.Core;
 
 namespace BetterFollowbot;
 
@@ -39,6 +40,7 @@ public static class Keyboard
         if (anyDelay)
             BetterFollowbot.Instance.LastTimeAny = DateTime.Now;
         KeyPressRoutine(key);
+        APMTracker.RecordAction(); // Track action for APM
     }
     
     /// <summary>
@@ -55,6 +57,7 @@ public static class Keyboard
         KeyDown(key);
         System.Threading.Thread.Sleep(delay);
         KeyUp(key);
+        APMTracker.RecordAction(); // Track action for APM
     }
 
     private static void KeyPressRoutine(Keys key)

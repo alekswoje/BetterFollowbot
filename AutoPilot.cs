@@ -1417,8 +1417,8 @@ namespace BetterFollowbot;
         BetterFollowbot.Instance.Graphics.DrawText("Leader: " + (followTarget != null ? "Found" : "Null"), new System.Numerics.Vector2(350, 160));
         
         // Display APM statistics
-        var currentAPM = BetterFollowbot.Core.APMTracker.GetCurrentAPM();
-        var apmBreakdown = BetterFollowbot.Core.APMTracker.GetAPMBreakdown();
+        var currentAPM = Core.APMTracker.GetCurrentAPM();
+        var apmBreakdown = Core.APMTracker.GetAPMBreakdown();
         BetterFollowbot.Instance.Graphics.DrawText($"APM: {currentAPM} (10s: {apmBreakdown.last10s})", new System.Numerics.Vector2(350, 180), SharpDX.Color.LightGreen);
 
         var transitionTasks = _taskManager.Tasks.Where(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);

@@ -991,7 +991,7 @@ namespace BetterFollowbot;
                         {
                             // INSTANT MODE: Skip delays for immediate path correction
                             // Removed excessive INSTANT PATH OPTIMIZATION logging
-                            Keyboard.KeyPress(BetterFollowbot.Instance.Settings.autoPilotDashKey);
+                            Keyboard.KeyPressRandom(BetterFollowbot.Instance.Settings.autoPilotDashKey);
                             _movementExecutor.UpdateLastDashTime(DateTime.Now); // Record dash time for cooldown
                             instantPathOptimization = false; // Reset flag after use
                         }
@@ -999,7 +999,7 @@ namespace BetterFollowbot;
                         {
                             // Normal delays
                             await Task.Delay(random.Next(25) + 30);
-                            Keyboard.KeyPress(BetterFollowbot.Instance.Settings.autoPilotDashKey);
+                            Keyboard.KeyPressRandom(BetterFollowbot.Instance.Settings.autoPilotDashKey);
                             _movementExecutor.UpdateLastDashTime(DateTime.Now); // Record dash time for cooldown
                             await Task.Delay(random.Next(25) + 30);
                         }
@@ -1232,7 +1232,8 @@ namespace BetterFollowbot;
                                 BetterFollowbot.Instance.LogMessage($"DEBUG: Dash override - Old position: {currentTask.WorldPosition}, Player position: {playerPos}");
                                 BetterFollowbot.Instance.LogMessage($"DEBUG: Dash override - Correction target: {correctionTarget}");
                                 Mouse.SetCursorPosHuman(correctScreenPos);
-                                Keyboard.KeyPress(BetterFollowbot.Instance.Settings.autoPilotDashKey);
+                                System.Threading.Thread.Sleep(new Random().Next(50, 100)); // Random delay before dash
+                                Keyboard.KeyPressRandom(BetterFollowbot.Instance.Settings.autoPilotDashKey);
                                 _movementExecutor.UpdateLastDashTime(DateTime.Now); // Record dash time for cooldown
                                 BetterFollowbot.Instance.LogMessage("DASH OVERRIDE: Dashed towards player position to override old dash");
                             }
@@ -1247,7 +1248,7 @@ namespace BetterFollowbot;
                         {
                             // INSTANT MODE: Skip delays for immediate path correction
                             // Removed excessive INSTANT PATH OPTIMIZATION logging
-                            Keyboard.KeyPress(BetterFollowbot.Instance.Settings.autoPilotDashKey);
+                            Keyboard.KeyPressRandom(BetterFollowbot.Instance.Settings.autoPilotDashKey);
                             _movementExecutor.UpdateLastDashTime(DateTime.Now); // Record dash time for cooldown
                             instantPathOptimization = false; // Reset flag after use
                         }
@@ -1255,7 +1256,7 @@ namespace BetterFollowbot;
                         {
                             // Normal delays
                             await Task.Delay(random.Next(25) + 30);
-                            Keyboard.KeyPress(BetterFollowbot.Instance.Settings.autoPilotDashKey);
+                            Keyboard.KeyPressRandom(BetterFollowbot.Instance.Settings.autoPilotDashKey);
                             _movementExecutor.UpdateLastDashTime(DateTime.Now); // Record dash time for cooldown
                             await Task.Delay(random.Next(25) + 30);
                         }
@@ -1273,25 +1274,34 @@ namespace BetterFollowbot;
                             continue;
                         }
 
-                        // Simple Enter key press to confirm teleport
+                        // Simple Enter key press to confirm teleport with random delay
                         BetterFollowbot.Instance.LogMessage("TELEPORT CONFIRM: Pressing Enter to confirm");
-                        Keyboard.KeyPress(Keys.Enter);
+                        await Task.Delay(random.Next(50, 150)); // Random delay before confirming
+                        Keyboard.KeyPressRandom(Keys.Enter);
                         _lastTeleportConfirmTime = DateTime.Now;
-                        await Task.Delay(200); // Wait for teleport to process
+                        await Task.Delay(random.Next(150, 250)); // Random wait for teleport to process
                         continue;
                     }
 
                     if (shouldTeleportButtonAndContinue)
                     {
-                        // FAST TELEPORT: Direct mouse movement for speed
-                        Mouse.SetCursorPos(new Vector2(currentTask.WorldPosition.X, currentTask.WorldPosition.Y));
-                        await Task.Delay(50); // Reduced from 200ms
+                        // Teleport button click with randomization
+                        var buttonPos = new Vector2(currentTask.WorldPosition.X, currentTask.WorldPosition.Y);
+                        
+                        // Add random offset to cursor (±5 pixels)
+                        var randomOffsetX = (float)(random.NextDouble() * 10 - 5);
+                        var randomOffsetY = (float)(random.NextDouble() * 10 - 5);
+                        var randomizedButtonPos = new Vector2(buttonPos.X + randomOffsetX, buttonPos.Y + randomOffsetY);
+                        
+                        Mouse.SetCursorPos(randomizedButtonPos);
+                        await Task.Delay(random.Next(80, 150));
                         Mouse.LeftClick();
-                        await Task.Delay(50); // Reduced from 200ms
+                        await Task.Delay(random.Next(80, 150));
+                        
                         // CRITICAL: Move mouse to center of screen after teleport button to prevent unwanted movement
                         var screenCenter = new Vector2(BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().Width / 2, BetterFollowbot.Instance.GameController.Window.GetWindowRectangle().Height / 2);
                         Mouse.SetCursorPos(screenCenter);
-                        await Task.Delay(100); // Reduced from 200ms
+                        await Task.Delay(random.Next(100, 200));
                         continue;
                     }
                 }

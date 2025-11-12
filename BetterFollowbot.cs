@@ -367,15 +367,25 @@ public class BetterFollowbot : BaseSettingsPlugin<BetterFollowbotSettings>, IFol
 
                 if (!hasTransitionTask && distanceToLeader > Settings.autoPilotDashDistance)
                 {
-                    // Position mouse towards leader
+                    // Position mouse towards leader with random offset
+                    var random = new Random();
                     var leaderScreenPos = GameController.IngameState.Camera.WorldToScreen(leaderPos);
-                    Mouse.SetCursorPos(leaderScreenPos);
+                    
+                    // Add random offset (±10 pixels)
+                    var randomOffsetX = (float)(random.NextDouble() * 20 - 10);
+                    var randomOffsetY = (float)(random.NextDouble() * 20 - 10);
+                    var randomizedLeaderPos = new Vector2(
+                        leaderScreenPos.X + randomOffsetX,
+                        leaderScreenPos.Y + randomOffsetY
+                    );
+                    
+                    Mouse.SetCursorPos(randomizedLeaderPos);
 
-                    // Small delay to ensure mouse movement is registered
-                    System.Threading.Thread.Sleep(50);
+                    // Random delay to ensure mouse movement is registered
+                    System.Threading.Thread.Sleep(random.Next(60, 120));
 
                     // Execute dash
-                    Keyboard.KeyPress(Settings.autoPilotDashKey);
+                    Keyboard.KeyPressRandom(Settings.autoPilotDashKey);
                     movementExecutor.UpdateLastDashTime(DateTime.Now);
                 }
             }

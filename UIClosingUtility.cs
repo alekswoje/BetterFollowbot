@@ -42,8 +42,10 @@ namespace BetterFollowbot
         {
             if (ShouldCloseUI())
             {
-                Keyboard.KeyPress(Keys.Escape);
-                Thread.Sleep(100);
+                var random = new System.Random();
+                Thread.Sleep(random.Next(50, 150)); // Random delay before closing UI
+                Keyboard.KeyPressRandom(Keys.Escape);
+                Thread.Sleep(random.Next(80, 150)); // Random delay after closing
             }
         }
     }

@@ -117,8 +117,10 @@ namespace BetterFollowbot.Core.Movement
                         {
                             try
                             {
-                                // Give cursor positioning time to settle before pressing move key
-                                System.Threading.Thread.Sleep(50);
+                                // Give cursor positioning time to settle before pressing move key with random delay
+                                var random = new Random();
+                                var settleDelay = random.Next(50, 100);
+                                System.Threading.Thread.Sleep(settleDelay);
                                 Input.KeyDown(_core.Settings.autoPilotMoveKey);
                                 _core.LogMessage("Movement task: Move key down pressed, waiting");
                             }
@@ -130,6 +132,9 @@ namespace BetterFollowbot.Core.Movement
 
                             try
                             {
+                                // Random delay between key down and up for more human-like movement
+                                var random = new Random();
+                                System.Threading.Thread.Sleep(random.Next(15, 35));
                                 Input.KeyUp(_core.Settings.autoPilotMoveKey);
                                 _core.LogMessage("Movement task: Move key released");
                             }
@@ -290,7 +295,7 @@ namespace BetterFollowbot.Core.Movement
                          {
                              _core.LogMessage("Dash task: Cursor direction valid, executing dash");
 
-                             Keyboard.KeyPress(_core.Settings.autoPilotDashKey);
+                             Keyboard.KeyPressRandom(_core.Settings.autoPilotDashKey);
                              _lastDashTime = DateTime.Now;
                              _lastPlayerPosition = _core.PlayerPosition;
 
@@ -318,7 +323,7 @@ namespace BetterFollowbot.Core.Movement
 
                                 _core.LogMessage("Dash task: Cursor positioned, executing dash");
 
-                                Keyboard.KeyPress(_core.Settings.autoPilotDashKey);
+                                Keyboard.KeyPressRandom(_core.Settings.autoPilotDashKey);
                                 _lastDashTime = DateTime.Now;
                                 _lastPlayerPosition = _core.PlayerPosition;
 
@@ -507,7 +512,7 @@ namespace BetterFollowbot.Core.Movement
                 // Press the skill key
                 if (task.SkillKey != default(System.Windows.Forms.Keys))
                 {
-                    Keyboard.KeyPress(task.SkillKey);
+                    Keyboard.KeyPressRandom(task.SkillKey);
                     _core.LogMessage($"SKILL TASK: Executed {task.SkillName.ToUpper()} on {task.SkillData?.TargetPlayerName} ({task.SkillData?.Reason})");
                     
                     // Record skill use for cooldown tracking

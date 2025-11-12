@@ -1415,12 +1415,17 @@ namespace BetterFollowbot;
         BetterFollowbot.Instance.Graphics.DrawText("AutoPilot: Active", new System.Numerics.Vector2(350, 120));
         BetterFollowbot.Instance.Graphics.DrawText("Task: Async", new System.Numerics.Vector2(350, 140));
         BetterFollowbot.Instance.Graphics.DrawText("Leader: " + (followTarget != null ? "Found" : "Null"), new System.Numerics.Vector2(350, 160));
+        
+        // Display APM statistics
+        var currentAPM = BetterFollowbot.Core.APMTracker.GetCurrentAPM();
+        var apmBreakdown = BetterFollowbot.Core.APMTracker.GetAPMBreakdown();
+        BetterFollowbot.Instance.Graphics.DrawText($"APM: {currentAPM} (10s: {apmBreakdown.last10s})", new System.Numerics.Vector2(350, 180), SharpDX.Color.LightGreen);
 
         var transitionTasks = _taskManager.Tasks.Where(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
         if (transitionTasks.Any())
         {
             var currentTransitionTask = transitionTasks.First();
-            BetterFollowbot.Instance.Graphics.DrawText($"Transition: {currentTransitionTask.Type}", new System.Numerics.Vector2(350, 180), SharpDX.Color.Yellow);
+            BetterFollowbot.Instance.Graphics.DrawText($"Transition: {currentTransitionTask.Type}", new System.Numerics.Vector2(350, 200), SharpDX.Color.Yellow);
         }
 
         try

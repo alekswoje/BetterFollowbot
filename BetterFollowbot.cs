@@ -844,6 +844,14 @@ public class BetterFollowbot : BaseSettingsPlugin<BetterFollowbotSettings>, IFol
             {
                 Graphics.DrawText("Enemys: " + enemys.Count, new System.Numerics.Vector2(100, 120), Color.White);
             }
+            
+            // Host Mode on-screen display
+            if (Settings.hostModeEnabled.Value)
+            {
+                var nearbyAlliedPlayers = GetNearbyAlliedPlayersCount(2000f);
+                Graphics.DrawText("=== HOST MODE ===", new System.Numerics.Vector2(100, 160), Color.Yellow);
+                Graphics.DrawText($"Nearby Party Members: {nearbyAlliedPlayers}", new System.Numerics.Vector2(100, 180), Color.LightGreen);
+            }
                 
             // MODIFIED: Only block UI interactions when game is not in foreground, but allow AutoPilot to work
             // AutoPilot logic runs before this check, so it continues working in background

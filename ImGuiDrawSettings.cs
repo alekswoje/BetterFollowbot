@@ -485,31 +485,10 @@ internal class ImGuiDrawSettings
                 BetterFollowbot.Instance.Settings.hostModeEnabled.Value =
                     ImGuiExtension.Checkbox("Enable Host Mode", BetterFollowbot.Instance.Settings.hostModeEnabled.Value);
                 
-                if (BetterFollowbot.Instance.Settings.hostModeEnabled.Value)
-                {
-                    ImGui.Separator();
-                    ImGui.Text("=== Host Statistics ===");
-                    
-                    // Get nearby allied players count
-                    var nearbyAlliedPlayers = BetterFollowbot.Instance.GetNearbyAlliedPlayersCount(2000f);
-                    ImGui.Text($"Nearby Allied Players (within 2000 units): {nearbyAlliedPlayers}");
-                    
-                    // Get APM statistics
-                    var apmBreakdown = Core.APMTracker.GetAPMBreakdown();
-                    var currentAPM = Core.APMTracker.GetCurrentAPM();
-                    
-                    ImGui.Separator();
-                    ImGui.Text("=== Actions Per Minute (APM) ===");
-                    ImGui.Text($"Last 10 seconds: {apmBreakdown.last10s} APM");
-                    ImGui.Text($"Last 30 seconds: {apmBreakdown.last30s} APM");
-                    ImGui.Text($"Last 60 seconds: {currentAPM} APM");
-                    
-                    ImGui.Separator();
-                    if (ImGui.Button("Reset APM Stats"))
-                    {
-                        Core.APMTracker.Reset();
-                    }
-                }
+                ImGui.Separator();
+                ImGui.Text("Host Mode shows nearby party members on-screen.");
+                ImGui.Text("This is meant for the leader/host to monitor their party.");
+                ImGui.Text("Enable this on the host character, not on bots.");
             }
         }
         catch (Exception e)

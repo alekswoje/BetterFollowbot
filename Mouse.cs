@@ -20,6 +20,52 @@ public static class Mouse
     public const int MouseEventWheel = 0x800;
         
     public static float speedMouse = 1;
+    private static float? _screenScaleFactor = null;
+
+    private enum DeviceCap
+    {
+        VERTRES = 10,
+        DESKTOPVERTRES = 117
+    }
+
+    [DllImport("gdi32.dll", CharSet = CharSet.Auto, SetLastError = true, ExactSpelling = true)]
+    private static extern int GetDeviceCaps(nint hDC, int nIndex);
+
+    public static float ScreenScaleFactor
+    {
+        get
+        {
+            if (_screenScaleFactor == null)
+            {
+                CalcScreenScaleFactor();
+            }
+            return _screenScaleFactor ?? 1.0f;
+        }
+    }
+
+    private static void CalcScreenScaleFactor()
+    {
+        try
+        {
+            using System.Drawing.Graphics g = System.Drawing.Graphics.FromHwnd(nint.Zero);
+            nint desktop = g.GetHdc();
+            int logicalScreenHeight = GetDeviceCaps(desktop, (int)DeviceCap.VERTRES);
+            int physicalScreenHeight = GetDeviceCaps(desktop, (int)DeviceCap.DESKTOPVERTRES);
+            g.ReleaseHdc(desktop);
+            
+            _screenScaleFactor = physicalScreenHeight / (float)logicalScreenHeight;
+        }
+        catch
+        {
+            _screenScaleFactor = 1.0f;
+        }
+    }
+
+    public static Vector2 ApplyDpiScaling(Vector2 position)
+    {
+        float dpiScale = 1 / ScreenScaleFactor;
+        return new Vector2(position.X * dpiScale, position.Y * dpiScale);
+    }
     public static bool IsMouseLeftPressed()
     {
         return Control.MouseButtons == MouseButtons.Left;

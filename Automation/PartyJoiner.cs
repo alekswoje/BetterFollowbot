@@ -184,12 +184,13 @@ namespace BetterFollowbot.Automation
                                                             buttonCenter.X + randomOffsetX,
                                                             buttonCenter.Y + randomOffsetY
                                                         );
-
-                                                        Mouse.SetCursorPos(buttonScreenCenter);
+                                                        
+                                                        var scaledPosition = Mouse.ApplyDpiScaling(buttonScreenCenter);
+                                                        Mouse.SetCursorPos(scaledPosition);
                                                         Thread.Sleep(random.Next(250, 350));
 
                                                         var currentMousePos = _instance.GetMousePosition();
-                                                        var distanceFromTarget = Vector2.Distance(currentMousePos, buttonScreenCenter);
+                                                        var distanceFromTarget = Vector2.Distance(currentMousePos, scaledPosition);
 
                                                         if (distanceFromTarget < 15)
                                                         {
@@ -465,13 +466,14 @@ namespace BetterFollowbot.Automation
                     // Use GetClientRectCache which properly accounts for container inheritance
                     var buttonRect = acceptButton.GetClientRectCache;
                     var buttonCenter = buttonRect.Center;
+                    var scaledPosition = Mouse.ApplyDpiScaling(buttonCenter);
                     
-                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - GetClientRectCache.Center: ({buttonCenter.X:F1}, {buttonCenter.Y:F1})");
+                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Original: ({buttonCenter.X:F1}, {buttonCenter.Y:F1}), Scaled: ({scaledPosition.X:F1}, {scaledPosition.Y:F1}), DPI Factor: {Mouse.ScreenScaleFactor:F2}");
                     
-                    Mouse.SetCursorPos(buttonCenter);
+                    Mouse.SetCursorPos(scaledPosition);
                     Thread.Sleep(150);
                     
-                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Clicking at ({buttonCenter.X:F1}, {buttonCenter.Y:F1})");
+                    BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Clicking at ({scaledPosition.X:F1}, {scaledPosition.Y:F1})");
                     
                     Mouse.LeftMouseDown();
                     Thread.Sleep(40);

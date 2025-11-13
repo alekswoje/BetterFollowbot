@@ -435,6 +435,8 @@ namespace BetterFollowbot.Automation
                 {
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Attempt {attempt}/{maxAttempts}");
                     
+                    Thread.Sleep(150);
+                    
                     // Refresh EVERYTHING right before clicking to ensure latest state
                     var freshTradePanel = GetTradePanel();
                     if (freshTradePanel == null)
@@ -442,6 +444,8 @@ namespace BetterFollowbot.Automation
                         BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Trade window disappeared on attempt {attempt}");
                         return;
                     }
+                    
+                    Thread.Sleep(50);
                     
                     var acceptButton = freshTradePanel.AcceptButton;
                     
@@ -470,15 +474,25 @@ namespace BetterFollowbot.Automation
                         continue;
                     }
                     
-                    // Use GetClientRectCache which properly accounts for container inheritance
-                    var buttonRect = acceptButton.GetClientRectCache;
+                    Thread.Sleep(50);
+                    
+                    // Get fresh button rect RIGHT before clicking
+                    var freshButtonRef = freshTradePanel.AcceptButton;
+                    if (freshButtonRef == null)
+                    {
+                        BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Button disappeared before click on attempt {attempt}");
+                        Thread.Sleep(baseDelay * attempt);
+                        continue;
+                    }
+                    
+                    var buttonRect = freshButtonRef.GetClientRectCache;
                     var buttonCenter = buttonRect.Center;
                     var scaledPosition = Mouse.ApplyDpiScaling(buttonCenter);
                     
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Original: ({buttonCenter.X:F1}, {buttonCenter.Y:F1}), Scaled: ({scaledPosition.X:F1}, {scaledPosition.Y:F1}), DPI Factor: {Mouse.ScreenScaleFactor:F2}");
                     
                     Mouse.SetCursorPos(scaledPosition);
-                    Thread.Sleep(150);
+                    Thread.Sleep(100);
                     
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Clicking at ({scaledPosition.X:F1}, {scaledPosition.Y:F1})");
                     

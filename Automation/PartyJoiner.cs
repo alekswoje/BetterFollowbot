@@ -435,8 +435,15 @@ namespace BetterFollowbot.Automation
                 {
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Attempt {attempt}/{maxAttempts}");
                     
-                    // Refresh button position on EACH attempt (UI might shift between attempts)
-                    var acceptButton = tradePanel.AcceptButton;
+                    // Refresh EVERYTHING right before clicking to ensure latest state
+                    var freshTradePanel = GetTradePanel();
+                    if (freshTradePanel == null)
+                    {
+                        BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT: Trade window disappeared on attempt {attempt}");
+                        return;
+                    }
+                    
+                    var acceptButton = freshTradePanel.AcceptButton;
                     
                     BetterFollowbot.Instance.LogMessage($"AUTO CLICK TRADE ACCEPT DEBUG: Attempt {attempt} - Button null: {acceptButton == null}");
                     if (acceptButton != null)

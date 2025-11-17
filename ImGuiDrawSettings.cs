@@ -115,6 +115,8 @@ internal class ImGuiDrawSettings
                     ImGuiExtension.IntSlider("Transition/Portal Detection Range", BetterFollowbot.Instance.Settings.autoPilotClearPathDistance);
                 BetterFollowbot.Instance.Settings.autoPilotRandomActionDelay.Value =
                     ImGuiExtension.IntSlider("Random Action Delay (ms)", BetterFollowbot.Instance.Settings.autoPilotRandomActionDelay);
+                BetterFollowbot.Instance.Settings.autoPilotPortalTransitionRetryCooldown.Value =
+                    ImGuiExtension.FloatSlider("Portal Transition Retry Cooldown (seconds)", BetterFollowbot.Instance.Settings.autoPilotPortalTransitionRetryCooldown);
             }
         }
         catch (Exception e)

@@ -35,6 +35,7 @@ public class BetterFollowbotSettings : ISettings
     public RangeNode<int> autoPilotDashDistance = new RangeNode<int>(500, 50, 2000);
     public RangeNode<int> autoPilotRandomActionDelay = new RangeNode<int>(15, 0, 100);
     public RangeNode<int> autoPilotMaxPortalDistance = new RangeNode<int>(2000, 500, 5000);
+    public RangeNode<float> autoPilotPortalTransitionRetryCooldown = new RangeNode<float>(1.0f, 0.1f, 10.0f);
 
     #endregion
         

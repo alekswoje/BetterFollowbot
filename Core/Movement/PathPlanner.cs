@@ -25,7 +25,7 @@ namespace BetterFollowbot.Core.Movement
         // Throttle frequent log messages
         private DateTime _lastPortalThresholdLog = DateTime.MinValue;
         
-        // Zone transition retry management - NEVER GIVE UP, keep trying every 5 seconds
+        // Zone transition retry management - NEVER GIVE UP, keep trying every configured seconds
         private int _zoneTransitionAttempts = 0;
         private DateTime _lastZoneTransitionAttemptTime = DateTime.MinValue;
         private string _lastAttemptedZoneTransition = "";
@@ -33,7 +33,6 @@ namespace BetterFollowbot.Core.Movement
         private bool _triedSwirlyMethod = false;
         private bool _triedAnyPortalMethod = false;
         private const int MAX_ZONE_TRANSITION_ATTEMPTS = 999999; // Effectively infinite - never give up
-        private const double ZONE_TRANSITION_RETRY_COOLDOWN_SECONDS = 5.0;
 
         /// <summary>
         /// Checks if any blocking UI elements are open that should prevent path planning
@@ -87,7 +86,8 @@ namespace BetterFollowbot.Core.Movement
                 return false;
                 
             var timeSinceLastAttempt = (DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds;
-            return timeSinceLastAttempt < ZONE_TRANSITION_RETRY_COOLDOWN_SECONDS;
+            var cooldownSeconds = _core.Settings.autoPilotPortalTransitionRetryCooldown.Value;
+            return timeSinceLastAttempt < cooldownSeconds;
         }
         
         /// <summary>
@@ -105,13 +105,14 @@ namespace BetterFollowbot.Core.Movement
             
             _zoneTransitionAttempts++;
             _lastZoneTransitionAttemptTime = DateTime.Now;
-            _core.LogMessage($"ZONE TRANSITION RETRY: Attempt {_zoneTransitionAttempts} using {methodName} (will keep trying every 5s - NEVER GIVING UP)");
+            var cooldownSeconds = _core.Settings.autoPilotPortalTransitionRetryCooldown.Value;
+            _core.LogMessage($"ZONE TRANSITION RETRY: Attempt {_zoneTransitionAttempts} using {methodName} (will keep trying every {cooldownSeconds:F1}s - NEVER GIVING UP)");
         }
         
         /// <summary>
         /// Determines the next transition method to try based on retry state
         /// Priority: 1) Matching portal, 2) Swirly, 3) Any portal (fallback), 4) Wait and cycle again
-        /// NEVER GIVES UP - continuously cycles through all methods every 5 seconds
+        /// NEVER GIVES UP - continuously cycles through all methods every configured seconds
         /// Returns: "matching_portal", "swirly", "any_portal", or "wait"
         /// </summary>
         private string GetNextTransitionMethod()
@@ -121,7 +122,8 @@ namespace BetterFollowbot.Core.Movement
             {
                 if (IsInZoneTransitionRetryCooldown())
                 {
-                    var timeRemaining = ZONE_TRANSITION_RETRY_COOLDOWN_SECONDS - (DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds;
+                    var cooldownSeconds = _core.Settings.autoPilotPortalTransitionRetryCooldown.Value;
+                    var timeRemaining = cooldownSeconds - (DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds;
                     _core.LogMessage($"ZONE TRANSITION RETRY: Waiting {timeRemaining:F1}s before next retry cycle (attempt {_zoneTransitionAttempts})");
                     return "wait";
                 }
@@ -483,7 +485,8 @@ namespace BetterFollowbot.Core.Movement
                             if (nextMethod == "wait")
                             {
                                 // In cooldown period, do nothing
-                                var timeRemaining = ZONE_TRANSITION_RETRY_COOLDOWN_SECONDS - (DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds;
+                                var cooldownSeconds = _core.Settings.autoPilotPortalTransitionRetryCooldown.Value;
+                                var timeRemaining = cooldownSeconds - (DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds;
                                 if ((DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds % 2 < 0.1) // Log every ~2 seconds
                                 {
                                     _core.LogMessage($"ZONE TRANSITION RETRY: Waiting {timeRemaining:F1}s before next retry (both portal and swirly failed)");
@@ -536,7 +539,8 @@ namespace BetterFollowbot.Core.Movement
                                     if (nextMethod == "wait")
                                     {
                                         // In cooldown period, do nothing
-                                        var timeRemaining = ZONE_TRANSITION_RETRY_COOLDOWN_SECONDS - (DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds;
+                                        var cooldownSeconds = _core.Settings.autoPilotPortalTransitionRetryCooldown.Value;
+                                        var timeRemaining = cooldownSeconds - (DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds;
                                         if ((DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds % 2 < 0.1) // Log every ~2 seconds
                                         {
                                             _core.LogMessage($"ZONE TRANSITION RETRY: Waiting {timeRemaining:F1}s before next retry (null entity case)");
@@ -657,7 +661,8 @@ namespace BetterFollowbot.Core.Movement
                                 if (nextMethod == "wait")
                                 {
                                     // In cooldown period, do nothing
-                                    var timeRemaining = ZONE_TRANSITION_RETRY_COOLDOWN_SECONDS - (DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds;
+                                    var cooldownSeconds = _core.Settings.autoPilotPortalTransitionRetryCooldown.Value;
+                                    var timeRemaining = cooldownSeconds - (DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds;
                                     if ((DateTime.Now - _lastZoneTransitionAttemptTime).TotalSeconds % 2 < 0.1) // Log every ~2 seconds
                                     {
                                         _core.LogMessage($"ZONE TRANSITION RETRY: Waiting {timeRemaining:F1}s before next retry (large movement case)");
